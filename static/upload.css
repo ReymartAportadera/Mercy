@@ -1,0 +1,117 @@
+/* ==============================
+   Core Variables
+   ============================== */
+:root {
+    --accent-red: #ff1e1e;
+    --glass-bg: rgba(20, 20, 20, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-dim: #a0a0a0;
+}
+
+/* ==============================
+   Upload Container Layout
+   ============================== */
+.upload-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 70vh; /* Centers the box vertically in the main area */
+}
+
+.upload-box {
+    width: 100%;
+    max-width: 500px;
+    padding: 50px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    animation: zoomIn 0.4s ease-out;
+}
+
+.upload-box h2 {
+    margin-bottom: 30px;
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    color: var(--text-main);
+}
+
+/* ==============================
+   Styling the File Input
+   ============================== */
+.file-input {
+    width: 100%;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px dashed var(--glass-border);
+    border-radius: 8px;
+    color: var(--text-dim);
+    margin-bottom: 25px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.file-input:hover {
+    border-color: var(--accent-red);
+    background: rgba(255, 30, 30, 0.05);
+    color: white;
+}
+
+/* Custom styling for the "Choose File" button inside the input */
+.file-input::-webkit-file-upload-button {
+    background: var(--accent-red);
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    color: white;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-size: 0.75rem;
+    margin-right: 15px;
+    cursor: pointer;
+}
+
+/* ==============================
+   The Upload Button
+   ============================== */
+.upload-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent-red);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.upload-btn:hover {
+    background: #e01b1b;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(255, 30, 30, 0.3);
+}
+
+/* ==============================
+   Flash Messages
+   ============================== */
+.flash-messages {
+    list-style: none;
+    margin-top: 20px;
+    padding: 0;
+}
+
+.flash-messages li {
+    background: rgba(255, 30, 30, 0.2);
+    border: 1px solid var(--accent-red);
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+@keyframes zoomIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}

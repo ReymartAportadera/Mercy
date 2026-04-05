@@ -1,0 +1,271 @@
+/* ==============================
+   Core Variables & Setup
+   ============================== */
+:root {
+    --bg-black: #050505;
+    --accent-red: #ff1e1e;
+    --glass-bg: rgba(20, 20, 20, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-main: #f5f5f5;
+    --text-dim: #a0a0a0;
+    
+    /* Threat Colors */
+    --safe: #00ff88;
+    --low: #33ccff;
+    --medium: #ffcc00;
+    --high: #ff6600;
+    --critical: #ff1e1e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'SF Pro Display', -apple-system, sans-serif;
+    background-color: var(--bg-black);
+    color: var(--text-main);
+    background-image: radial-gradient(circle at 50% 50%, #1a0505 0%, #050505 100%);
+    min-height: 100vh;
+}
+
+.container { display: flex; min-height: 100vh; }
+
+/* ==============================
+   Glassmorphism Utility
+   ============================== */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+}
+
+/* ==============================
+   Sidebar
+   ============================== */
+.sidebar {
+    width: 260px;
+    margin: 20px;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar h2 {
+    font-weight: 900;
+    letter-spacing: 2px;
+    margin-bottom: 40px;
+    text-transform: uppercase;
+    color: var(--accent-red);
+    text-align: center;
+}
+
+.sidebar a {
+    text-decoration: none;
+    color: var(--text-dim);
+    padding: 12px 15px;
+    border-radius: 8px;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sidebar a:hover, .sidebar a.active {
+    background: rgba(255, 30, 30, 0.15);
+    color: var(--text-main);
+    border-left: 3px solid var(--accent-red);
+}
+
+/* ==============================
+   Main Content Area
+   ============================== */
+.main { flex: 1; padding: 40px; overflow-y: auto; }
+
+.topbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 30px;
+    font-weight: 600;
+    color: var(--accent-red);
+}
+
+/* ==============================
+   Stats Cards
+   ============================== */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.card { padding: 20px; text-align: center; transition: 0.3s; }
+.card h3 { font-size: 2rem; margin-bottom: 5px; }
+.card p { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; }
+
+/* Card Threat Border Glows */
+.card.low { border-bottom: 3px solid var(--low); }
+.card.medium { border-bottom: 3px solid var(--medium); }
+.card.high { border-bottom: 3px solid var(--high); }
+.card.critical { border-bottom: 3px solid var(--critical); }
+
+/* ==============================
+   Scanner Logic
+   ============================== */
+.scan-box { padding: 30px; margin-bottom: 30px; text-align: center; }
+
+.circular-scanner {
+    display: none; /* Hidden by default, shown via JS */
+    flex-direction: column;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.circle {
+    width: 80px;
+    height: 80px;
+    border: 4px solid rgba(255, 30, 30, 0.1);
+    border-top: 4px solid var(--accent-red);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+.upload a {
+    display: block;
+    border: 2px dashed var(--glass-border);
+    padding: 40px;
+    border-radius: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.upload a:hover { border-color: var(--accent-red); color: white; background: rgba(255, 255, 255, 0.02); }
+
+/* ==============================
+   File Cards & List
+   ============================== */
+.uploaded-files { padding: 25px; margin-top: 20px; }
+.file-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    margin: 15px 0;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border-left: 4px solid #444;
+}
+
+.file-info { display: flex; flex-direction: column; gap: 5px; }
+.file-status { text-transform: uppercase; font-weight: 800; font-size: 0.7rem; }
+.file-status.safe { color: var(--safe); }
+.file-status.malware { color: var(--critical); }
+
+/* Progress Bar */
+.progress-container {
+    width: 200px;
+    height: 8px;
+    background: #222;
+    border-radius: 10px;
+    margin: 5px 0;
+}
+.progress-bar { height: 100%; border-radius: 10px; }
+.progress-bar.low { background: var(--low); }
+.progress-bar.medium { background: var(--medium); }
+.progress-bar.high { background: var(--high); }
+.progress-bar.critical { background: var(--critical); }
+
+/* Buttons */
+.scan-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background: var(--accent-red);
+    color: white;
+    cursor: pointer;
+    font-weight: 700;
+    transition: 0.3s;
+}
+
+/* ==============================
+   Uploaded Files Table
+   ============================== */
+.files-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
+.files-table th, .files-table td {
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    text-align: center;
+    vertical-align: middle;
+}
+
+.files-table th {
+    background: rgba(255,255,255,0.05);
+    color: var(--accent-red);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.files-table tr:nth-child(even) {
+    background: rgba(255,255,255,0.02);
+}
+
+.files-table tr:hover {
+    background: rgba(255,30,30,0.1);
+}
+
+/* Threat Level Colors */
+.files-table td.low { color: var(--low); font-weight: 700; }
+.files-table td.medium { color: var(--medium); font-weight: 700; }
+.files-table td.high { color: var(--high); font-weight: 700; }
+.files-table td.critical { color: var(--critical); font-weight: 700; }
+.files-table td.safe { color: var(--safe); font-weight: 700; }
+
+/* Buttons in Table */
+.files-table .scan-btn {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    border-radius: 5px;
+    margin: 2px;
+}
+
+.files-table .scan-btn.scanned {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* Delete Button Styling */
+.files-table .delete-btn {
+    background-color: var(--accent-red); /* bright red */
+    color: rgb(254, 251, 251);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.files-table .delete-btn:hover {
+    background-color: #ff4d4d; /* slightly lighter red on hover */
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+
+
+.scan-btn:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.2); }
+.delete-btn { background: #333; margin-top: 5px; }
+.delete-btn:hover { background: #555; }

@@ -1,0 +1,278 @@
+/* ==============================
+   Core Variables (Matching your Login)
+   ============================== */
+:root {
+    --bg-black: #050505;
+    --accent-red: #ff1e1e; 
+    --glass-bg: rgba(15, 15, 15, 0.85);
+    --glass-border: rgba(255, 30, 30, 0.2);
+    --text-main: #f5f5f5;
+    --text-dim: #888;
+    --cyber-image-url: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1920');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'SF Pro Display', -apple-system, sans-serif;
+    background-color: var(--bg-black);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+/* ==============================
+   Background Effects (Matching Login)
+   ============================== */
+body::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: var(--cyber-image-url);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.1;
+    filter: grayscale(100%) contrast(120%);
+    z-index: -2;
+}
+
+body::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, var(--bg-black) 90%);
+    z-index: -1;
+}
+
+/* ==============================
+   The Main Scan Box (Matching Login Box)
+   ============================== */
+.scan-box {
+    background: var(--glass-bg);
+    padding: 40px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 600px;
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+    text-align: center;
+    animation: fadeInUp 0.8s forwards ease-out;
+}
+
+h2 {
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-main);
+    margin-bottom: 10px;
+}
+
+h2 span, .filename-display strong {
+    color: var(--accent-red);
+    text-shadow: 0 0 10px rgba(255, 30, 30, 0.3);
+}
+
+/* ==============================
+   Folder Animation Section
+   ============================== */
+.folder-scanner-container {
+    position: relative;
+    height: 160px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 1000px;
+    margin: 30px 0;
+}
+
+.folder-visual {
+    font-size: 5.5rem;
+    color: var(--accent-red);
+    filter: drop-shadow(0 0 15px rgba(255, 30, 30, 0.4));
+    animation: folder-tilt 3s ease-in-out infinite;
+}
+
+.folder-laser {
+    position: absolute;
+    width: 80%;
+    height: 2px;
+    background: var(--accent-red);
+    box-shadow: 0 0 15px var(--accent-red), 0 0 5px #fff;
+    z-index: 10;
+    animation: laser-move 2s ease-in-out infinite;
+}
+
+/* ==============================
+   Result Box Styling
+   ============================== */
+.result-box {
+    text-align: left;
+}
+
+.result-box h2 {
+    text-align: center;
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.metrics p {
+    margin: 10px 0;
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 5px;
+}
+
+.metrics strong {
+    color: var(--text-dim);
+}
+
+/* Status Colors */
+.safe { color: #00ff88 !important; }
+.malware { color: var(--accent-red) !important; }
+
+/* ==============================
+   Buttons & Animations
+   ============================== */
+.scan-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: var(--accent-red);
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 6px;
+    text-align: center;
+    margin-top: 25px;
+    transition: 0.3s;
+    animation: buttonPulse 2s infinite;
+}
+
+.scan-btn:hover {
+    background: #e01b1b;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(255, 30, 30, 0.4);
+}
+
+#scanText {
+    font-family: 'Courier New', monospace;
+    color: var(--accent-red);
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    font-size: 0.85rem;
+}
+
+/* Keyframes */
+@keyframes folder-tilt {
+    0%, 100% { transform: rotateY(15deg) rotateX(5deg); }
+    50% { transform: rotateY(-15deg) rotateX(-5deg); }
+}
+
+@keyframes laser-move {
+    0%, 100% { top: 20%; opacity: 0; }
+    20%, 80% { opacity: 1; }
+    50% { top: 80%; }
+}
+
+@keyframes buttonPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 30, 30, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 30, 30, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 30, 30, 0); }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* AI Analysis Container */
+.ai-analysis-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    border-left: 5px solid #4CAF50;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.ai-analysis-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.ai-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.ai-header i {
+    font-size: 28px;
+    color: #4CAF50;
+}
+
+.ai-header h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.3em;
+}
+
+.ai-message {
+    color: #e0e0e0;
+    line-height: 1.6;
+    font-size: 15px;
+}
+
+.ai-message p {
+    margin: 0;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+}
+
+/* Different styles based on threat level */
+.ai-analysis-container.critical {
+    border-left-color: #ff4444;
+    background: linear-gradient(135deg, #2a0a0a 0%, #1a0a0a 100%);
+}
+
+.ai-analysis-container.high {
+    border-left-color: #ff8800;
+}
+
+.ai-analysis-container.medium {
+    border-left-color: #ffcc00;
+}
+
+.ai-analysis-container.safe {
+    border-left-color: #00ff88;
+}
+
+/* Pulse animation for AI icon */
+@keyframes aiPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.ai-header i {
+    animation: aiPulse 2s infinite;
+}

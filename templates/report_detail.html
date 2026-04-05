@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TrustFile | Report Detail - {{ file.filename }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="container">
+    <!-- BACK BUTTON -->
+    <a href="{{ url_for('reports') }}" class="scan-btn">
+        <i class="fas fa-arrow-left"></i> Back to Reports
+    </a>
+
+    <!-- FILE NAME -->
+    <h2>
+        <i class="fas fa-file-alt"></i> 
+        {{ file.filename }}
+        <span class="threat-badge {{ file.threat_level|lower }}">{{ file.threat_level or 'Pending' }}</span>
+    </h2>
+
+    <!-- ================= AI EXPLANATION ================= -->
+    <div class="ai-box">
+        <strong><i class="fas fa-robot"></i> AI Malware Analysis:</strong><br>
+        {{ file.ai_analysis or file.explanation or "No analysis available" }}
+    </div>
+
+    <!-- ================= DETECTION RATIO ================= -->
+    <h3><i class="fas fa-chart-line"></i> Detection Ratio</h3>
+    <div class="progress">
+        <div class="progress-bar" style="width: {{ (detected / total_engines) * 100 }}%;">
+            {{ ((detected / total_engines) * 100)|round(1) }}%
+        </div>
+    </div>
+    <p style="text-align: center; margin-top: -10px; margin-bottom: 20px;">
+        {{ detected }} / {{ total_engines }} Security Engines Detected this Threat
+    </p>
+
+    <!-- ================= TIMELINE ================= -->
+    <div class="timeline">
+        <h3><i class="fas fa-clock"></i> Scan Timeline</h3>
+        <div class="timeline-item">
+            <i class="fas fa-upload"></i> File Uploaded - {{ file.upload_time }}
+        </div>
+        <div class="timeline-item">
+            <i class="fas fa-search"></i> Scan Completed - Status: 
+            <span class="threat-badge {{ file.status|lower }}">{{ file.status }}</span>
+        </div>
+        <div class="timeline-item">
+            <i class="fas fa-exclamation-triangle"></i> Threat Level: 
+            <span class="threat-badge {{ file.threat_level|lower }}">{{ file.threat_level }}</span>
+        </div>
+        <div class="timeline-item">
+            <i class="fas fa-chart-simple"></i> Risk Score: {{ file.risk_score or 0 }}%
+        </div>
+    </div>
+
+    <!-- ================= DETAILS GRID ================= -->
+    <h3><i class="fas fa-microchip"></i> Technical Analysis Details</h3>
+    <div class="grid">
+        <div class="card">
+            <div class="label"><i class="fas fa-random"></i> Entropy</div>
+            <div class="value">{{ file.entropy or 0 }}</div>
+            <small>Measures file randomness</small>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-flag-checkered"></i> Status</div>
+            <div class="value">{{ file.status }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-gauge-high"></i> Risk Score</div>
+            <div class="value">{{ file.risk_score or 0 }}%</div>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-chart-simple"></i> Threat Level</div>
+            <div class="value">{{ file.threat_level or 'Pending' }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-code"></i> Patterns Detected</div>
+            <div class="value small">{{ file.pattern_result or 'None' }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-bug"></i> Suspicious Behavior</div>
+            <div class="value small">{{ file.signature_status or 'None' }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-boxes"></i> Risky Imports</div>
+            <div class="value small">{{ file.risky_imports or 'None' }}</div>
+        </div>
+
+        <div class="card">
+            <div class="label"><i class="fas fa-fingerprint"></i> File Hash (SHA256)</div>
+            <div class="value small">{{ file.hash or 'N/A' }}</div>
+        </div>
+    </div>
+
+    <!-- ================= ACTIONS ================= -->
+    <div style="display: flex; gap: 15px; margin-top: 30px; justify-content: center;">
+        <button onclick="window.print()" class="scan-btn" style="background: rgba(0,255,136,0.1); border-color: var(--safe-green); color: var(--safe-green);">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+        <a href="{{ url_for('dashboard') }}" class="scan-btn">
+            <i class="fas fa-tachometer-alt"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

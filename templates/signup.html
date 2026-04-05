@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustFile | Sign Up</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+
+<body>
+
+    <div class="cyber-bg-container">
+        <div class="dark-overlay"></div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-box">
+            <h2>CREATE <span>ACCOUNT</span></h2>
+            <p>Join the Neural Defense Grid</p>
+
+            <form method="POST" id="signupForm">
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="email" name="email" placeholder="Email" required>
+                
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" placeholder="Password" required>
+                    <i class="fas fa-eye" id="togglePassword"></i>
+                </div>
+                
+                <button type="submit" id="signupBtn">Sign Up</button>
+            </form>
+
+            <a href="{{ url_for('login') }}" class="signup-link">Already have an account? Log In</a>
+        </div>
+    </div>
+
+    <script>
+        // 1. Password Visibility Toggle
+        const togglePassword = document.querySelector('#togglePassword');
+        const passwordField = document.querySelector('#password');
+
+        togglePassword.addEventListener('click', function () {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            this.classList.toggle('fa-eye-slash');
+            
+            // Visual feedback: Red glow when visible
+            if (type === 'text') {
+                this.style.color = '#ff1e1e';
+                this.style.textShadow = '0 0 8px rgba(255, 30, 30, 0.6)';
+            } else {
+                this.style.color = '#888';
+                this.style.textShadow = 'none';
+            }
+        });
+
+        // 2. Button Loading Animation
+        const signupForm = document.querySelector('#signupForm');
+        const signupBtn = document.querySelector('#signupBtn');
+
+        signupForm.addEventListener('submit', function () {
+            // Replace text with spinner
+            signupBtn.innerHTML = '<div class="loader"></div>';
+            signupBtn.style.pointerEvents = 'none';
+            signupBtn.style.opacity = '0.8';
+        });
+    </script>
+
+</body>
+</html>

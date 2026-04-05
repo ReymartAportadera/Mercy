@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery Page</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+    
+        body {
+            margin: 0;
+            background: url('img/background.jfif') no-repeat center center fixed;
+            background-size:cover;
+            height:500px;
+        }
+    
+        .row {
+            padding: 50px;
+        }
+    
+        .col1, .col2 {
+            width: 25%;
+            padding: 10px 10px 20px 10px;
+            border: 2px solid red;
+            background-color: white;
+            box-shadow: 10px 10px 5px black;
+            float: left;
+        }
+    
+        .col1 {
+            transform: rotate(7deg);
+        }
+    
+        .col2 {
+            transform: rotate(-8deg);
+        }
+    
+        .col1:hover, .col2:hover {
+            transform: rotate(0deg);
+        }
+    
+        .col1 span, .col2 span {
+            font-weight: bold;
+            font-size: 25px;
+        }
+    
+        .row:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+    
+        @media screen and (max-width: 600px) {
+            .col1, .col2 {
+                width: 100%;
+            }
+        }
+    </style>
+    
+</head>
+<body>
+    <div class="row">
+
+        <div class="col1">
+            <img src="img/gallery.jpg"width="100%">
+            <span>Bohol</span>
+            <p class="descrip">Bohol is one of the most beautiful islands in the Philippines
+                and it’s packed with many gorgeous and interesting places to visit.
+                The island is mostly famous for the Chocolate Hills
+                and the cute-looking tarsiers but it has many more things to offer.</p>
+        </div>
+
+        <div class="col2">
+            <img src="img/gallery2.webp"width="100%">
+            <span>Puerto Galera</span>
+            <p class="desc2">Puerto Galera, located about 130 kilometers south of Manila
+                at the southwestern end of the Isla Verde Passage, offers a mix of water adventure
+            and camping fun. The island is surrounded by warm water and the beach is great:
+            you'll find banana boats, jet skis, scuba diving, snorkeling, surfing, and much more.</p>
+        </div>
+
+    <!-- -->
+    <div class="col1">
+        <img src="img/gallery.jpg"width="100%">
+        <span>Corregidor Island</span>
+        <p class="descrip">Let's now go to one of the most prominent places
+        and active seaports in the history of the Philippines
+        , Corregidor Island. This island is nestled in the southwestern part of Luzon Island,
+        at the entrance of Manila Bay.</p>
+    </div>
+
+    <div class="col2">
+        <img src="img/gallery2.webp"width="100%">
+        <span>Baguio City</span>
+        <p class="desc2">Baguio City is one of the coolest places in the Philippines due to its high altitude.
+        It is considered the summer capital of the Philippines because the best time to go there is summer,
+        when the temperature in metro Manila reaches 37°C/98.6°F.
+        Baguio City has many tourist spots: a botanical garden, Mines View Park,
+        Wright Park where you can ride a horse, Burnham Park where you can ride a boat or a bike,
+        and the mansion where the president of the Philippines stays when he visits.</p>
+    </div>
+
+
+
+    </div>
+</body>
+</html>

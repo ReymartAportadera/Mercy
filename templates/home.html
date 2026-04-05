@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustFile | Home</title>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+
+    <div class="cyber-bg-container">
+        <div class="dark-overlay"></div>
+    </div>
+
+    <header class="topbar">
+        <div class="logo">TRUST<span>FILE</span></div>
+        <div class="nav-actions">
+            <a href="{{ url_for('login') }}" class="btn">Login</a>
+            <a href="{{ url_for('dashboard') }}" class="btn active">Dashboard</a>
+        </div>
+    </header>
+
+    <main class="hero">
+        <div class="hero-content">
+            <span class="status-badge fade-in-up">● SYSTEM STATUS: SECURE</span>
+            
+            <h1 class="title fade-in-up delay-1">TRUST<span>FILE</span></h1>
+
+            <p class="description fade-in-up delay-2">
+                TrustFile is a secure file scanning system designed to detect potential malware and threats in uploaded files. 
+                Ensure file safety before opening or sharing with our advanced neural defense.
+            </p>
+
+            <div class="cta-group fade-in-up delay-3">
+                <a href="{{ url_for('dashboard') }}" class="primary-btn">Initialize Scan</a>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

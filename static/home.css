@@ -1,0 +1,173 @@
+/* ==============================
+   Core Variables & Reset
+   ============================== */
+:root {
+    --bg-black: #050505;
+    --accent-red: #ff1e1e; 
+    --text-red: #d63031; 
+    --glass-bg: rgba(10, 10, 10, 0.7);
+    --text-main: #f5f5f5;
+    --text-dim: #999;
+    --cyber-image-url: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=1920');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* Fixed from box-shadow */
+}
+
+body {
+    font-family: 'SF Pro Display', sans-serif;
+    background-color: var(--bg-black);
+    color: var(--text-main);
+    overflow-x: hidden;
+}
+
+/* ==============================
+   Background Logic
+   ============================== */
+.cyber-bg-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: -2;
+}
+
+.cyber-bg-container::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: var(--cyber-image-url);
+    background-size: cover;
+    background-position: center;
+    opacity: 0.12; 
+    filter: grayscale(100%) contrast(120%); 
+}
+
+.dark-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, var(--bg-black) 90%);
+    z-index: -1;
+}
+
+/* ==============================
+   Topbar / Header
+   ============================== */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 8%;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 30, 30, 0.1);
+}
+
+.logo { font-size: 1.4rem; font-weight: 900; letter-spacing: 2px; }
+.logo span { color: var(--accent-red); }
+
+.nav-actions .btn {
+    text-decoration: none;
+    color: var(--text-main);
+    margin-left: 20px;
+    font-size: 0.9rem;
+    padding: 8px 20px;
+    border-radius: 4px;
+    transition: 0.3s;
+}
+
+.nav-actions .btn.active {
+    border: 1px solid var(--accent-red);
+    color: var(--accent-red);
+}
+
+/* ==============================
+   Hero Section
+   ============================== */
+.hero {
+    height: 100vh;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10%;
+}
+
+.hero-content { max-width: 600px; }
+
+.status-badge {
+    color: var(--text-red);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    border: 1px solid rgba(214, 48, 49, 0.3);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+.title {
+    /* Increased from 4rem to 5.5rem for more impact */
+    font-size: 5.5rem; 
+    font-weight: 900;
+    line-height: 1.1; /* Prevents letters from overlapping */
+    letter-spacing: -2px;
+    margin-bottom: 25px; /* Adds space before the description */
+    text-transform: uppercase;
+}
+
+.title span { color: var(--accent-red); text-shadow: 0 0 20px rgba(255, 30, 30, 0.5); }
+
+.description {
+    /* Increased size for better readability on 11.5" screens */
+    font-size: 1.3rem; 
+    line-height: 1.8; /* More vertical space between lines */
+    color: var(--text-dim);
+    max-width: 650px; /* Keeps the text block from getting too wide */
+    margin-bottom: 50px; /* Space before the 'Initialize Scan' button */
+}
+/* Main Button */
+.primary-btn {
+    text-decoration: none;
+    display: inline-block;
+    padding: 16px 40px;
+    background: var(--accent-red);
+    color: white;
+    font-weight: 700;
+    border-radius: 4px;
+    animation: buttonPulse 2s infinite;
+}
+
+@keyframes buttonPulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 30, 30, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(255, 30, 30, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 30, 30, 0); }
+}
+
+/* ==============================
+   Animations
+   ============================== */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.7s forwards ease-out;
+}
+
+.fade-in {
+    opacity: 0;
+    animation: fadeIn 1.2s forwards;
+}
+
+.delay-1 { animation-delay: 0.2s; }
+.delay-2 { animation-delay: 0.4s; }
+.delay-3 { animation-delay: 0.6s; }
+
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { to { opacity: 1; } }

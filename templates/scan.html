@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>TrustFile | Scanning...</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='scan.css') }}">
+</head>
+
+<body>
+
+<div class="scan-page">
+    <div class="scan-box glass">
+        <h2>Scanning File...</h2>
+        <p class="filename-display"><strong>{{ file.filename }}</strong></p>
+
+        {% if not result %}
+        <div class="folder-scanner-container">
+            <div class="pulse-aura"></div>
+            
+            <div class="folder-visual">
+                <i class="fa-solid fa-folder-open folder-icon"></i>
+                <div class="folder-laser"></div>
+            </div>
+
+            <div class="data-particles">
+                <span class="particle p1"></span>
+                <span class="particle p2"></span>
+                <span class="particle p3"></span>
+                <span class="particle p4"></span>
+            </div>
+        </div>
+
+        <p id="scanText" class="status-text">Analyzing file...</p>
+
+        <form id="scanForm" method="POST" action="{{ url_for('scan_page', file_id=file.id) }}"></form>
+
+
+        {% else %}
+        <div class="result-box">
+            <h2>Status: 
+                <span class="{{ file.status|lower }}">
+                    {{ file.status }}
+                </span>
+            </h2>
+
+            <div class="metrics">
+                <p><strong>Threat Level:</strong> {{ file.threat_level }}</p>
+                <p><strong>Risk Score:</strong> {{ file.risk_score }}%</p>
+                <p><strong>Malware Type:</strong> {{ file.malware_type }}</p>
+            </div>
+
+            <hr>
+
+            <h3>Analysis Details</h3>
+            <p><strong>Patterns Detected:</strong> {{ file.pattern_result }}</p>
+            <p><strong>Suspicious Behavior:</strong> {{ file.signature_status }}</p>
+            <p><strong>Risky Imports:</strong> {{ file.risky_imports }}</p>
+            <p><strong>Entropy:</strong> {{ file.entropy }}</p>
+
+            <!-- ========== AI ANALYSIS SECTION (ADD THIS) ========== -->
+            {% if file.ai_analysis %}
+            <div class="ai-analysis-container">
+                <div class="ai-header">
+                    <i class="fa-solid fa-robot"></i>
+                    <h3>AI Malware Analysis</h3>
+                </div>
+                <div class="ai-message">
+                    <p>{{ file.ai_analysis }}</p>
+                </div>
+            </div>
+            {% endif %}
+            <!-- ========== END AI ANALYSIS SECTION ========== -->
+
+            <br>
+            <a href="{{ url_for('dashboard') }}" class="scan-btn">Back to Dashboard</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+{% if not result %}
+    // Keeping your original timing logic
+    setTimeout(() => {
+        document.getElementById("scanText").innerText = "Checking malware behavior...";
+    }, 1500);
+
+    setTimeout(() => {
+        document.getElementById("scanText").innerText = "Detecting threats...";
+    }, 3000);
+
+    setTimeout(() => {
+        document.getElementById("scanForm").submit();
+    }, 4500);
+{% endif %}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TrustFile History</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='history.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="history-container glass">
+    <a href="{{ url_for('dashboard') }}" class="dashboard-link"><i class="fa-solid fa-table"></i> Dashboard</a>
+
+    <h2>Uploaded Files History</h2>
+
+    <!-- Optional Filter Section -->
+    <div class="filter-section">
+        <input type="text" id="aiSearch" placeholder="🔍 Search AI analysis..." onkeyup="filterAI()">
+    </div>
+
+    {% if files %}
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Filename</th>
+                <th>Upload Date</th>
+                <th>Size</th>
+                <th>Threat Level</th>
+                <th>Risk Score</th>
+                <th>AI Analysis</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td>{{ file.filename }}</td>
+                <td>{{ file.upload_time.strftime("%b %d, %Y %H:%M") }}</td>
+                <td>{{ file.size }}</td>
+                <td class="threat-level {{ file.threat_level|lower }}">{{ file.threat_level }}</td>
+                <td class="risk-score">
+                    {% if file.risk_score %}
+                        <span class="risk-badge risk-{{ file.risk_score|round|int }}">
+                            {{ file.risk_score }}%
+                        </span>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="ai-analysis-cell">
+                    {% if file.ai_analysis %}
+                        <div class="ai-preview">
+                            <i class="fa-solid fa-robot"></i>
+                            <span class="ai-text">{{ file.ai_analysis[:100] }}{% if file.ai_analysis|length > 100 %}...{% endif %}</span>
+                            <button class="view-ai-btn" onclick="showAIModal('{{ file.id }}', '{{ file.filename }}', `{{ file.ai_analysis|escape }}`)">
+                                <i class="fa-solid fa-expand"></i>
+                            </button>
+                        </div>
+                    {% else %}
+                        <span class="no-ai">Not analyzed</span>
+                    {% endif %}
+                </td>
+                <td class="actions">
+                    <a href="{{ url_for('view_result', file_id=file.id) }}">
+                        <button class="btn view-btn">View</button>
+                    </a>
+                    <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;">
+                        <button type="submit" class="btn delete-btn">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="no-files">No files uploaded yet.</p>
+    {% endif %}
+</div>
+
+<!-- AI Analysis Modal -->
+<div id="aiModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-robot"></i> AI Malware Analysis</h3>
+            <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p><strong>File:</strong> <span id="modal-filename"></span></p>
+            <div class="ai-full-analysis" id="modal-analysis"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showAIModal(fileId, filename, analysis) {
+    document.getElementById('modal-filename').textContent = filename;
+    document.getElementById('modal-analysis').innerHTML = analysis;
+    document.getElementById('aiModal').style.display = 'block';
+}
+
+// Close modal when clicking X
+document.querySelector('.close-modal').onclick = function() {
+    document.getElementById('aiModal').style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('aiModal');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Filter function for AI analysis
+function filterAI() {
+    const input = document.getElementById('aiSearch');
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('.history-table tbody tr');
+    
+    rows.forEach(row => {
+        const aiCell = row.querySelector('.ai-analysis-cell');
+        if (aiCell) {
+            const aiText = aiCell.innerText.toLowerCase();
+            if (aiText.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>

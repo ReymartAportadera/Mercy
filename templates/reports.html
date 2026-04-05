@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustFile | Cybersecurity Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<a href="{{ url_for('dashboard') }}" class="scan-btn">
+    <i class="fas fa-tachometer-alt"></i> Back to Dashboard
+</a>
+
+<div class="dashboard">
+    <!-- HEADER -->
+    <header class="header">
+        <h1><i class="fas fa-chart-line"></i> TrustFile Weekly Integrity Report</h1>
+        <div class="stats-overview">
+            <div class="stat-card">
+                <span class="label">Safe Files</span>
+                <span class="value safe">{{ safe_percent }}%</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">Threats Detected</span>
+                <span class="value threat">{{ threat_percent }}%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <div class="main-content">
+        <!-- CHART SECTION -->
+        <section class="chart-section">
+            <h3><i class="fas fa-calendar-week"></i> Daily File Integrity (7-Day Comparison)</h3>
+            <div class="bar-chart">
+                {% for i in range(7) %}
+                <div class="bar-group">
+                    <div class="bar">
+                        {% set safe_height = (safe_counts[i] / (safe_counts[i] + threat_counts[i] + 0.01) * 100) %}
+                        {% set threat_height = (threat_counts[i] / (safe_counts[i] + threat_counts[i] + 0.01) * 100) %}
+                        <div class="segment safe" style="height: {{ safe_height }}%;"></div>
+                        <div class="segment threat" style="height: {{ threat_height }}%;"></div>
+                    </div>
+                    <span class="day {% if i == 2 %}highlight{% endif %}">{{ days[i] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="legend">
+                <span class="dot safe"></span> Safe Files
+                <span class="dot threat"></span> Threats Detected
+            </div>
+        </section>
+
+        <!-- SEVERITY SECTION -->
+        <section class="severity-section">
+            <h3><i class="fas fa-exclamation-triangle"></i> Threat Severity Breakdown</h3>
+            <div class="severity-list">
+                <div class="severity-item critical">
+                    <span class="rank">Critical</span>
+                    <span class="count">{{ critical }}</span>
+                </div>
+                <div class="severity-item high">
+                    <span class="rank">High</span>
+                    <span class="count">{{ high }}</span>
+                </div>
+                <div class="severity-item medium">
+                    <span class="rank">Medium</span>
+                    <span class="count">{{ medium }}</span>
+                </div>
+                <div class="severity-item low">
+                    <span class="rank">Low</span>
+                    <span class="count">{{ low }}</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Export Button -->
+    <div style="margin-top: 40px; text-align: center;">
+        <button onclick="window.print()" class="scan-btn" style="background: rgba(0,255,136,0.1); border-color: var(--safe-green); color: var(--safe-green);">
+            <i class="fas fa-print"></i> Export Report
+        </button>
+    </div>
+</div>
+
+</body>
+</html>

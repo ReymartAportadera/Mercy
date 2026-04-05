@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Upload File</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='upload.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar glass">
+        <h2>TrustFile</h2>
+        <a href="{{ url_for('dashboard') }}"><i class="fa-solid fa-table"></i> Dashboard</a>
+        <a href="{{ url_for('uploadfiles') }}" class="active"><i class="fa-solid fa-file"></i> Upload</a>
+        <a href="{{ url_for('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+        <a href="{{ url_for('reports') }}"><i class="fa-solid fa-chart-line"></i> Reports</a>
+        <a href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- TOPBAR -->
+        <div class="topbar glass">
+            <h2>Upload File</h2>
+        </div>
+
+        <!-- UPLOAD FORM -->
+        <div class="upload-container">
+            <div class="upload-box glass">
+                <h2>Select File to Scan</h2>
+
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    {{ form.file(class="file-input", required=true) }}
+                    <br><br>
+                    {{ form.submit(class="upload-btn") }}
+                </form>
+
+                <!-- ✅ FLASH MESSAGES -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    <div class="flash-messages">
+                      {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                          {{ message }}
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                {% endwith %}
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
