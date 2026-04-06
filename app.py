@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user, current_user
+from flask_login import UserMixin, LoginManager, login_user, login_required, logout_user
 from flask_wtf import FlaskForm
 from wtforms import FileField, SubmitField
 from werkzeug.utils import secure_filename
@@ -9,7 +9,7 @@ import os
 import hashlib
 import math
 import re
-from api.malware_api import check_hash_api
+from api.malware_api import check_hash_api, smart_virustotal_scan
 from api.ai_analysis import analyze_file_ai
 
 
@@ -53,6 +53,23 @@ class UploadedFile(db.Model):
     risky_imports = db.Column(db.String(255))
 
     ai_analysis =db.Column(db.Text)
+
+
+
+class VTCache(db.Model):
+    """Cache for VirusTotal results (uses your existing MySQL)"""
+    __tablename__ = 'vt_cache'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    file_hash = db.Column(db.String(255), unique=True, nullable=False)
+    positives = db.Column(db.Integer, default=0)
+    total_engines = db.Column(db.Integer, default=0)
+    scan_date = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    def __init__(self, file_hash, positives, total_engines):
+        self.file_hash = file_hash
+        self.positives = positives
+        self.total_engines = total_engines
 
 # --------------------- FORMS --------------------- #
 class UploadFileForm(FlaskForm):
@@ -183,9 +200,7 @@ def dashboard():
         pending=pending
     )
 
-
 # --------------------- UPLOAD --------------------- #
-
 from flask_wtf import FlaskForm
 from wtforms import SubmitField
 from flask_wtf.file import FileField, FileRequired
@@ -220,7 +235,7 @@ def uploadfiles():
         return redirect(url_for('dashboard'))
 
     return render_template('uploadfiles.html', form=form)
-# --------------------- HELPERS --------------------- #
+
 # --------------------- HELPERS --------------------- #
 def calculate_entropy(file_path):
     try:
@@ -236,7 +251,6 @@ def calculate_entropy(file_path):
     except:
         return 0
 
-# ✅ ADD THIS FUNCTION HERE (right after calculate_entropy)
 def get_file_type_entropy_threshold(file_path):
     """Returns appropriate entropy threshold based on file type"""
     ext = os.path.splitext(file_path)[1].lower()
@@ -518,19 +532,30 @@ def scan(file_id):
         offline_result = enhanced_scan(file.filepath)
         file.hash = offline_result["hash"]
 
-        # ---------------- ONLINE API ---------------- #
+        # ---------------- ONLINE API (VirusTotal) ---------------- #
         try:
-            api_result = check_hash_api(file.hash) or {}
-            detected = api_result.get("positives", 0)
-            total = api_result.get("engine_count", 0)
-            online_risk = int((detected / total) * 100) if total > 0 else 0
-        except:
+            vt_result = smart_virustotal_scan(file.filepath, file.hash)
+            
+            if vt_result and vt_result.get("success"):
+                detected = vt_result.get("positives", 0)
+                total = vt_result.get("engine_count", 0)
+                online_risk = int((detected / total) * 100) if total > 0 else 0
+                
+                # Print which method was used
+                method = vt_result.get("method", "unknown")
+                print(f"VirusTotal scan method: {method} - Detected: {detected}/{total}")
+            else:
+                online_risk = 0
+                print("VirusTotal scan failed")
+                
+        except Exception as e:
+            print(f"VirusTotal error: {e}")
             online_risk = 0
 
         # ---------------- FINAL RISK ---------------- #
         final_risk = max(offline_result["risk_score"], online_risk)
 
-        # ---------------- SAVE RESULTS FIRST ---------------- #
+        # ---------------- SAVE RESULTS ---------------- #
         file.entropy = offline_result["entropy"]
 
         # Store suspicious_functions in pattern_result
@@ -557,31 +582,68 @@ def scan(file_id):
 
         file.risk_score = final_risk
 
-        # ---------------- AI ANALYSIS (ONLY ONCE, USING ACTUAL PATTERNS) ---------------- #
+        # ---------------- AI ANALYSIS ---------------- #
         ai_result = analyze_file_ai(
             entropy=offline_result["entropy"],
-            patterns=file.pattern_result,  # ← Use the actual patterns, not empty heuristics
+            patterns=file.pattern_result,
             imports=file.risky_imports,
             risk_score=final_risk
         )
         file.ai_analysis = ai_result
 
-        # ---------------- THREAT LEVEL ---------------- #
-        if final_risk >= 70:
+        # ---------------- THREAT LEVEL BASED ON DETECTION TYPE ----------------
+        # Get all detection strings
+        heuristics_str = " ".join(offline_result["heuristics"]).lower()
+        suspicious_str = " ".join(offline_result["suspicious_functions"]).lower()
+        imports_str = " ".join(offline_result["risky_imports"]).lower()
+        all_detections = heuristics_str + " " + suspicious_str
+        
+        # Determine threat level by type (check most dangerous first)
+        if "reverse shell" in all_detections:
             file.threat_level = "Critical"
-        elif final_risk >= 50:
+        elif "data exfiltration" in all_detections:
             file.threat_level = "High"
-        elif final_risk >= 30:
+        elif "persistence" in all_detections:
             file.threat_level = "Medium"
-        else:
+        elif "obfuscated" in all_detections:
+            file.threat_level = "Medium"
+        elif "code execution" in all_detections:
+            file.threat_level = "Medium"
+        elif "process spawn" in all_detections:
+            file.threat_level = "Medium"
+        elif "network" in all_detections:
             file.threat_level = "Low"
-
-        file.status = "Threat" if final_risk >= 30 else "Safe"
+        elif "encoding" in all_detections:
+            file.threat_level = "Low"
+        else:
+            # Check risky imports
+            if "subprocess" in imports_str and "socket" in imports_str:
+                file.threat_level = "High"
+            elif "os" in imports_str or "sys" in imports_str:
+                file.threat_level = "Medium"
+            else:
+                # Fallback to risk score
+                if final_risk >= 70:
+                    file.threat_level = "Critical"
+                elif final_risk >= 50:
+                    file.threat_level = "High"
+                elif final_risk >= 30:
+                    file.threat_level = "Medium"
+                else:
+                    file.threat_level = "Low"
+        
+        # Set status based on threat level
+        if file.threat_level in ["Critical", "High", "Medium"]:
+            file.status = "Threat"
+        else:
+            file.status = "Safe"
 
         # ---------------- EXPLANATION ---------------- #
         file.explanation = generate_explanation(file)
 
+        # ---------------- SAVE TO DATABASE ---------------- #
         db.session.commit()
+        
         return render_template('scan.html', file=file, result=True)
 
     # ---------------- GET REQUEST ---------------- #
@@ -694,7 +756,6 @@ def reports():
 def report_detail(file_id):
     file = UploadedFile.query.get_or_404(file_id)
 
-    # ✅ Generate explanation (FIX)
     file.explanation = generate_explanation(file)
 
     total_engines = 10
