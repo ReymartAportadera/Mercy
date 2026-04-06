@@ -1,5 +1,0 @@
-HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run
-schtasks /create /tn "MaliciousTask" /tr "malware.exe" /sc daily
-reg add HKLM\Software\Microsoft\Windows\CurrentVersion\Run /v Malware /t REG_SZ /d "malware.exe"
-
-Patterns only - no registry modifications will occur

