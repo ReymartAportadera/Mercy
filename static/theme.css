@@ -1,0 +1,94 @@
+/* ==============================
+   Theme Variables - Light Mode Overrides
+   ============================== */
+
+[data-theme="light"] {
+    --bg-black: #f5f5f5;
+    --accent-red: #e01b1b;
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --text-main: #1a1a1a;
+    --text-dim: #666666;
+    
+    /* Threat Colors adjusted for light mode */
+    --safe: #00aa55;
+    --low: #2299cc;
+    --medium: #ccaa00;
+    --high: #cc5500;
+    --critical: #cc1111;
+}
+
+[data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .sidebar a:hover,
+[data-theme="light"] .sidebar a.active {
+    background: rgba(224, 27, 27, 0.1);
+}
+
+[data-theme="light"] .files-table th {
+    background: rgba(0, 0, 0, 0.05);
+    color: #e01b1b;
+}
+
+[data-theme="light"] .files-table td {
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .files-table tr:hover {
+    background: rgba(224, 27, 27, 0.05);
+}
+
+[data-theme="light"] .card {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .flash-message {
+    background: #e8e8ee;
+    color: #e01b1b;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    color: var(--text-main);
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(255, 30, 30, 0.1);
+    border-color: var(--accent-red);
+    transform: rotate(15deg);
+}
+
+/* Smooth transition for theme switching */
+* {
+    transition: background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                color 0.3s ease,
+                box-shadow 0.3s ease;
+}
+
+/* Scrollbar for light mode */
+[data-theme="light"] ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+    background: rgba(224, 27, 27, 0.3);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(224, 27, 27, 0.5);
+}

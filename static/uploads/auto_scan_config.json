@@ -1,0 +1,17 @@
+{
+    "enabled": true,
+    "auto_quarantine": false,
+    "max_file_size_mb": 50,
+    "notify_on_threat": true,
+    "monitored_folder": "auto_scan_folder",
+    "scan_types": [
+        "heuristic",
+        "ai_analysis",
+        "virustotal"
+    ],
+    "delete_after_scan": false,
+    "save_reports": true,
+    "auto_scan_mode": "multiple",
+    "auto_scan_enabled": false,
+    "theme": "dark"
+}

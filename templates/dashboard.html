@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>TrustFile Dashboard</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
@@ -17,6 +18,7 @@
         <a href="{{ url_for('uploadfiles') }}"><i class="fa-solid fa-file"></i> Upload</a>
         <a href="{{ url_for('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
         <a href="{{ url_for('reports') }}"><i class="fa-solid fa-chart-line"></i> Reports</a>
+        <a href="{{ url_for('settings') }}"><i class="fa-solid fa-gear"></i> Settings</a>
         <a href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </div>
 
@@ -24,21 +26,40 @@
     <div class="main">
 
         <!-- FLASH MESSAGES -->
-       <div class="flash-container">
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-            <div class="flash-message">
-                {{ message }}
-            </div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
+        <div class="flash-container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash-message">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
         </div>
 
-        <!-- TOPBAR -->
+        <!-- ========== REAL-TIME PROTECTION BANNER ========== -->
+        <div class="real-time-banner glass">
+            <div>
+                <i class="fa-solid fa-shield-halved" style="color: #ff1e1e;"></i>
+                <strong>Real-time Protection</strong> 
+                <span id="protection-status-text" style="color: #00ff88;">● ACTIVE</span>
+                <span style="font-size: 0.8rem; color: var(--text-dim); margin-left: 10px;">Monitoring entire system</span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div id="monitor-status-badge" class="status-badge running" style="display: none;"></div>
+                <a href="{{ url_for('settings') }}" style="color: var(--text-dim); font-size: 0.8rem;">
+                    <i class="fa-solid fa-gear"></i> Settings
+                </a>
+            </div>
+        </div>
+
+        <!-- TOPBAR with Theme Toggle -->
         <div class="topbar">
-            👤 {{ current_user.email }}
+            <span>👤 {{ current_user.email }}</span>
+            <button class="theme-toggle-btn" onclick="ThemeManager.toggleTheme()" title="Toggle Theme">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
 
         <!-- CARDS -->
@@ -70,6 +91,21 @@
             <div class="card glass">
                 <h3>{{ pending }}</h3>
                 <p>Pending Scans</p>
+            </div>
+        </div>
+
+        <!-- REAL-TIME DETECTIONS WIDGET -->
+        <div class="uploaded-files glass" style="margin-top: 20px;">
+            <h3>
+                <i class="fa-solid fa-bell"></i> 
+                Real-time Threat Detections
+                <span style="float: right; font-size: 0.7rem; color: var(--text-dim);" id="last-update-time"></span>
+            </h3>
+            
+            <div id="realtime-detections-container">
+                <p style="text-align: center; color: var(--text-dim);" id="no-detections-msg">
+                    <i class="fa-solid fa-circle-info"></i> No real-time detections yet. The system is monitoring your computer.
+                </p>
             </div>
         </div>
 
@@ -128,6 +164,230 @@
 
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='theme.js') }}"></script>
+<script>
+    // ==================== REAL-TIME MONITOR CONTROL ====================
+    
+    class SystemMonitor {
+        static async start() {
+            try {
+                const response = await fetch('/api/start_monitor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await this.updateStatus();
+                    this.showToast('Real-time protection ENABLED', 'success');
+                } else {
+                    this.showToast('Failed to start: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Failed to start monitor:', error);
+                this.showToast('Failed to start protection', 'error');
+            }
+        }
+        
+        static async stop() {
+            try {
+                const response = await fetch('/api/stop_monitor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await this.updateStatus();
+                    this.showToast('Real-time protection DISABLED', 'info');
+                } else {
+                    this.showToast('Failed to stop: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Failed to stop monitor:', error);
+                this.showToast('Failed to stop protection', 'error');
+            }
+        }
+        
+        static async updateStatus() {
+            try {
+                const response = await fetch('/api/monitor_status');
+                const data = await response.json();
+                
+                const statusText = document.getElementById('protection-status-text');
+                const statusBadge = document.getElementById('monitor-status-badge');
+                const monitoredCount = document.getElementById('monitored-count');
+                
+                if (data.running) {
+                    if (statusText) {
+                        statusText.innerHTML = '● ACTIVE';
+                        statusText.style.color = '#00ff88';
+                    }
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge running';
+                        statusBadge.style.display = 'inline-block';
+                        statusBadge.innerHTML = '● PROTECTING';
+                    }
+                    if (monitoredCount) {
+                        monitoredCount.innerHTML = `<i class="fa-solid fa-folder-tree"></i> Monitoring ${data.monitored_locations || 'all'} locations`;
+                    }
+                } else {
+                    if (statusText) {
+                        statusText.innerHTML = '○ INACTIVE';
+                        statusText.style.color = '#ff1e1e';
+                    }
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge stopped';
+                        statusBadge.style.display = 'inline-block';
+                        statusBadge.innerHTML = '⚠ INACTIVE';
+                    }
+                    if (monitoredCount) {
+                        monitoredCount.innerHTML = '';
+                    }
+                }
+            } catch (error) {
+                console.error('Status update failed:', error);
+            }
+        }
+        
+        static showToast(message, type) {
+            // Remove existing toasts
+            const existingToasts = document.querySelectorAll('.monitor-toast');
+            existingToasts.forEach(toast => toast.remove());
+            
+            // Create new toast
+            const toast = document.createElement('div');
+            toast.className = `monitor-toast ${type}`;
+            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle');
+            toast.innerHTML = `
+                <i class="fa-solid ${icon}"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideOutRight 0.3s ease forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    }
+    
+    // ==================== DASHBOARD FUNCTIONS ====================
+    
+    // Get user's saved theme from server and apply it
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedTheme = '{{ settings.theme if settings else "dark" }}';
+        if (savedTheme && savedTheme !== ThemeManager.currentTheme) {
+            ThemeManager.setTheme(savedTheme);
+        }
+        
+        // Initialize monitor status
+        SystemMonitor.updateStatus();
+        
+        // Start real-time updates
+        updateRealtimeDetections();
+        
+        // Update every 3 seconds
+        setInterval(updateRealtimeDetections, 3000);
+        setInterval(() => SystemMonitor.updateStatus(), 5000);
+    });
+    
+    // Function to update real-time detections
+    function updateRealtimeDetections() {
+        fetch('/api/realtime_detections')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('realtime-detections-container');
+                const updateTime = document.getElementById('last-update-time');
+                
+                if (updateTime) {
+                    updateTime.innerHTML = `Last update: ${new Date().toLocaleTimeString()}`;
+                }
+                
+                const allDetections = [...(data.realtime || []), ...(data.recent_scans || [])];
+                
+                if (allDetections.length === 0) {
+                    if (container) {
+                        container.innerHTML = '<p style="text-align: center; color: var(--text-dim);"><i class="fa-solid fa-circle-info"></i> No real-time detections yet. The system is monitoring your computer.</p>';
+                    }
+                    return;
+                }
+                
+                let html = '<div style="max-height: 300px; overflow-y: auto;">';
+                html += '<table class="files-table">';
+                html += `<thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Filename</th>
+                        <th>Threat Level</th>
+                        <th>Risk Score</th>
+                        <th>Status</th>
+                    </tr>
+                </thead><tbody>`;
+                
+                allDetections.slice(0, 20).forEach(detection => {
+                    const time = detection.timestamp ? new Date(detection.timestamp).toLocaleTimeString() : 'Just now';
+                    const threatClass = (detection.threat_level || 'Pending').toLowerCase();
+                    let threatIcon = '';
+                    
+                    if (threatClass === 'critical') threatIcon = '🔴';
+                    else if (threatClass === 'high') threatIcon = '🟠';
+                    else if (threatClass === 'medium') threatIcon = '🟡';
+                    else if (threatClass === 'low') threatIcon = '🟢';
+                    else threatIcon = '⚪';
+                    
+                    html += `<tr>
+                        <td style="font-size: 0.75rem;">${time}</td>
+                        <td style="font-family: monospace; font-size: 0.8rem;">${escapeHtml(detection.filename || 'Unknown')}</td>
+                        <td class="${threatClass}">${threatIcon} ${detection.threat_level || 'Pending'}</td>
+                        <td>${detection.risk_score || 0}%</td>
+                        <td class="${(detection.status || 'Pending').toLowerCase()}">${detection.status || 'Pending'}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                if (container) {
+                    container.innerHTML = html;
+                }
+                
+                // Flash effect for new threat
+                const hasHighThreat = allDetections.some(d => 
+                    d.threat_level === 'Critical' || d.threat_level === 'High'
+                );
+                if (hasHighThreat && container) {
+                    container.style.animation = 'none';
+                    setTimeout(() => {
+                        if (container) container.style.animation = 'fadeIn 0.5s';
+                    }, 10);
+                }
+            })
+            .catch(error => console.error('Error fetching detections:', error));
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Add slideOutRight animation for toasts
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+</script>
 
 </body>
 </html>

@@ -11,54 +11,257 @@
 
 <div class="scan-page">
     <div class="scan-box glass">
-        <h2>Scanning File...</h2>
+        
+        <!-- ========== BACK BUTTON ========== -->
+        <a href="{{ url_for('dashboard') }}" class="back-btn">
+            <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+        
+        <h2>File Scanner</h2>
         <p class="filename-display"><strong>{{ file.filename }}</strong></p>
 
         {% if not result %}
-        <div class="folder-scanner-container">
-            <div class="pulse-aura"></div>
-            
-            <div class="folder-visual">
-                <i class="fa-solid fa-folder-open folder-icon"></i>
-                <div class="folder-laser"></div>
+            <!-- SCAN MODE SELECTION -->
+            <div class="scan-mode-selection" id="scanModeSelection">
+                <h3>Select Scan Mode</h3>
+                
+                <form id="scanForm" method="POST">
+                    <div class="mode-cards">
+                        <!-- Single Scan Option -->
+                        <div class="mode-card selected" onclick="selectMode('single', event)">
+                            <input type="radio" name="scan_mode" value="single" id="single-mode" checked>
+                            <label for="single-mode">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                <h4>Single Scan</h4>
+                                <p>Quick comprehensive scan using all detection methods</p>
+                                <span class="time-badge">~5 seconds</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Multiple Scan Option -->
+                        <div class="mode-card" onclick="selectMode('multiple', event)">
+                            <input type="radio" name="scan_mode" value="multiple" id="multiple-mode">
+                            <label for="multiple-mode">
+                                <i class="fa-solid fa-layer-group"></i>
+                                <h4>Custom Multiple Scans</h4>
+                                <p>Choose specific scan types to run individually</p>
+                                <span class="time-badge">Varies</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Multiple Scan Options (Hidden by default) -->
+                    <div id="multiple-scan-options" style="display: none;">
+                        <h4>Select Scan Types:</h4>
+                        <div class="scan-checkboxes">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="scan_types" value="heuristic" id="heuristic-scan">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <span>Heuristic Analysis</span>
+                                <span class="scan-desc">Pattern & behavior detection</span>
+                            </label>
+                            
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="scan_types" value="virustotal" id="virustotal-scan">
+                                <i class="fa-solid fa-cloud"></i>
+                                <span>VirusTotal Check</span>
+                                <span class="scan-desc">Online threat database lookup</span>
+                            </label>
+                            
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="scan_types" value="ai_analysis" id="ai-scan">
+                                <i class="fa-solid fa-robot"></i>
+                                <span>AI Analysis</span>
+                                <span class="scan-desc">Machine learning threat assessment</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="start-scan-btn" id="startScanBtn">
+                        <i class="fa-solid fa-play"></i> Start Scan
+                    </button>
+                </form>
             </div>
 
-            <div class="data-particles">
-                <span class="particle p1"></span>
-                <span class="particle p2"></span>
-                <span class="particle p3"></span>
-                <span class="particle p4"></span>
+            <!-- Loading Animation (Hidden initially) -->
+            <div id="scanning-animation" style="display: none;">
+                <div class="folder-scanner-container">
+                    <div class="pulse-aura"></div>
+                    
+                    <div class="folder-visual">
+                        <i class="fa-solid fa-folder-open folder-icon"></i>
+                        <div class="folder-laser"></div>
+                    </div>
+
+                    <div class="data-particles">
+                        <span class="particle p1"></span>
+                        <span class="particle p2"></span>
+                        <span class="particle p3"></span>
+                        <span class="particle p4"></span>
+                    </div>
+                </div>
+
+                <p id="scanText" class="status-text">Initializing scan...</p>
             </div>
-        </div>
-
-        <p id="scanText" class="status-text">Analyzing file...</p>
-
-        <form id="scanForm" method="POST" action="{{ url_for('scan_page', file_id=file.id) }}"></form>
-
 
         {% else %}
+        <!-- RESULTS DISPLAY -->
         <div class="result-box">
-            <h2>Status: 
+            <h2>Scan Results: 
                 <span class="{{ file.status|lower }}">
                     {{ file.status }}
                 </span>
             </h2>
 
+            <!-- ========== MULTIPLE SCAN RESULTS ========== -->
+            {% if scan_mode == 'multiple' and results %}
+            <div class="multi-results">
+                <h3><i class="fa-solid fa-chart-simple"></i> Individual Scan Results</h3>
+                {% for scan_type, scan_result in results.items() %}
+                <div class="scan-result-card">
+                    <h4>
+                        {% if scan_type == 'heuristic' %}
+                            <i class="fa-solid fa-magnifying-glass"></i> Heuristic Analysis
+                            <span class="scan-status completed">
+                                <i class="fa-solid fa-circle-check"></i> Completed
+                            </span>
+                        {% elif scan_type == 'virustotal' %}
+                            <i class="fa-solid fa-cloud"></i> VirusTotal Check
+                            {% if scan_result is mapping and 'error' in scan_result %}
+                                <span class="scan-status error">
+                                    <i class="fa-solid fa-circle-exclamation"></i> Error
+                                </span>
+                            {% else %}
+                                <span class="scan-status completed">
+                                    <i class="fa-solid fa-circle-check"></i> Completed
+                                </span>
+                            {% endif %}
+                        {% elif scan_type == 'ai_analysis' %}
+                            <i class="fa-solid fa-robot"></i> AI Analysis
+                            <span class="scan-status completed">
+                                <i class="fa-solid fa-circle-check"></i> Completed
+                            </span>
+                        {% endif %}
+                    </h4>
+                    <div class="scan-details">
+                        {% if scan_type == 'heuristic' and scan_result is mapping %}
+                            <div class="detail-row">
+                                <span class="detail-label">Risk Score:</span>
+                                <span class="detail-value">{{ scan_result.risk_score }}%</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Entropy:</span>
+                                <span class="detail-value">{{ scan_result.entropy }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Patterns Found:</span>
+                                <span class="detail-value">{{ ", ".join(scan_result.heuristics) if scan_result.heuristics else "None detected" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Suspicious Functions:</span>
+                                <span class="detail-value">{{ ", ".join(scan_result.suspicious_functions) if scan_result.suspicious_functions else "None" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Risky Imports:</span>
+                                <span class="detail-value">{{ ", ".join(scan_result.risky_imports) if scan_result.risky_imports else "None" }}</span>
+                            </div>
+                            
+                        {% elif scan_type == 'virustotal' and scan_result is mapping %}
+                            {% if scan_result.error %}
+                                <div class="error-message">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <p><strong>Error during VirusTotal scan:</strong> {{ scan_result.error }}</p>
+                                    <p class="error-hint">This could be due to API rate limits or network issues. Try again later.</p>
+                                </div>
+                            {% else %}
+                                <div class="vt-stats">
+                                    <div class="vt-stat-box">
+                                        <div class="vt-stat-number">
+                                            {{ scan_result.get('positives', 0) }}
+                                        </div>
+                                        <div class="vt-stat-label">Detections</div>
+                                    </div>
+                                    <div class="vt-stat-box">
+                                        <div class="vt-stat-number">
+                                            {{ scan_result.get('engine_count', 0) }}
+                                        </div>
+                                        <div class="vt-stat-label">Engines Used</div>
+                                    </div>
+                                    <div class="vt-stat-box">
+                                        <div class="vt-stat-number">
+                                            {% set positives = scan_result.get('positives', 0) %}
+                                            {% set total = scan_result.get('engine_count', 1) %}
+                                            {{ ((positives / total) * 100)|round(1) if total > 0 else 0 }}%
+                                        </div>
+                                        <div class="vt-stat-label">Detection Rate</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="detail-row">
+                                    <span class="detail-label">Scan Method:</span>
+                                    <span class="detail-value">
+                                        {% if scan_result.get('method') == 'cache' %}
+                                            <span class="badge badge-info">
+                                                <i class="fa-solid fa-database"></i> Cached Result
+                                            </span>
+                                        {% elif scan_result.get('method') == 'hash_lookup' %}
+                                            <span class="badge badge-success">
+                                                <i class="fa-solid fa-search"></i> Quick Lookup
+                                            </span>
+                                        {% elif scan_result.get('method') == 'full_scan' %}
+                                            <span class="badge badge-warning">
+                                                <i class="fa-solid fa-upload"></i> Full Scan
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-default">
+                                                {{ scan_result.get('method', 'Unknown') }}
+                                            </span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                
+                                {% if scan_result.get('positives', 0) > 0 %}
+                                <div class="threat-detected">
+                                    <i class="fa-solid fa-shield-virus"></i>
+                                    <strong>Threat Detected!</strong> 
+                                    {{ scan_result.get('positives', 0) }} out of {{ scan_result.get('engine_count', 0) }} security engines flagged this file.
+                                </div>
+                                {% else %}
+                                <div class="threat-clean">
+                                    <i class="fa-solid fa-shield-check"></i>
+                                    <strong>Clean</strong> - No engines detected this file as malicious.
+                                </div>
+                                {% endif %}
+                            {% endif %}
+                            
+                        {% elif scan_type == 'ai_analysis' %}
+                            <div class="ai-result-text">
+                                <i class="fa-solid fa-quote-left"></i>
+                                <p>{{ scan_result }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <!-- ========== END MULTIPLE SCAN RESULTS ========== -->
+
             <div class="metrics">
-                <p><strong>Threat Level:</strong> {{ file.threat_level }}</p>
+                <p><strong>Threat Level:</strong> 
+                    <span class="threat-badge {{ file.threat_level|lower }}">{{ file.threat_level }}</span>
+                </p>
                 <p><strong>Risk Score:</strong> {{ file.risk_score }}%</p>
-                <p><strong>Malware Type:</strong> {{ file.malware_type }}</p>
             </div>
 
             <hr>
 
             <h3>Analysis Details</h3>
-            <p><strong>Patterns Detected:</strong> {{ file.pattern_result }}</p>
-            <p><strong>Suspicious Behavior:</strong> {{ file.signature_status }}</p>
-            <p><strong>Risky Imports:</strong> {{ file.risky_imports }}</p>
-            <p><strong>Entropy:</strong> {{ file.entropy }}</p>
+            <p><strong>Patterns Detected:</strong> {{ file.pattern_result or 'None' }}</p>
+            <p><strong>Suspicious Behavior:</strong> {{ file.signature_status or 'None' }}</p>
+            <p><strong>Risky Imports:</strong> {{ file.risky_imports or 'None' }}</p>
+            <p><strong>Entropy:</strong> {{ file.entropy or 'N/A' }}</p>
 
-            <!-- ========== AI ANALYSIS SECTION (ADD THIS) ========== -->
             {% if file.ai_analysis %}
             <div class="ai-analysis-container">
                 <div class="ai-header">
@@ -70,30 +273,131 @@
                 </div>
             </div>
             {% endif %}
-            <!-- ========== END AI ANALYSIS SECTION ========== -->
-
-            <br>
-            <a href="{{ url_for('dashboard') }}" class="scan-btn">Back to Dashboard</a>
         </div>
         {% endif %}
     </div>
 </div>
 
 <script>
-{% if not result %}
-    // Keeping your original timing logic
-    setTimeout(() => {
-        document.getElementById("scanText").innerText = "Checking malware behavior...";
-    }, 1500);
+function selectMode(mode, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    document.getElementById('single-mode').checked = (mode === 'single');
+    document.getElementById('multiple-mode').checked = (mode === 'multiple');
+    
+    const multipleOptions = document.getElementById('multiple-scan-options');
+    if (mode === 'multiple') {
+        multipleOptions.style.display = 'block';
+    } else {
+        multipleOptions.style.display = 'none';
+        document.querySelectorAll('input[name="scan_types"]').forEach(cb => {
+            cb.checked = false;
+        });
+    }
+    
+    document.querySelectorAll('.mode-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    const clickedCard = event.currentTarget;
+    if (clickedCard) {
+        clickedCard.classList.add('selected');
+    }
+}
 
-    setTimeout(() => {
-        document.getElementById("scanText").innerText = "Detecting threats...";
-    }, 3000);
+document.getElementById('scanForm').addEventListener('submit', function(e) {
+    const scanMode = document.querySelector('input[name="scan_mode"]:checked').value;
+    
+    if (scanMode === 'multiple') {
+        const checkedScans = document.querySelectorAll('input[name="scan_types"]:checked');
+        if (checkedScans.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one scan type for multiple scan mode.');
+            return false;
+        }
+        
+        this.action = "{{ url_for('multiple_scan', file_id=file.id) }}";
+    } else {
+        this.action = "{{ url_for('scan_page', file_id=file.id) }}";
+    }
+    
+    document.getElementById('scanModeSelection').style.display = 'none';
+    document.getElementById('scanning-animation').style.display = 'block';
+    
+    const scanText = document.getElementById('scanText');
+    const messages = [
+        'Analyzing file structure...',
+        'Checking for malware patterns...',
+        'Scanning for suspicious behavior...',
+        'Detecting threats...',
+        'Finalizing results...'
+    ];
+    
+    let index = 0;
+    const interval = setInterval(() => {
+        if (index < messages.length) {
+            scanText.textContent = messages[index];
+            index++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 1000);
+    
+    return true;
+});
 
-    setTimeout(() => {
-        document.getElementById("scanForm").submit();
-    }, 4500);
-{% endif %}
+document.addEventListener('DOMContentLoaded', function() {
+    const singleCard = document.querySelector('.mode-card:first-child');
+    if (singleCard) {
+        singleCard.classList.add('selected');
+    }
+    
+    // ========== AUTO-SCAN FUNCTIONALITY ==========
+    // Auto-scan if coming from upload
+    {% if auto_scan == 'true' %}
+    // Auto-select single scan mode
+    document.getElementById('single-mode').checked = true;
+    
+    // Hide scan mode selection and show loading animation immediately
+    document.getElementById('scanModeSelection').style.display = 'none';
+    document.getElementById('scanning-animation').style.display = 'block';
+    
+    // Animate status text
+    const scanText = document.getElementById('scanText');
+    if (scanText) {
+        const messages = [
+            'Analyzing file structure...',
+            'Checking for malware patterns...',
+            'Scanning for suspicious behavior...',
+            'Detecting threats...',
+            'Finalizing results...'
+        ];
+        
+        let index = 0;
+        const interval = setInterval(() => {
+            if (index < messages.length) {
+                scanText.textContent = messages[index];
+                index++;
+            } else {
+                clearInterval(interval);
+            }
+        }, 1000);
+    }
+    
+    // Auto-submit the form after a short delay
+    setTimeout(function() {
+        const scanForm = document.getElementById('scanForm');
+        if (scanForm) {
+            // Set the form action for single scan
+            scanForm.action = "{{ url_for('scan_page', file_id=file.id) }}";
+            scanForm.submit();
+        }
+    }, 500);
+    {% endif %}
+    // ========== END AUTO-SCAN FUNCTIONALITY ==========
+});
 </script>
 
 </body>

@@ -17,7 +17,11 @@
     --critical: #ff1e1e;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
 
 body {
     font-family: 'SF Pro Display', -apple-system, sans-serif;
@@ -27,7 +31,10 @@ body {
     min-height: 100vh;
 }
 
-.container { display: flex; min-height: 100vh; }
+.container { 
+    display: flex; 
+    min-height: 100vh; 
+}
 
 /* ==============================
    Glassmorphism Utility
@@ -72,7 +79,8 @@ body {
     gap: 12px;
 }
 
-.sidebar a:hover, .sidebar a.active {
+.sidebar a:hover, 
+.sidebar a.active {
     background: rgba(255, 30, 30, 0.15);
     color: var(--text-main);
     border-left: 3px solid var(--accent-red);
@@ -81,14 +89,41 @@ body {
 /* ==============================
    Main Content Area
    ============================== */
-.main { flex: 1; padding: 40px; overflow-y: auto; }
+.main { 
+    flex: 1; 
+    padding: 40px; 
+    overflow-y: auto; 
+}
 
 .topbar {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
     margin-bottom: 30px;
     font-weight: 600;
     color: var(--accent-red);
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    color: var(--text-main);
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(255, 30, 30, 0.1);
+    border-color: var(--accent-red);
+    transform: rotate(15deg);
 }
 
 /* ==============================
@@ -101,9 +136,22 @@ body {
     margin-bottom: 30px;
 }
 
-.card { padding: 20px; text-align: center; transition: 0.3s; }
-.card h3 { font-size: 2rem; margin-bottom: 5px; }
-.card p { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; }
+.card { 
+    padding: 20px; 
+    text-align: center; 
+    transition: 0.3s; 
+}
+
+.card h3 { 
+    font-size: 2rem; 
+    margin-bottom: 5px; 
+}
+
+.card p { 
+    font-size: 0.8rem; 
+    color: var(--text-dim); 
+    text-transform: uppercase; 
+}
 
 /* Card Threat Border Glows */
 .card.low { border-bottom: 3px solid var(--low); }
@@ -112,12 +160,312 @@ body {
 .card.critical { border-bottom: 3px solid var(--critical); }
 
 /* ==============================
+   Real-time Protection Banner
+   ============================== */
+.real-time-banner {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Pulse animation for active protection */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 255, 136, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0);
+    }
+}
+
+#protection-status-text {
+    animation: pulse 2s infinite;
+    display: inline-block;
+}
+
+/* ==============================
+   Uploaded Files Table
+   ============================== */
+.uploaded-files { 
+    padding: 25px; 
+    margin-top: 20px; 
+}
+
+.uploaded-files h3 {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.files-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
+.files-table th, 
+.files-table td {
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    vertical-align: middle;
+}
+
+.files-table th {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent-red);
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.files-table tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.files-table tr:hover {
+    background: rgba(255, 30, 30, 0.1);
+}
+
+/* Threat Level Colors in Table */
+.files-table td.low { 
+    color: var(--low); 
+    font-weight: 700; 
+}
+
+.files-table td.medium { 
+    color: var(--medium); 
+    font-weight: 700; 
+}
+
+.files-table td.high { 
+    color: var(--high); 
+    font-weight: 700; 
+}
+
+.files-table td.critical { 
+    color: var(--critical); 
+    font-weight: 700; 
+}
+
+.files-table td.safe { 
+    color: var(--safe); 
+    font-weight: 700; 
+}
+
+/* Buttons in Table */
+.files-table .scan-btn {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    border-radius: 5px;
+    margin: 2px;
+    background: var(--accent-red);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    transition: 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.files-table .scan-btn.scanned {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+.files-table .scan-btn:hover:not(:disabled) { 
+    transform: scale(1.05); 
+    filter: brightness(1.2); 
+}
+
+/* Delete Button Styling */
+.files-table .delete-btn {
+    background-color: var(--accent-red);
+    color: rgb(254, 251, 251);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 5px;
+}
+
+.files-table .delete-btn:hover {
+    background-color: #ff4d4d;
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+/* ==============================
+   Flash Messages
+   ============================== */
+.flash-container {
+    margin-bottom: 20px;
+}
+
+.flash-message {
+    background: rgba(255, 30, 30, 0.2);
+    border: 1px solid var(--accent-red);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    animation: fadeOut 4s forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; transform: translateX(0); }
+    80% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(20px); display: none; }
+}
+
+/* ==============================
+   Real-time Detections Widget
+   ============================== */
+#realtime-detections-container {
+    transition: all 0.3s ease;
+}
+
+#realtime-detections-container > div {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Real-time detection animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Threat level colors for real-time widget */
+.critical, .high, .medium, .low, .safe {
+    font-weight: bold;
+}
+
+.critical { color: #ff1e1e; }
+.high { color: #ff6600; }
+.medium { color: #ffcc00; }
+.low { color: #00ccff; }
+.safe { color: #00ff88; }
+.pending { color: #888; }
+
+/* New detection highlight animation */
+@keyframes newDetection {
+    0% {
+        background-color: rgba(255, 30, 30, 0);
+    }
+    50% {
+        background-color: rgba(255, 30, 30, 0.3);
+    }
+    100% {
+        background-color: rgba(255, 30, 30, 0);
+    }
+}
+
+.new-detection {
+    animation: newDetection 1s ease-out;
+}
+
+/* Scrollbar styling for real-time detections container */
+#realtime-detections-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+#realtime-detections-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+#realtime-detections-container::-webkit-scrollbar-thumb {
+    background: var(--accent-red);
+    border-radius: 4px;
+}
+
+#realtime-detections-container::-webkit-scrollbar-thumb:hover {
+    background: #ff4444;
+}
+
+/* ==============================
+   Toast Notifications
+   ============================== */
+.monitor-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 10000;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideInRight 0.3s ease forwards;
+}
+
+.monitor-toast.success {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.95), rgba(0, 200, 100, 0.95));
+    color: #050505;
+}
+
+.monitor-toast.info {
+    background: linear-gradient(135deg, rgba(0, 204, 255, 0.95), rgba(0, 150, 200, 0.95));
+    color: white;
+}
+
+.monitor-toast.error {
+    background: linear-gradient(135deg, rgba(255, 30, 30, 0.95), rgba(200, 20, 20, 0.95));
+    color: white;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ==============================
    Scanner Logic
    ============================== */
-.scan-box { padding: 30px; margin-bottom: 30px; text-align: center; }
+.scan-box { 
+    padding: 30px; 
+    margin-bottom: 30px; 
+    text-align: center; 
+}
 
 .circular-scanner {
-    display: none; /* Hidden by default, shown via JS */
+    display: none;
     flex-direction: column;
     align-items: center;
     margin: 20px 0;
@@ -133,7 +481,9 @@ body {
     margin-bottom: 15px;
 }
 
-@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes spin { 
+    100% { transform: rotate(360deg); } 
+}
 
 .upload a {
     display: block;
@@ -145,12 +495,15 @@ body {
     transition: 0.3s;
 }
 
-.upload a:hover { border-color: var(--accent-red); color: white; background: rgba(255, 255, 255, 0.02); }
+.upload a:hover { 
+    border-color: var(--accent-red); 
+    color: white; 
+    background: rgba(255, 255, 255, 0.02); 
+}
 
 /* ==============================
-   File Cards & List
+   File Cards
    ============================== */
-.uploaded-files { padding: 25px; margin-top: 20px; }
 .file-card {
     display: flex;
     justify-content: space-between;
@@ -162,8 +515,18 @@ body {
     border-left: 4px solid #444;
 }
 
-.file-info { display: flex; flex-direction: column; gap: 5px; }
-.file-status { text-transform: uppercase; font-weight: 800; font-size: 0.7rem; }
+.file-info { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 5px; 
+}
+
+.file-status { 
+    text-transform: uppercase; 
+    font-weight: 800; 
+    font-size: 0.7rem; 
+}
+
 .file-status.safe { color: var(--safe); }
 .file-status.malware { color: var(--critical); }
 
@@ -175,97 +538,232 @@ body {
     border-radius: 10px;
     margin: 5px 0;
 }
-.progress-bar { height: 100%; border-radius: 10px; }
+
+.progress-bar { 
+    height: 100%; 
+    border-radius: 10px; 
+}
+
 .progress-bar.low { background: var(--low); }
 .progress-bar.medium { background: var(--medium); }
 .progress-bar.high { background: var(--high); }
 .progress-bar.critical { background: var(--critical); }
 
-/* Buttons */
-.scan-btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    background: var(--accent-red);
-    color: white;
-    cursor: pointer;
-    font-weight: 700;
-    transition: 0.3s;
+/* ==============================
+   Responsive Design
+   ============================== */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 220px;
+        margin: 15px;
+    }
+    
+    .main {
+        padding: 20px;
+    }
+    
+    .files-table {
+        font-size: 0.75rem;
+    }
+    
+    .files-table th, 
+    .files-table td {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: auto;
+        margin: 10px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .sidebar h2 {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    .sidebar a {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .main {
+        padding: 15px;
+    }
+    
+    .cards {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 10px;
+    }
+    
+    .card h3 {
+        font-size: 1.5rem;
+    }
+    
+    .card p {
+        font-size: 0.7rem;
+    }
+    
+    .files-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .real-time-banner {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    #realtime-detections-container {
+        overflow-x: auto;
+    }
+    
+    #realtime-detections-container table {
+        font-size: 0.7rem;
+    }
+    
+    .topbar {
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar a {
+        padding: 6px 10px;
+        font-size: 0.7rem;
+    }
+    
+    .cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .main {
+        padding: 10px;
+    }
+    
+    .uploaded-files {
+        padding: 15px;
+    }
 }
 
 /* ==============================
-   Uploaded Files Table
+   Light Mode Overrides
    ============================== */
-.files-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-    font-size: 0.85rem;
-    color: var(--text-main);
+[data-theme="light"] {
+    --bg-black: #f5f5f5;
+    --accent-red: #e01b1b;
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --text-main: #1a1a1a;
+    --text-dim: #666666;
+    
+    /* Threat Colors adjusted for light mode */
+    --safe: #00aa55;
+    --low: #2299cc;
+    --medium: #ccaa00;
+    --high: #cc5500;
+    --critical: #cc1111;
 }
 
-.files-table th, .files-table td {
-    padding: 12px;
-    border: 1px solid rgba(255,255,255,0.1);
-    text-align: center;
-    vertical-align: middle;
+[data-theme="light"] body {
+    background-image: radial-gradient(circle at 50% 50%, #ffffff 0%, #e0e0e0 100%);
 }
 
-.files-table th {
-    background: rgba(255,255,255,0.05);
-    color: var(--accent-red);
-    text-transform: uppercase;
-    font-weight: 700;
+[data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-.files-table tr:nth-child(even) {
-    background: rgba(255,255,255,0.02);
+[data-theme="light"] .sidebar a:hover,
+[data-theme="light"] .sidebar a.active {
+    background: rgba(224, 27, 27, 0.1);
 }
 
-.files-table tr:hover {
-    background: rgba(255,30,30,0.1);
+[data-theme="light"] .files-table th {
+    background: rgba(0, 0, 0, 0.05);
+    color: #e01b1b;
 }
 
-/* Threat Level Colors */
-.files-table td.low { color: var(--low); font-weight: 700; }
-.files-table td.medium { color: var(--medium); font-weight: 700; }
-.files-table td.high { color: var(--high); font-weight: 700; }
-.files-table td.critical { color: var(--critical); font-weight: 700; }
-.files-table td.safe { color: var(--safe); font-weight: 700; }
-
-/* Buttons in Table */
-.files-table .scan-btn {
-    padding: 5px 10px;
-    font-size: 0.75rem;
-    border-radius: 5px;
-    margin: 2px;
+[data-theme="light"] .files-table td {
+    border-color: rgba(0, 0, 0, 0.1);
 }
 
-.files-table .scan-btn.scanned {
-    background-color: #555;
-    cursor: not-allowed;
+[data-theme="light"] .files-table tr:hover {
+    background: rgba(224, 27, 27, 0.05);
 }
 
-/* Delete Button Styling */
-.files-table .delete-btn {
-    background-color: var(--accent-red); /* bright red */
-    color: rgb(254, 251, 251);
-    border: none;
-    padding: 6px 12px;
-    border-radius: 5px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: 0.3s;
+[data-theme="light"] .card {
+    background: rgba(255, 255, 255, 0.9);
 }
 
-.files-table .delete-btn:hover {
-    background-color: #ff4d4d; /* slightly lighter red on hover */
-    transform: scale(1.05);
-    filter: brightness(1.2);
+[data-theme="light"] .flash-message {
+    background: rgba(224, 27, 27, 0.1);
+    color: #1a1a1a;
 }
 
+[data-theme="light"] .real-time-banner {
+    background: rgba(0, 0, 0, 0.05);
+}
 
+[data-theme="light"] .monitor-toast.success {
+    background: linear-gradient(135deg, #00aa55, #008844);
+    color: white;
+}
 
-.scan-btn:hover:not(:disabled) { transform: scale(1.05); filter: brightness(1.2); }
-.delete-btn { background: #333; margin-top: 5px; }
-.delete-btn:hover { background: #555; }
+[data-theme="light"] .monitor-toast.info {
+    background: linear-gradient(135deg, #0088aa, #006688);
+}
+
+[data-theme="light"] .monitor-toast.error {
+    background: linear-gradient(135deg, #cc1111, #aa0000);
+}
+
+/* ==============================
+   Smooth Transitions
+   ============================== */
+* {
+    transition: background-color 0.3s ease, 
+                border-color 0.3s ease, 
+                color 0.3s ease,
+                box-shadow 0.3s ease;
+}
+
+/* ==============================
+   Print Styles
+   ============================== */
+@media print {
+    .sidebar,
+    .real-time-banner,
+    .theme-toggle-btn,
+    .scan-btn,
+    .delete-btn {
+        display: none !important;
+    }
+    
+    .main {
+        padding: 0;
+    }
+    
+    .glass {
+        background: white;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .files-table th,
+    .files-table td {
+        border-color: #ddd;
+        color: black;
+    }
+}

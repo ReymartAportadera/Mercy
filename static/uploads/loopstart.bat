@@ -1,3 +1,0 @@
-:loopstart
-start
-goto loopstart
