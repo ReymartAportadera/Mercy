@@ -1,0 +1,36 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      ".indexOn": ["email"],
+      "$uid": {
+        ".read":  "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+
+    "uploaded_files": {
+      ".indexOn": ["user_id"],
+      "$file_id": {
+        ".read":  "data.child('user_id').val() === auth.uid",
+        ".write": "!data.exists() || data.child('user_id').val() === auth.uid"
+      }
+    },
+
+    "user_settings": {
+      "$uid": {
+        ".read":  "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+
+    "vt_cache": {
+      "$hash": {
+        ".read":  "auth !== null",
+        ".write": "auth !== null"
+      }
+    }
+  }
+}

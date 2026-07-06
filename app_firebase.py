@@ -7,7 +7,8 @@ import logging
 import math
 import re
 import uuid
-from datetime import datetime
+from collections import OrderedDict
+from datetime import datetime, timezone
 from threading import Semaphore
 
 from dotenv import load_dotenv
@@ -33,11 +34,16 @@ BINARY_EXTENSIONS = {".zip", ".tar", ".gz", ".exe", ".dll", ".bin", ".dat",
                      ".pdf", ".doc", ".docx", ".xls", ".xlsx"}
 ALL_SCAN_TYPES = ["heuristic", "virustotal", "ai_analysis"]
 
-# ── In-memory byte cache ──────────────────────────────────────────────────────
-_BYTE_CACHE = {}
+# ── In-memory byte cache (LRU, max 50 entries to prevent memory bloat) ───────
+_BYTE_CACHE_MAX = 50
+_BYTE_CACHE: OrderedDict = OrderedDict()
 
 def _cache_bytes(file_id, data):
+    if file_id in _BYTE_CACHE:
+        _BYTE_CACHE.move_to_end(file_id)
     _BYTE_CACHE[file_id] = data
+    while len(_BYTE_CACHE) > _BYTE_CACHE_MAX:
+        _BYTE_CACHE.popitem(last=False)  # evict oldest
 
 def _pop_bytes(file_id):
     return _BYTE_CACHE.pop(file_id, None)
@@ -45,7 +51,7 @@ def _pop_bytes(file_id):
 def is_binary_file(file_path):
     return os.path.splitext(file_path)[1].lower() in BINARY_EXTENSIONS
 
-scan_semaphore = Semaphore(999)
+scan_semaphore = Semaphore(10)  # max 10 concurrent scans
 
 def safe_file_path(p: str) -> str:
     return os.path.normpath(os.path.abspath(p))
@@ -288,13 +294,14 @@ def _run_full_heuristic_scan(
     }
 
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# ── Logging (single configuration — avoids duplicate handlers) ───────────────
+logger = logging.getLogger(__name__)
+
+# ── Logging setup (single basicConfig for the whole app) ─────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
 )
-
-logger = logging.getLogger(__name__)
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -302,11 +309,20 @@ app = Flask(__name__)
 # Initialize CSRF protection (adds csrf_token() globally)
 csrf = CSRFProtect(app)
 
-app.config["SECRET_KEY"] = os.environ.get("TRUSTFILE_SECRET_KEY", "change-me-in-production")
-if app.config["SECRET_KEY"] == "change-me-in-production":
-    logger.warning("SECRET_KEY is using the insecure default. Set TRUSTFILE_SECRET_KEY.")
+_secret = os.environ.get("TRUSTFILE_SECRET_KEY", "")
+if not _secret:
+    logger.critical(
+        "TRUSTFILE_SECRET_KEY is not set in .env — "
+        "sessions are INSECURE. Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+    )
+    _secret = "insecure-default-replace-me"
+app.config["SECRET_KEY"] = _secret
 
-app.config["UPLOAD_FOLDER"] = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
+# Max upload size: 32 MB (protects against resource exhaustion)
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
+
+_upload_base = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
+app.config["UPLOAD_FOLDER"] = _upload_base
 
 # ── Custom Jinja2 filters ─────────────────────────────────────────────────────
 @app.template_filter("format_dt")
@@ -332,14 +348,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
-# ── In‑memory byte cache for AV‑deleted files ───────────────────────────────────
-_BYTE_CACHE: dict[int, bytes] = {}
-
-def _cache_bytes(file_id: int, data: bytes) -> None:
-    _BYTE_CACHE[file_id] = data
-
-def _pop_bytes(file_id: int) -> bytes | None:
-    return _BYTE_CACHE.pop(file_id, None)
+# ── In-memory byte cache (LRU) — defined at module top, re-referenced here ───
 
 # ── User class (Firebase‑backed) ────────────────────────────────────────────────
 class User(UserMixin):
@@ -503,12 +512,15 @@ def uploadfiles():
             path = os.path.abspath(os.path.join(user_folder, filename))
         with open(path, "wb") as out:
             out.write(file_bytes)
+        # Store relative path so records are portable across machines
+        relative_path = os.path.join(str(current_user.uid), filename)
         # Record metadata in Firebase
         file_record = {
             "id": str(uuid.uuid4()),
             "filename": filename,
-            "filepath": path,
-            "upload_time": datetime.utcnow().isoformat(),
+            "filepath": path,           # absolute path for current session
+            "relative_path": relative_path,  # portable path for future use
+            "upload_time": datetime.now(timezone.utc).isoformat(),
             "status": "Pending",
             "hash": file_hash,
             "user_id": current_user.uid,
@@ -890,7 +902,7 @@ def save_scan_to_db(
             "id": str(uuid.uuid4()),
             "filename": filename,
             "filepath": filepath,
-            "upload_time": datetime.utcnow().isoformat(),
+            "upload_time": datetime.now(timezone.utc).isoformat(),
             "status": scan_result.get("status", "Safe"),
             "threat_level": scan_result.get("threat_level", "Low"),
             "risk_score": scan_result.get("risk_score", 0),
@@ -1018,4 +1030,6 @@ def home():
 
 if __name__ == "__main__":
     os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Set APP_DEBUG=true in .env for development. NEVER use debug=True in production.
+    _debug = os.environ.get("APP_DEBUG", "false").lower() == "true"
+    app.run(debug=_debug, host="0.0.0.0", port=5000)

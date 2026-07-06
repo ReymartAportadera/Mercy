@@ -5,12 +5,20 @@
 serviceAccountKey.json
 serviceAccountKey.json.json
 
-# Local databases
+# Local databases (legacy)
 trustfile.db
+capstone1.sql
+*.sql
 
 # User uploads and scans
 uploads/
 static/uploads/
+
+# PDF documents committed accidentally
+*.pdf
+
+# Auto-scan test files
+auto_scan_folder/
 
 # Python cache and byte-compiled files
 __pycache__/
@@ -27,3 +35,6 @@ env/
 # Nested duplicate project copies
 Flask website/
 
+# OS artifacts
+Thumbs.db
+.DS_Store

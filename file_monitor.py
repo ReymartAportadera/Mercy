@@ -49,9 +49,9 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
         self.processing_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.processing_thread.start()
         
-        logger.info("🛡️ Real-Time System Monitor Initialized")
-        logger.info(f"   📁 Monitoring {len(self.get_monitored_paths())} locations")
-        logger.info(f"   🚫 Excluding {len(self.excluded_paths)} system folders")
+        logger.info("[Monitor] Real-Time System Monitor Initialized")
+        logger.info(f"[Monitor] Monitoring {len(self.get_monitored_paths())} locations")
+        logger.info(f"[Monitor] Excluding {len(self.excluded_paths)} system folders")
     
     def get_monitored_paths(self):
         """Get ALL user-accessible drives and folders"""
@@ -229,7 +229,7 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
                 if file_path not in self.scanning_queue:
                     self.scanning_queue.append(file_path)
                     self.processed_cache[file_path] = time.time()
-                    logger.info(f"📁 Queued for scan: {file_path}")
+                    logger.info(f"[Monitor] Queued for scan: {file_path}")
     
     def _process_queue(self):
         """Background thread to process queued files"""
@@ -258,7 +258,7 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
             filename = os.path.basename(file_path)
             file_size = os.path.getsize(file_path)
             
-            logger.info(f"🔍 SCANNING: {filename} ({file_size} bytes)")
+            logger.info(f"[Monitor] SCANNING: {filename} ({file_size} bytes)")
             
             # Send to Flask app for comprehensive scanning
             with open(file_path, 'rb') as f:
@@ -323,7 +323,7 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
         # Log to local security log
         self.log_to_security_log(filename, file_path, threat_level, risk_score, status)
         
-        logger.info(f"✅ Scan complete: {filename} - {threat_level} ({risk_score}%)")
+        logger.info(f"[Monitor] Scan complete: {filename} - {threat_level} ({risk_score}%)")
     
     def quarantine_file(self, file_path, filename, result):
         """Move infected file to quarantine"""
@@ -352,9 +352,9 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
                     'ai_analysis': result.get('ai_analysis')
                 }, f, indent=2)
             
-            logger.info(f"🔒 QUARANTINED: {filename}")
+            logger.info(f"[Monitor] QUARANTINED: {filename}")
             self.show_system_notification(
-                f"🔒 File Quarantined: {filename}\n"
+                f"[QUARANTINED] {filename}\n"
                 f"Threat: {result.get('threat_level')}\n"
                 f"Location: {quarantine_folder}",
                 "warning"
@@ -371,7 +371,7 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
             
             title = "TrustFile Security"
             if level == "critical":
-                title = "⚠️ CRITICAL THREAT DETECTED"
+                title = "[!] CRITICAL THREAT DETECTED"
             elif level == "warning":
                 title = "TrustFile Alert"
             
@@ -430,7 +430,7 @@ class FullSystemMonitor:
         monitored_paths = self.event_handler.get_monitored_paths()
         
         logger.info("=" * 60)
-        logger.info("🛡️ TrustFile REAL-TIME PROTECTION ACTIVATED")
+        logger.info("[TrustFile] REAL-TIME PROTECTION ACTIVATED")
         logger.info("=" * 60)
         
         for path in monitored_paths:
@@ -440,9 +440,9 @@ class FullSystemMonitor:
                     observer.schedule(self.event_handler, path, recursive=True)
                     observer.start()
                     self.observers.append(observer)
-                    logger.info(f"   ✓ Monitoring: {path}")
+                    logger.info(f"   [+] Monitoring: {path}")
                 except PermissionError:
-                    logger.info(f"   ⚠️ Permission denied: {path}")
+                    logger.info(f"   [!] Permission denied: {path}")
                 except Exception as e:
                     logger.error(f"   ✗ Failed: {path} - {e}")
         
