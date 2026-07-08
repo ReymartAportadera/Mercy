@@ -925,6 +925,96 @@ def save_scan_to_db(
         logger.error("save_scan_to_db failed for %s: %s", filename, exc)
 
 
+
+@app.route("/api/auto_scan", methods=["POST"])
+@csrf.exempt
+def auto_scan_api():
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
+        
+        filename = secure_filename(file.filename)
+        file_bytes = file.read()
+        if not file_bytes:
+            return jsonify({"error": "The uploaded file is empty"}), 400
+            
+        file_hash = hashlib.sha256(file_bytes).hexdigest()
+        
+        # 1. Run local heuristic scan
+        heuristic_res = _run_full_heuristic_scan(filename, file_bytes, file_hash)
+        
+        # 2. Run smart VirusTotal scan
+        temp_dir = os.path.join(app.config["UPLOAD_FOLDER"], "auto_scans")
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.abspath(os.path.join(temp_dir, filename))
+        with open(temp_path, "wb") as out:
+            out.write(file_bytes)
+            
+        vt_res = None
+        try:
+            vt_res = smart_virustotal_scan(temp_path, file_hash)
+        except Exception as exc:
+            logger.warning("VirusTotal auto scan error: %s", exc)
+            vt_res = {
+                "error": str(exc),
+                "positives": 0, "engine_count": 0,
+                "method": "error", "scans": {}
+            }
+        finally:
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+                
+        # 3. AI Analysis
+        patterns = heuristic_res.get("pattern_result", "None")
+        imports = heuristic_res.get("risky_imports_str", "None")
+        ai_res = analyze_file_ai(
+            entropy=heuristic_res.get("entropy", 0.0),
+            patterns=patterns,
+            imports=imports,
+            risk_score=heuristic_res.get("risk_score", 0)
+        )
+        
+        # Compute final risk score, threat level, status
+        final_risk = heuristic_res.get("risk_score", 0)
+        detection_details = heuristic_res.get("suspicious_functions", []) + heuristic_res.get("heuristics", [])
+        
+        if vt_res and "error" not in vt_res:
+            total = vt_res.get("engine_count", 0)
+            pos = vt_res.get("positives", 0)
+            if total:
+                final_risk = max(final_risk, int((pos / total) * 100))
+            if pos:
+                detection_details.append(f"VirusTotal: {pos}/{total} engines detected threat")
+                
+        final_risk = min(final_risk, 100)
+        threat_level, status = determine_threat_level(final_risk, detection_details)
+        
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "hash": file_hash,
+            "entropy": heuristic_res.get("entropy", 0),
+            "risk_score": final_risk,
+            "threat_level": threat_level,
+            "status": status,
+            "patterns": heuristic_res.get("suspicious_functions", []),
+            "heuristics": heuristic_res.get("heuristics", []),
+            "risky_imports": heuristic_res.get("risky_imports", []),
+            "ai_analysis": ai_res,
+            "virustotal": vt_res
+        }), 200
+        
+    except Exception as e:
+        logger.error("Auto-scan API error: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/start_monitor", methods=["POST"])
 @csrf.exempt
 @login_required
