@@ -562,12 +562,18 @@ def scan(file_id):
     if not file_meta or file_meta.get("user_id") != current_user.uid:
         flash("File not found.")
         return redirect(url_for("dashboard"))
+    
+    already_scanned = file_meta.get("status") != "Pending"
     auto_scan = request.args.get("auto_scan", "false")
+    
     if request.method == "POST":
+        if already_scanned:
+            flash("This file has already been scanned.", "warning")
+            return redirect(url_for("dashboard"))
         return redirect(url_for(
             "multiple_scan", file_id=file_meta["id"], scans=",".join(ALL_SCAN_TYPES)
         ))
-    return render_template("scan.html", file=file_meta, result=False, auto_scan=auto_scan)
+    return render_template("scan.html", file=file_meta, result=False, auto_scan=auto_scan, already_scanned=already_scanned)
 
 
 @app.route("/multiple_scan/<file_id>", methods=["GET", "POST"])
@@ -576,6 +582,10 @@ def multiple_scan(file_id):
     file_meta = fb.get_uploaded_file(str(file_id))
     if not file_meta or file_meta.get("user_id") != current_user.uid:
         flash("File not found.")
+        return redirect(url_for("dashboard"))
+
+    if file_meta.get("status") != "Pending":
+        flash("This file has already been scanned.", "warning")
         return redirect(url_for("dashboard"))
 
     if not scan_semaphore.acquire(blocking=False):
@@ -1055,6 +1065,45 @@ def stop_monitor_api():
     except Exception as exc:
         logger.error("stop_monitor_api error: %s", exc)
         return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/realtime_detections")
+@login_required
+def realtime_detections_api():
+    detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
+    
+    detections = []
+    if os.path.exists(detections_file):
+        try:
+            with open(detections_file, "r", encoding="utf-8") as f:
+                detections = json.load(f)
+        except Exception:
+            pass
+            
+    try:
+        files = fb.list_user_files(current_user.uid)
+        # Sort by upload_time descending
+        files.sort(key=lambda x: x.get("upload_time", ""), reverse=True)
+        
+        recent_data = []
+        for scan in files[:10]:
+            if scan.get("status") != "Pending":
+                recent_data.append({
+                    "timestamp": scan.get("upload_time"),
+                    "filename": scan.get("filename"),
+                    "threat_level": scan.get("threat_level", "Low"),
+                    "risk_score": scan.get("risk_score", 0),
+                    "status": scan.get("status", "Safe"),
+                    "ai_analysis": (scan.get("ai_analysis")[:100] + "...") if scan.get("ai_analysis") else None
+                })
+    except Exception as exc:
+        logger.error("realtime_detections_api recent scans error: %s", exc)
+        recent_data = []
+
+    return jsonify({
+        "realtime": detections[:20],
+        "recent_scans": recent_data
+    }), 200
 
 
 @app.route("/api/monitor_status")

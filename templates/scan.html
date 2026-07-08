@@ -21,6 +21,13 @@
         <p class="filename-display"><strong>{{ file.filename }}</strong></p>
 
         {% if not result %}
+            {% if already_scanned %}
+                <div class="warning-banner" style="background: rgba(255, 30, 30, 0.15); border: 1px solid #ff1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #ff1e1e; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-circle-exclamation" style="font-size: 1.2rem;"></i>
+                    <span>This file is already scanned.</span>
+                </div>
+            {% endif %}
+
             <!-- SCAN MODE SELECTION -->
             <div class="scan-mode-selection" id="scanModeSelection">
                 <h3>Select Scan Mode</h3>
@@ -78,9 +85,15 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="start-scan-btn" id="startScanBtn">
-                        <i class="fa-solid fa-play"></i> Start Scan
-                    </button>
+                     {% if already_scanned %}
+                        <button type="button" class="start-scan-btn" id="startScanBtn" disabled style="opacity: 0.6; cursor: not-allowed; background: #555; box-shadow: none;">
+                            <i class="fa-solid fa-ban"></i> Already Scanned
+                        </button>
+                     {% else %}
+                        <button type="submit" class="start-scan-btn" id="startScanBtn">
+                            <i class="fa-solid fa-play"></i> Start Scan
+                        </button>
+                     {% endif %}
                 </form>
             </div>
 
