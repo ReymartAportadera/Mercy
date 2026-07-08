@@ -48,6 +48,7 @@
             </div>
 
             <form method="POST" id="settingsForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <!-- ==================== REAL-TIME PROTECTION SECTION (NEW) ==================== -->
                 <div class="settings-section">
                     <h3><i class="fa-solid fa-shield-halved"></i> Real-Time Protection</h3>

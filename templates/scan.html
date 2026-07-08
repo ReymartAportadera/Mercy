@@ -26,6 +26,7 @@
                 <h3>Select Scan Mode</h3>
                 
                 <form id="scanForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mode-cards">
                         <!-- Single Scan Option -->
                         <div class="mode-card selected" onclick="selectMode('single', event)">

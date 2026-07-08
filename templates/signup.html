@@ -20,6 +20,7 @@
             <p>Join the Neural Defense Grid</p>
 
             <form method="POST" id="signupForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="email" name="email" placeholder="Email" required>
                 

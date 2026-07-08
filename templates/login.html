@@ -24,6 +24,7 @@
             <p>Secure File Scanner</p>
 
             <form method="POST" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="email" name="email" placeholder="Email" required>
                 
                 <div class="password-wrapper">

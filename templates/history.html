@@ -65,6 +65,7 @@
                         <button class="btn view-btn">View</button>
                     </a>
                     <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn delete-btn">Delete</button>
                     </form>
                 </td>

@@ -149,6 +149,7 @@
                             {% else %}
                                 <button class="scan-btn scanned" disabled>Scanned</button>
                                 <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="scan-btn delete-btn">Delete</button>
                                 </form>
                             {% endif %}
