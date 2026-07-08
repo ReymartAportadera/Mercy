@@ -29,68 +29,22 @@
             {% endif %}
 
             <!-- SCAN MODE SELECTION -->
-            <div class="scan-mode-selection" id="scanModeSelection">
-                <h3>Select Scan Mode</h3>
-                
+            <div class="scan-mode-selection" id="scanModeSelection" style="max-width: 500px; margin: 0 auto; text-align: center;">
                 <form id="scanForm" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="mode-cards">
-                        <!-- Single Scan Option -->
-                        <div class="mode-card selected" onclick="selectMode('single', event)">
-                            <input type="radio" name="scan_mode" value="single" id="single-mode" checked>
-                            <label for="single-mode">
-                                <i class="fa-solid fa-shield-halved"></i>
-                                <h4>Single Scan</h4>
-                                <p>Quick comprehensive scan using all detection methods</p>
-                                <span class="time-badge">~5 seconds</span>
-                            </label>
-                        </div>
-                        
-                        <!-- Multiple Scan Option -->
-                        <div class="mode-card" onclick="selectMode('multiple', event)">
-                            <input type="radio" name="scan_mode" value="multiple" id="multiple-mode">
-                            <label for="multiple-mode">
-                                <i class="fa-solid fa-layer-group"></i>
-                                <h4>Custom Multiple Scans</h4>
-                                <p>Choose specific scan types to run individually</p>
-                                <span class="time-badge">Varies</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Multiple Scan Options (Hidden by default) -->
-                    <div id="multiple-scan-options" style="display: none;">
-                        <h4>Select Scan Types:</h4>
-                        <div class="scan-checkboxes">
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="scan_types" value="heuristic" id="heuristic-scan">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                                <span>Heuristic Analysis</span>
-                                <span class="scan-desc">Pattern & behavior detection</span>
-                            </label>
-                            
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="scan_types" value="virustotal" id="virustotal-scan">
-                                <i class="fa-solid fa-cloud"></i>
-                                <span>VirusTotal Check</span>
-                                <span class="scan-desc">Online threat database lookup</span>
-                            </label>
-                            
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="scan_types" value="ai_analysis" id="ai-scan">
-                                <i class="fa-solid fa-robot"></i>
-                                <span>AI Analysis</span>
-                                <span class="scan-desc">Machine learning threat assessment</span>
-                            </label>
-                        </div>
+                    
+                    <div class="mode-card selected" style="margin-bottom: 25px; cursor: default; pointer-events: none; padding: 25px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                        <i class="fa-solid fa-shield-halved" style="font-size: 2rem; color: #ff1e1e; margin-bottom: 15px;"></i>
+                        <h4>Comprehensive Neural Scan</h4>
+                        <p>Analyze your file structure using local heuristics, AI threat engines, and global VirusTotal query caches.</p>
                     </div>
 
                      {% if already_scanned %}
-                        <button type="button" class="start-scan-btn" id="startScanBtn" disabled style="opacity: 0.6; cursor: not-allowed; background: #555; box-shadow: none;">
+                        <button type="button" class="start-scan-btn" id="startScanBtn" disabled style="opacity: 0.6; cursor: not-allowed; background: #555; box-shadow: none; width: 100%;">
                             <i class="fa-solid fa-ban"></i> Already Scanned
                         </button>
                      {% else %}
-                        <button type="submit" class="start-scan-btn" id="startScanBtn">
+                        <button type="submit" class="start-scan-btn" id="startScanBtn" style="width: 100%;">
                             <i class="fa-solid fa-play"></i> Start Scan
                         </button>
                      {% endif %}
@@ -293,49 +247,8 @@
 </div>
 
 <script>
-function selectMode(mode, event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    
-    document.getElementById('single-mode').checked = (mode === 'single');
-    document.getElementById('multiple-mode').checked = (mode === 'multiple');
-    
-    const multipleOptions = document.getElementById('multiple-scan-options');
-    if (mode === 'multiple') {
-        multipleOptions.style.display = 'block';
-    } else {
-        multipleOptions.style.display = 'none';
-        document.querySelectorAll('input[name="scan_types"]').forEach(cb => {
-            cb.checked = false;
-        });
-    }
-    
-    document.querySelectorAll('.mode-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    
-    const clickedCard = event.currentTarget;
-    if (clickedCard) {
-        clickedCard.classList.add('selected');
-    }
-}
-
 document.getElementById('scanForm').addEventListener('submit', function(e) {
-    const scanMode = document.querySelector('input[name="scan_mode"]:checked').value;
-    
-    if (scanMode === 'multiple') {
-        const checkedScans = document.querySelectorAll('input[name="scan_types"]:checked');
-        if (checkedScans.length === 0) {
-            e.preventDefault();
-            alert('Please select at least one scan type for multiple scan mode.');
-            return false;
-        }
-        
-        this.action = "{{ url_for('multiple_scan', file_id=file.id) }}";
-    } else {
-        this.action = "{{ url_for('scan_page', file_id=file.id) }}";
-    }
+    this.action = "{{ url_for('scan_page', file_id=file.id) }}";
     
     document.getElementById('scanModeSelection').style.display = 'none';
     document.getElementById('scanning-animation').style.display = 'block';
@@ -363,22 +276,12 @@ document.getElementById('scanForm').addEventListener('submit', function(e) {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    const singleCard = document.querySelector('.mode-card:first-child');
-    if (singleCard) {
-        singleCard.classList.add('selected');
-    }
-    
     // ========== AUTO-SCAN FUNCTIONALITY ==========
     // Auto-scan if coming from upload
     {% if auto_scan == 'true' %}
-    // Auto-select single scan mode
-    document.getElementById('single-mode').checked = true;
-    
-    // Hide scan mode selection and show loading animation immediately
     document.getElementById('scanModeSelection').style.display = 'none';
     document.getElementById('scanning-animation').style.display = 'block';
     
-    // Animate status text
     const scanText = document.getElementById('scanText');
     if (scanText) {
         const messages = [
@@ -400,11 +303,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
     
-    // Auto-submit the form after a short delay
     setTimeout(function() {
         const scanForm = document.getElementById('scanForm');
         if (scanForm) {
-            // Set the form action for single scan
             scanForm.action = "{{ url_for('scan_page', file_id=file.id) }}";
             scanForm.submit();
         }
