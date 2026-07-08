@@ -35,7 +35,7 @@
             {% for file in files %}
             <tr>
                 <td>{{ file.filename }}</td>
-                <td>{{ file.upload_time.strftime("%b %d, %Y %H:%M") }}</td>
+                <td>{{ file.upload_time | format_dt("%b %d, %Y %H:%M") }}</td>
                 <td>{{ file.size }}</td>
                 <td class="threat-level {{ file.threat_level|lower }}">{{ file.threat_level }}</td>
                 <td class="risk-score">
