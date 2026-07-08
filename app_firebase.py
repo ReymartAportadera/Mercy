@@ -562,18 +562,124 @@ def scan(file_id):
     if not file_meta or file_meta.get("user_id") != current_user.uid:
         flash("File not found.")
         return redirect(url_for("dashboard"))
-    
+
     already_scanned = file_meta.get("status") != "Pending"
     auto_scan = request.args.get("auto_scan", "false")
-    
+
     if request.method == "POST":
         if already_scanned:
             flash("This file has already been scanned.", "warning")
             return redirect(url_for("dashboard"))
-        return redirect(url_for(
-            "multiple_scan", file_id=file_meta["id"], scans=",".join(ALL_SCAN_TYPES)
-        ))
-    return render_template("scan.html", file=file_meta, result=False, auto_scan=auto_scan, already_scanned=already_scanned)
+
+        # ── Run the full scan inline (HTTP redirects are always GET, so we
+        #    cannot redirect to /multiple_scan and expect its POST branch to run)
+        if not scan_semaphore.acquire(blocking=False):
+            flash("System is busy. Please try again in a moment.", "warning")
+            return redirect(url_for("dashboard"))
+
+        try:
+            file_exists   = os.path.isfile(file_meta.get("filepath", ""))
+            cached_bytes  = _pop_bytes(file_meta["id"])
+            file_hash     = file_meta.get("hash", "")
+            file_bytes    = None
+
+            if file_exists:
+                try:
+                    with safe_open(file_meta["filepath"], "rb") as fh:
+                        file_bytes = fh.read()
+                    file_hash = hashlib.sha256(file_bytes).hexdigest()
+                except Exception as exc:
+                    logger.error("Cannot read uploaded file: %s", exc)
+                    file_exists = False
+
+            if not file_exists:
+                file_bytes = cached_bytes
+                if file_bytes:
+                    file_hash = hashlib.sha256(file_bytes).hexdigest()
+                    logger.info("scan: using cached bytes for %s", file_meta.get("filename"))
+                else:
+                    logger.warning("scan: no bytes available for %s", file_meta.get("filename"))
+
+            offline_cache = None
+            results: dict = {}
+
+            # Heuristic
+            if file_bytes:
+                offline_cache = _run_full_heuristic_scan(
+                    file_meta.get("filename"), file_bytes, file_hash
+                )
+            else:
+                offline_cache = {
+                    "hash": file_hash, "entropy": file_meta.get("entropy", 0.0),
+                    "heuristics": ["File bytes unavailable for deep scan"],
+                    "suspicious_functions": [], "risky_imports": [],
+                    "risk_score": max(file_meta.get("risk_score", 0), 85),
+                    "pattern_result": "Bytes unavailable",
+                    "signature_status": "File deleted by antivirus",
+                    "risky_imports_str": "N/A", "all_detections": [], "advanced": {},
+                }
+            _apply_scan_result_to_file(file_meta, offline_cache)
+            results["heuristic"] = offline_cache
+
+            # VirusTotal
+            try:
+                vt_raw = smart_virustotal_scan(
+                    file_meta.get("filepath") if file_exists else None, file_hash
+                )
+                if vt_raw and "scans" not in vt_raw:
+                    vt_raw["scans"] = {}
+                results["virustotal"] = vt_raw
+            except Exception as exc:
+                logger.warning("VirusTotal error: %s", exc)
+                results["virustotal"] = {"error": str(exc), "positives": 0,
+                                         "engine_count": 0, "method": "error", "scans": {}}
+
+            # AI analysis
+            results["ai_analysis"] = analyze_file_ai(
+                entropy=offline_cache.get("entropy", 0),
+                patterns=offline_cache.get("pattern_result", "None"),
+                imports=offline_cache.get("risky_imports_str", "None"),
+                risk_score=offline_cache.get("risk_score", 0),
+            )
+            file_meta["ai_analysis"] = results["ai_analysis"]
+
+            # Final risk
+            final_risk        = offline_cache.get("risk_score", 0)
+            detection_details = (offline_cache.get("suspicious_functions", []) +
+                                 offline_cache.get("heuristics", []))
+
+            vt = results.get("virustotal", {})
+            if isinstance(vt, dict) and "error" not in vt:
+                total = vt.get("engine_count", 0)
+                pos   = vt.get("positives", 0)
+                if total:
+                    final_risk = max(final_risk, int((pos / total) * 100))
+                if pos:
+                    detection_details.append(
+                        f"VirusTotal: {pos}/{total} engines detected threat"
+                    )
+
+            file_meta["risk_score"]   = min(final_risk, 100)
+            file_meta["threat_level"], file_meta["status"] = determine_threat_level(
+                final_risk, detection_details
+            )
+            file_meta["explanation"] = generate_explanation(file_meta)
+
+            fb.save_uploaded_file(file_meta)
+
+            return render_template(
+                "scan.html",
+                file=file_meta,
+                result=True,
+                already_scanned=False,
+                results=results,
+            )
+
+        finally:
+            scan_semaphore.release()
+
+    return render_template("scan.html", file=file_meta, result=False,
+                           auto_scan=auto_scan, already_scanned=already_scanned)
 
 
 @app.route("/multiple_scan/<file_id>", methods=["GET", "POST"])
