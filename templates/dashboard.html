@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <title>TrustFile Dashboard</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
@@ -27,10 +28,11 @@
 
         <!-- FLASH MESSAGES -->
         <div class="flash-container">
-            {% with messages = get_flashed_messages() %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    {% for message in messages %}
-                        <div class="flash-message">
+                    {% for category, message in messages %}
+                        <div class="flash-message {% if category in ['warning','error'] %}flash-warning{% elif category == 'success' %}flash-success{% endif %}">
+                            {% if category == 'warning' %}<i class="fa-solid fa-triangle-exclamation"></i> {% endif %}
                             {{ message }}
                         </div>
                     {% endfor %}
@@ -146,11 +148,21 @@
                                 <a href="{{ url_for('scan_page', file_id=file.id) }}" class="scan-btn">
                                     <i class="fa-solid fa-magnifying-glass"></i> Scan
                                 </a>
+                                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
+                                      onsubmit="return confirm('Move this pending file to the Recycle Bin?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="scan-btn delete-btn" title="Delete">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
                             {% else %}
                                 <button class="scan-btn scanned" disabled>Scanned</button>
-                                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;">
+                                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
+                                      onsubmit="return confirm('Move this file to the Recycle Bin?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button class="scan-btn delete-btn">Delete</button>
+                                    <button class="scan-btn delete-btn" title="Move to Recycle Bin">
+                                        <i class="fa-solid fa-trash"></i> Delete
+                                    </button>
                                 </form>
                             {% endif %}
                         </td>
@@ -323,6 +335,7 @@
                         <th>Threat Level</th>
                         <th>Risk Score</th>
                         <th>Status</th>
+                        <th>Action</th>
                     </tr>
                 </thead><tbody>`;
                 
@@ -343,9 +356,15 @@
                         <td class="${threatClass}">${threatIcon} ${detection.threat_level || 'Pending'}</td>
                         <td>${detection.risk_score || 0}%</td>
                         <td class="${(detection.status || 'Pending').toLowerCase()}">${detection.status || 'Pending'}</td>
+                        <td>
+                            ${detection.id ? `<button class="scan-btn delete-btn" style="padding:4px 8px; font-size:0.75rem;"
+                                onclick="deleteDetection('${detection.id}', this)" title="Move to Recycle Bin">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>` : ''}
+                        </td>
                     </tr>`;
                 });
-                
+
                 html += '</tbody></table></div>';
                 if (container) {
                     container.innerHTML = html;
@@ -372,19 +391,43 @@
         div.textContent = text;
         return div.innerHTML;
     }
-    
+
+    // Delete a realtime detection record and move file to Recycle Bin
+    async function deleteDetection(detectionId, btn) {
+        if (!confirm('Move this file to the Recycle Bin and remove the detection record?')) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                              document.querySelector('input[name="csrf_token"]')?.value || '';
+            const fd = new FormData();
+            fd.append('detection_id', detectionId);
+            fd.append('csrf_token', csrfToken);
+            const res = await fetch('/api/delete_detection_record', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'deleted') {
+                const row = btn.closest('tr');
+                if (row) row.remove();
+                SystemMonitor.showToast('File moved to Recycle Bin', 'success');
+            } else {
+                SystemMonitor.showToast('Delete failed: ' + (data.error || 'Unknown error'), 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            }
+        } catch (err) {
+            console.error('deleteDetection error:', err);
+            SystemMonitor.showToast('Network error during delete', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        }
+    }
+
     // Add slideOutRight animation for toasts
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideOutRight {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(100%);
-                opacity: 0;
-            }
+            from { transform: translateX(0); opacity: 1; }
+            to   { transform: translateX(100%); opacity: 0; }
         }
     `;
     document.head.appendChild(style);

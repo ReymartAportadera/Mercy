@@ -336,9 +336,21 @@ body {
     animation: fadeOut 4s forwards;
 }
 
+.flash-message.flash-warning {
+    background: rgba(255, 160, 0, 0.18);
+    border-color: #ffa000;
+    color: #ffd54f;
+}
+
+.flash-message.flash-success {
+    background: rgba(0, 200, 100, 0.15);
+    border-color: #00c864;
+    color: #a5ffcb;
+}
+
 @keyframes fadeOut {
-    0% { opacity: 1; transform: translateX(0); }
-    80% { opacity: 1; transform: translateX(0); }
+    0%   { opacity: 1; transform: translateX(0); }
+    80%  { opacity: 1; transform: translateX(0); }
     100% { opacity: 0; transform: translateX(20px); display: none; }
 }
 

@@ -1,4 +1,8 @@
 import os
+try:
+    from send2trash import send2trash as _send_to_trash
+except ImportError:
+    _send_to_trash = None  # fallback to permanent delete if not available
 import sys
 import types
 import hashlib
@@ -503,7 +507,18 @@ def uploadfiles():
             flash("The uploaded file is empty.")
             return redirect(request.url)
         file_hash = hashlib.sha256(file_bytes).hexdigest()
-        # Save file to disk (unchanged behavior)
+
+        # ── Duplicate detection: check if user already uploaded this exact file ──
+        existing_files = fb.list_user_files(current_user.uid)
+        for existing in existing_files:
+            if existing.get("hash") == file_hash:
+                if existing.get("status") == "Pending":
+                    flash(f"\u26a0\ufe0f '{existing.get('filename', filename)}' has already been uploaded and is pending scan.", "warning")
+                else:
+                    flash(f"\u26a0\ufe0f '{existing.get('filename', filename)}' has already been uploaded and scanned. Duplicate blocked.", "warning")
+                return redirect(url_for("dashboard"))
+
+        # Save file to disk
         user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(current_user.uid))
         os.makedirs(user_folder, exist_ok=True)
         path = os.path.abspath(os.path.join(user_folder, filename))
@@ -518,8 +533,8 @@ def uploadfiles():
         file_record = {
             "id": str(uuid.uuid4()),
             "filename": filename,
-            "filepath": path,           # absolute path for current session
-            "relative_path": relative_path,  # portable path for future use
+            "filepath": path,
+            "relative_path": relative_path,
             "upload_time": datetime.now(timezone.utc).isoformat(),
             "status": "Pending",
             "hash": file_hash,
@@ -529,7 +544,7 @@ def uploadfiles():
         fb.save_uploaded_file(file_record)
         _cache_bytes(file_record["id"], file_bytes)
         flash("File uploaded successfully.")
-        
+
         # Check settings for auto scan preference
         settings = get_or_create_user_settings(current_user.uid)
         auto_scan_param = "true" if settings.get("auto_scan_enabled", True) else "false"
@@ -543,16 +558,11 @@ def delete_detection_record_api():
     detection_id = request.form.get("detection_id")
     if not detection_id:
         return jsonify({"error": "Missing detection_id"}), 400
-    # Retrieve record to delete the physical file
     record = fb.get_uploaded_file(detection_id)
     if record:
-        try:
-            os.remove(record["filepath"])
-            logger.info("Physically removed file %s", record["filepath"])
-        except OSError as exc:
-            logger.warning("Failed to remove file %s: %s", record["filepath"], exc)
+        _trash_file(record.get("filepath", ""))
         fb.delete_uploaded_file(detection_id)
-    return jsonify({"status": "deleted"})
+    return jsonify({"status": "deleted", "message": "File moved to Recycle Bin"})
 
 # ── Scan page ─────────────────────────────────────────────────────────────────
 @app.route("/scan/<file_id>", methods=["GET", "POST"], endpoint="scan_page")
@@ -870,18 +880,35 @@ def view_result(file_id):
     return render_template("scan.html", file=file_meta, result=True)
 
 
+# ── Helper: send file to recycle bin (falls back to permanent delete) ────────
+def _trash_file(filepath: str) -> None:
+    """Move a file to the system recycle bin. Falls back to os.remove if
+    send2trash is not available or the operation fails."""
+    if not filepath or not os.path.isfile(filepath):
+        return
+    if _send_to_trash is not None:
+        try:
+            _send_to_trash(filepath)
+            logger.info("Moved to recycle bin: %s", filepath)
+            return
+        except Exception as exc:
+            logger.warning("send2trash failed for %s: %s — falling back to delete", filepath, exc)
+    try:
+        os.remove(filepath)
+        logger.info("Permanently deleted (no recycle bin): %s", filepath)
+    except OSError as exc:
+        logger.warning("Failed to delete file %s: %s", filepath, exc)
+
+
 # ── Delete file ───────────────────────────────────────────────────────────────
 @app.route("/delete/<file_id>", methods=["POST"], endpoint="delete_file")
 @login_required
 def delete_file(file_id):
     record = fb.get_uploaded_file(str(file_id))
     if record and record.get("user_id") == current_user.uid:
-        try:
-            os.remove(record["filepath"])
-        except OSError as exc:
-            logger.warning("Failed to remove file %s: %s", record["filepath"], exc)
+        _trash_file(record.get("filepath", ""))
         fb.delete_uploaded_file(str(file_id))
-        flash("File deleted.")
+        flash("File moved to Recycle Bin and record deleted.")
     else:
         flash("File not found or access denied.")
     return redirect(url_for("dashboard"))

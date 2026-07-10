@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>TrustFile | Scanning...</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='scan.css') }}">
@@ -28,9 +29,8 @@
                 </div>
             {% endif %}
 
-            <!-- SCAN MODE SELECTION -->
             <div class="scan-mode-selection" id="scanModeSelection" style="max-width: 500px; margin: 0 auto; text-align: center;">
-                <form id="scanForm" method="POST">
+                <form id="scanForm" method="POST" action="{{ url_for('scan_page', file_id=file.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
                     <div class="mode-card selected" style="margin-bottom: 25px; cursor: default; pointer-events: none; padding: 25px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
@@ -247,41 +247,10 @@
 </div>
 
 <script>
-document.getElementById('scanForm').addEventListener('submit', function(e) {
-    this.action = "{{ url_for('scan_page', file_id=file.id) }}";
-    
+// Submit handler: show animation when manually submitting the scan form
+document.getElementById('scanForm').addEventListener('submit', function() {
     document.getElementById('scanModeSelection').style.display = 'none';
     document.getElementById('scanning-animation').style.display = 'block';
-    
-    const scanText = document.getElementById('scanText');
-    const messages = [
-        'Analyzing file structure...',
-        'Checking for malware patterns...',
-        'Scanning for suspicious behavior...',
-        'Detecting threats...',
-        'Finalizing results...'
-    ];
-    
-    let index = 0;
-    const interval = setInterval(() => {
-        if (index < messages.length) {
-            scanText.textContent = messages[index];
-            index++;
-        } else {
-            clearInterval(interval);
-        }
-    }, 1000);
-    
-    return true;
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    // ========== AUTO-SCAN FUNCTIONALITY ==========
-    // Auto-scan if coming from upload
-    {% if auto_scan == 'true' %}
-    document.getElementById('scanModeSelection').style.display = 'none';
-    document.getElementById('scanning-animation').style.display = 'block';
-    
     const scanText = document.getElementById('scanText');
     if (scanText) {
         const messages = [
@@ -291,27 +260,38 @@ document.addEventListener('DOMContentLoaded', function() {
             'Detecting threats...',
             'Finalizing results...'
         ];
-        
         let index = 0;
-        const interval = setInterval(() => {
-            if (index < messages.length) {
-                scanText.textContent = messages[index];
-                index++;
-            } else {
-                clearInterval(interval);
-            }
+        setInterval(() => {
+            if (index < messages.length) { scanText.textContent = messages[index++]; }
         }, 1000);
     }
-    
+    return true;  // let the form submit normally
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+{% if auto_scan == 'true' and not already_scanned %}
+    // Auto-scan: hide the form UI, show animation, then submit
+    document.getElementById('scanModeSelection').style.display = 'none';
+    document.getElementById('scanning-animation').style.display = 'block';
+    const scanText = document.getElementById('scanText');
+    if (scanText) {
+        const messages = [
+            'Analyzing file structure...',
+            'Checking for malware patterns...',
+            'Scanning for suspicious behavior...',
+            'Detecting threats...',
+            'Finalizing results...'
+        ];
+        let index = 0;
+        setInterval(() => {
+            if (index < messages.length) { scanText.textContent = messages[index++]; }
+        }, 1000);
+    }
+    // Submit after a brief delay so the animation is visible
     setTimeout(function() {
-        const scanForm = document.getElementById('scanForm');
-        if (scanForm) {
-            scanForm.action = "{{ url_for('scan_page', file_id=file.id) }}";
-            scanForm.submit();
-        }
-    }, 500);
-    {% endif %}
-    // ========== END AUTO-SCAN FUNCTIONALITY ==========
+        document.getElementById('scanForm').submit();
+    }, 600);
+{% endif %}
 });
 </script>
 
