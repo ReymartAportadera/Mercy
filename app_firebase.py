@@ -1222,12 +1222,13 @@ def realtime_detections_api():
         for scan in files[:10]:
             if scan.get("status") != "Pending":
                 recent_data.append({
-                    "timestamp": scan.get("upload_time"),
-                    "filename": scan.get("filename"),
+                    "id":           scan.get("id"),
+                    "timestamp":    scan.get("upload_time"),
+                    "filename":     scan.get("filename"),
                     "threat_level": scan.get("threat_level", "Low"),
-                    "risk_score": scan.get("risk_score", 0),
-                    "status": scan.get("status", "Safe"),
-                    "ai_analysis": (scan.get("ai_analysis")[:100] + "...") if scan.get("ai_analysis") else None
+                    "risk_score":   scan.get("risk_score", 0),
+                    "status":       scan.get("status", "Safe"),
+                    "ai_analysis":  (scan.get("ai_analysis")[:100] + "...") if scan.get("ai_analysis") else None,
                 })
     except Exception as exc:
         logger.error("realtime_detections_api recent scans error: %s", exc)
