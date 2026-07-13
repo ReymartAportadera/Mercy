@@ -165,11 +165,7 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
             if not os.path.isfile(file_path):
                 return False
             
-            # Check file size (skip > 100MB by default)
-            max_size = self.config.get('max_file_size_mb', 100) * 1024 * 1024
-            if os.path.getsize(file_path) > max_size:
-                logger.debug(f"Skipping large file: {file_path}")
-                return False
+
             
             # Check extension
             ext = os.path.splitext(file_path)[1].lower()
