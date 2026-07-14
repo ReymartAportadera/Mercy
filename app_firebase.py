@@ -456,11 +456,14 @@ def dashboard():
     files = [f for f in all_files if f.get("status") != "Pending"]
 
     counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
-                    medium_threat=0, high_threat=0, critical_threat=0)
+                    medium_threat=0, high_threat=0, critical_threat=0, quarantined=0)
 
     for f in files:
         risk = f.get("risk_score", 0) or 0
-        if risk >= 70:
+        if f.get("status") == "Quarantined":
+            f["threat_level"] = f.get("threat_level", "Threat")
+            counters["quarantined"] += 1
+        elif risk >= 70:
             f["threat_level"] = "Critical"
             counters["critical_threat"] += 1
         elif risk >= 50:

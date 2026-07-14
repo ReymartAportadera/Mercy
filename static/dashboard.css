@@ -383,6 +383,17 @@ body {
 .low { color: #00ccff; }
 .safe { color: #00ff88; }
 .pending { color: #888; }
+.quarantined { color: #cc44ff; }
+
+/* Quarantined row highlight */
+.quarantined-row {
+    background: rgba(204, 68, 255, 0.06);
+    border-left: 3px solid rgba(204, 68, 255, 0.5);
+}
+
+/* Quarantined card */
+.card.glass.quarantined h3 { color: #cc44ff; }
+.card.glass.quarantined { border-color: rgba(204, 68, 255, 0.3); }
 
 /* New detection highlight animation */
 @keyframes newDetection {

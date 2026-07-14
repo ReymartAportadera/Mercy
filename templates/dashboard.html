@@ -90,6 +90,10 @@
                 <h3>{{ critical_threat }}</h3>
                 <p>Critical Threat</p>
             </div>
+            <div class="card glass quarantined">
+                <h3>{{ quarantined }}</h3>
+                <p>🗑️ Quarantined</p>
+            </div>
         </div>
 
         <!-- REAL-TIME DETECTIONS WIDGET -->
@@ -128,7 +132,7 @@
                 </thead>
                 <tbody>
                 {% for file in files %}
-                    <tr>
+                    <tr class="{% if file.status == 'Quarantined' %}quarantined-row{% endif %}">
                         <td>{{ file.filename }}</td>
                         <td>{{ file.upload_time | format_dt }}</td>
                         <td class="{{ file.status|lower }}">{{ file.status }}</td>
@@ -139,6 +143,10 @@
                         <td>{{ file.signature_status if file.signature_status else "-" }}</td>
                         <td>{{ file.size if file.size else "-" }}</td>
                         <td>
+                            <a href="{{ url_for('scan_page', file_id=file.id) }}" class="scan-btn" title="View scan results"
+                               style="margin-right:4px; background: rgba(0,204,255,0.12); color:#00ccff; border:1px solid rgba(0,204,255,0.3);">
+                                <i class="fa-solid fa-magnifying-glass"></i> Results
+                            </a>
                             <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
                                   onsubmit="return confirm('Move this file to the Recycle Bin?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
