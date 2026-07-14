@@ -448,16 +448,18 @@ def get_or_create_user_settings(uid: str) -> dict:
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    files = fb.list_user_files(current_user.uid)
-    # Load user settings (if missing, create defaults)
-    settings = get_or_create_user_settings(current_user.uid)
+    all_files = fb.list_user_files(current_user.uid)
+    settings  = get_or_create_user_settings(current_user.uid)
 
-    counters = dict(total_scans=len(files), safe_files=0, low_threat=0, medium_threat=0,
-                    high_threat=0, critical_threat=0, pending=0)
+    # Only show scanned files — Pending files are auto-scanned on upload
+    # and should never linger in the dashboard table.
+    files = [f for f in all_files if f.get("status") != "Pending"]
+
+    counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
+                    medium_threat=0, high_threat=0, critical_threat=0)
+
     for f in files:
         risk = f.get("risk_score", 0) or 0
-        if f.get("status") == "Pending":
-            counters["pending"] += 1
         if risk >= 70:
             f["threat_level"] = "Critical"
             counters["critical_threat"] += 1
@@ -467,21 +469,22 @@ def dashboard():
         elif risk >= 30:
             f["threat_level"] = "Medium"
             counters["medium_threat"] += 1
-        elif f.get("status") != "Pending":
+        elif risk > 0:
             f["threat_level"] = "Low"
             counters["low_threat"] += 1
         else:
-            f["threat_level"] = "-"
+            f["threat_level"] = "Safe"
             counters["safe_files"] += 1
-        # size on disk (optional, may be missing if file was removed)
         try:
             size = os.path.getsize(f["filepath"])
             f["size"] = f"{round(size / 1024, 2)} KB"
         except Exception:
-            f["size"] = "N/A"
+            f["size"] = f.get("size", "N/A")
         f["explanation"] = f.get("explanation", "")
         f["threat_ratio"] = risk
+
     return render_template("dashboard.html", files=files, settings=settings, **counters)
+
 
 # ── Upload ───────────────────────────────────────────────────────────────────
 @app.route("/upload", methods=["GET", "POST"])

@@ -90,10 +90,6 @@
                 <h3>{{ critical_threat }}</h3>
                 <p>Critical Threat</p>
             </div>
-            <div class="card glass">
-                <h3>{{ pending }}</h3>
-                <p>Pending Scans</p>
-            </div>
         </div>
 
         <!-- REAL-TIME DETECTIONS WIDGET -->
@@ -138,33 +134,19 @@
                         <td>{{ file.upload_time | format_dt }}</td>
                         <td class="{{ file.status|lower }}">{{ file.status }}</td>
                         <td class="{{ file.threat_level|lower }}">{{ file.threat_level if file.threat_level else "-" }}</td>
-                        <td>{{ file.risk_score if file.risk_score else "-" }}%</td>
+                        <td>{{ file.risk_score if file.risk_score else "0" }}%</td>
                         <td>{{ file.pattern_result if file.pattern_result else "-" }}</td>
                         <td>{{ file.entropy if file.entropy else "-" }}</td>
                         <td>{{ file.signature_status if file.signature_status else "-" }}</td>
                         <td>{{ file.size if file.size else "-" }}</td>
                         <td>
-                            {% if file.status == "Pending" %}
-                                <a href="{{ url_for('scan_page', file_id=file.id) }}" class="scan-btn">
-                                    <i class="fa-solid fa-magnifying-glass"></i> Scan
-                                </a>
-                                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
-                                      onsubmit="return confirm('Move this pending file to the Recycle Bin?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button class="scan-btn delete-btn" title="Delete">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </form>
-                            {% else %}
-                                <button class="scan-btn scanned" disabled>Scanned</button>
-                                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
-                                      onsubmit="return confirm('Move this file to the Recycle Bin?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button class="scan-btn delete-btn" title="Move to Recycle Bin">
-                                        <i class="fa-solid fa-trash"></i> Delete
-                                    </button>
-                                </form>
-                            {% endif %}
+                            <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
+                                  onsubmit="return confirm('Move this file to the Recycle Bin?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="scan-btn delete-btn" title="Move to Recycle Bin">
+                                    <i class="fa-solid fa-trash"></i> Delete
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 {% endfor %}
