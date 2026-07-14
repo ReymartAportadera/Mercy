@@ -514,11 +514,14 @@ def uploadfiles():
         # ── Duplicate detection: check if user already uploaded this exact file ──
         existing_files = fb.list_user_files(current_user.uid)
         for existing in existing_files:
-            if existing.get("hash") == file_hash:
+            same_hash = (existing.get("hash") and existing.get("hash") == file_hash)
+            same_name = (existing.get("filename") == filename)
+            
+            if same_hash or same_name:
                 if existing.get("status") == "Pending":
-                    flash(f"\u26a0\ufe0f '{existing.get('filename', filename)}' has already been uploaded and is pending scan.", "warning")
+                    flash(f"⚠️ '{filename}' has already been uploaded and is pending scan.", "warning")
                 else:
-                    flash(f"\u26a0\ufe0f '{existing.get('filename', filename)}' has already been uploaded and scanned. Duplicate blocked.", "warning")
+                    flash(f"⚠️ '{filename}' has already been uploaded and scanned. Duplicate blocked.", "warning")
                 return redirect(url_for("dashboard"))
 
         # Save file to disk
