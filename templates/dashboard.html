@@ -92,6 +92,19 @@
             </div>
         </div>
 
+        <!-- REAL-TIME DETECTIONS WIDGET -->
+        <div class="uploaded-files glass" style="margin-top: 20px;">
+            <h3>
+                <i class="fa-solid fa-bell"></i>
+                Real-time Threat Detections
+                <span style="float: right; font-size: 0.7rem; color: var(--text-dim);" id="last-update-time"></span>
+            </h3>
+            <div id="realtime-detections-container">
+                <p style="text-align: center; color: var(--text-dim);">
+                    <i class="fa-solid fa-circle-info"></i> No real-time detections yet. The system is monitoring your computer.
+                </p>
+            </div>
+        </div>
 
         <!-- UPLOADED FILES TABLE -->
         <div class="uploaded-files glass">
@@ -265,7 +278,87 @@
         // Initialize monitor status
         SystemMonitor.updateStatus();
         setInterval(() => SystemMonitor.updateStatus(), 5000);
+
+        // Start real-time detections polling
+        updateRealtimeDetections();
+        setInterval(updateRealtimeDetections, 5000);
     });
+
+    // ==================== REAL-TIME DETECTIONS ====================
+    function updateRealtimeDetections() {
+        fetch('/api/realtime_detections')
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('realtime-detections-container');
+                const updateTime = document.getElementById('last-update-time');
+                if (updateTime) updateTime.innerHTML = `Last update: ${new Date().toLocaleTimeString()}`;
+
+                const all = [...(data.realtime || []), ...(data.recent_scans || [])];
+                if (!container) return;
+                if (all.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;color:var(--text-dim)"><i class="fa-solid fa-circle-info"></i> No detections yet. System is monitoring.</p>';
+                    return;
+                }
+
+                let html = '<div style="max-height:300px;overflow-y:auto"><table class="files-table"><thead><tr>';
+                html += '<th>Time</th><th>Filename</th><th>Threat Level</th><th>Risk</th><th>Status</th><th>Action</th>';
+                html += '</tr></thead><tbody>';
+
+                all.slice(0, 20).forEach(d => {
+                    const time = d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : 'Just now';
+                    const tc   = (d.threat_level || 'low').toLowerCase();
+                    const icon = tc === 'critical' ? '🔴' : tc === 'high' ? '🟠' : tc === 'medium' ? '🟡' : tc === 'low' ? '🟢' : '⚪';
+                    const del  = d.id ? `<button class="scan-btn delete-btn" style="padding:4px 8px;font-size:.75rem"
+                        onclick="deleteDetection('${d.id}',this)" title="Move to Recycle Bin">
+                        <i class="fa-solid fa-trash"></i></button>` : '';
+                    html += `<tr>
+                        <td style="font-size:.75rem">${time}</td>
+                        <td style="font-family:monospace;font-size:.8rem">${escapeHtml(d.filename||'Unknown')}</td>
+                        <td class="${tc}">${icon} ${d.threat_level||'Low'}</td>
+                        <td>${d.risk_score||0}%</td>
+                        <td class="${(d.status||'safe').toLowerCase()}">${d.status||'Safe'}</td>
+                        <td>${del}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            })
+            .catch(e => console.error('Detections error:', e));
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    async function deleteDetection(id, btn) {
+        if (!confirm('Move this file to the Recycle Bin and remove the record?')) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ||
+                         document.querySelector('input[name="csrf_token"]')?.value || '';
+            const fd = new FormData();
+            fd.append('detection_id', id);
+            fd.append('csrf_token', csrf);
+            const res  = await fetch('/api/delete_detection_record', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'deleted') {
+                btn.closest('tr')?.remove();
+                SystemMonitor.showToast('File moved to Recycle Bin', 'success');
+            } else {
+                SystemMonitor.showToast('Delete failed: ' + (data.error || '?'), 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            }
+        } catch (e) {
+            SystemMonitor.showToast('Network error', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        }
+    }
     
     // Add slideOutRight animation for toasts
     const style = document.createElement('style');
