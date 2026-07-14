@@ -122,7 +122,21 @@
                 <!-- ==================== SCAN PREFERENCES SECTION ==================== -->
                 <div class="settings-section">
                     <h3><i class="fa-solid fa-sliders-h"></i> Scan Preferences</h3>
-                    
+
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <label>Auto-Scan Uploaded Files</label>
+                            <span class="desc">Automatically start scanning immediately after a file upload</span>
+                        </div>
+                        <div class="setting-control">
+                            <label class="switch">
+                                <input type="checkbox" name="auto_scan_enabled" id="auto_scan_enabled" 
+                                       {% if settings.auto_scan_enabled %}checked{% endif %}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="setting-item">
                         <div class="setting-label">
                             <label>Auto-Scan Mode</label>
