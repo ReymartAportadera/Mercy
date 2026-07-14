@@ -308,9 +308,15 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
                     "info"
                 )
         
-        # Auto-quarantine for critical threats
-        if threat_level == "Critical" and self.config.get('auto_quarantine', True):
-            self.quarantine_file(file_path, filename, result)
+        # Auto-quarantine/auto-delete for all malicious threats
+        if is_threat and self.config.get('auto_quarantine', True):
+            try:
+                from send2trash import send2trash
+                send2trash(file_path)
+                logger.info(f"[Monitor] Malicious file automatically moved to Recycle Bin: {filename}")
+                result['status'] = 'Quarantined'
+            except Exception as e:
+                logger.error(f"Failed to auto-delete malicious file: {e}")
         
         # Save to database via callback
         if self.db_callback:

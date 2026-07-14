@@ -733,6 +733,13 @@ def scan(file_id):
             )
             file_meta["explanation"] = generate_explanation(file_meta)
 
+            # Auto-quarantine/auto-delete if file is malicious and auto_quarantine setting is enabled
+            settings = get_or_create_user_settings(current_user.uid)
+            if settings.get("auto_quarantine", True) and file_meta["status"] == "Threat":
+                _trash_file(file_meta.get("filepath", ""))
+                file_meta["status"] = "Quarantined"
+                flash("⚠️ Malicious file detected! The file has been automatically moved to the Recycle Bin.", "warning")
+
             fb.save_uploaded_file(file_meta)
 
             return render_template(
