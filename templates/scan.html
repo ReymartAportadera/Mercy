@@ -21,13 +21,14 @@
         <h2>File Scanner</h2>
         <p class="filename-display"><strong>{{ file.filename }}</strong></p>
 
+        {% if already_scanned %}
+            <div class="warning-banner" style="background: rgba(255, 30, 30, 0.15); border: 1px solid #ff1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #ff1e1e; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-circle-exclamation" style="font-size: 1.2rem;"></i>
+                <span>This file has already been scanned.</span>
+            </div>
+        {% endif %}
+
         {% if not result %}
-            {% if already_scanned %}
-                <div class="warning-banner" style="background: rgba(255, 30, 30, 0.15); border: 1px solid #ff1e1e; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #ff1e1e; display: flex; align-items: center; gap: 10px;">
-                    <i class="fa-solid fa-circle-exclamation" style="font-size: 1.2rem;"></i>
-                    <span>This file is already scanned.</span>
-                </div>
-            {% endif %}
 
             <div class="scan-mode-selection" id="scanModeSelection" style="max-width: 500px; margin: 0 auto; text-align: center;">
                 <form id="scanForm" method="POST" action="{{ url_for('scan_page', file_id=file.id) }}">

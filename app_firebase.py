@@ -723,6 +723,10 @@ def scan(file_id):
         finally:
             scan_semaphore.release()
 
+    if already_scanned:
+        return render_template("scan.html", file=file_meta, result=True,
+                               already_scanned=True)
+
     return render_template("scan.html", file=file_meta, result=False,
                            auto_scan=auto_scan, already_scanned=already_scanned)
 
