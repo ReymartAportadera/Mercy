@@ -1305,4 +1305,12 @@ if __name__ == "__main__":
     os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)
     # Set APP_DEBUG=true in .env for development. NEVER use debug=True in production.
     _debug = os.environ.get("APP_DEBUG", "false").lower() == "true"
-    app.run(debug=_debug, host="0.0.0.0", port=5000)
+    # Exclude uploads/ from the reloader — temp files written during auto_scan
+    # were causing the server to restart mid-scan, killing VirusTotal requests.
+    app.run(
+        debug=_debug,
+        host="0.0.0.0",
+        port=5000,
+        exclude_patterns=["*/uploads/*", "*/__pycache__/*"],
+    )
+
