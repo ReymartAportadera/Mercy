@@ -573,7 +573,7 @@ def delete_detection_record_api():
                 with open(detections_file, "r", encoding="utf-8") as f:
                     detections = json.load(f)
 
-                updated_detections = []
+                # First find the target filepath
                 target_filepath = None
                 for entry in detections:
                     if isinstance(entry, dict):
@@ -582,11 +582,19 @@ def delete_detection_record_api():
                         h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
                         if f"local_{h}" == detection_id:
                             target_filepath = path_str
-                        else:
-                            updated_detections.append(entry)
+                            break
 
                 if target_filepath:
                     _trash_file(target_filepath)
+                    
+                    # Remove all duplicate entries sharing the same filepath
+                    updated_detections = []
+                    for entry in detections:
+                        if isinstance(entry, dict):
+                            path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                            if path_str != target_filepath:
+                                updated_detections.append(entry)
+
                     with open(detections_file, "w", encoding="utf-8") as f:
                         json.dump(updated_detections, f, indent=2)
                     return jsonify({"status": "deleted", "message": "File moved to Recycle Bin"})
@@ -597,9 +605,21 @@ def delete_detection_record_api():
 
     # Otherwise it's a standard Firebase record
     record = fb.get_uploaded_file(detection_id)
-    if record:
-        _trash_file(record.get("filepath", ""))
-        fb.delete_uploaded_file(detection_id)
+    if record and record.get("user_id") == current_user.uid:
+        target_hash = record.get("hash")
+        target_path = record.get("filepath")
+
+        # Trash the physical file
+        _trash_file(target_path)
+
+        # Remove all duplicate database records matching hash or path
+        user_files = fb.list_user_files(current_user.uid)
+        for f in user_files:
+            same_hash = (target_hash and f.get("hash") == target_hash)
+            same_path = (target_path and f.get("filepath") == target_path)
+            if same_hash or same_path or f.get("id") == detection_id:
+                fb.delete_uploaded_file(f["id"])
+
     return jsonify({"status": "deleted", "message": "File moved to Recycle Bin"})
 
 # ── Scan page ─────────────────────────────────────────────────────────────────
@@ -948,9 +968,26 @@ def _trash_file(filepath: str) -> None:
 def delete_file(file_id):
     record = fb.get_uploaded_file(str(file_id))
     if record and record.get("user_id") == current_user.uid:
-        _trash_file(record.get("filepath", ""))
-        fb.delete_uploaded_file(str(file_id))
-        flash("File moved to Recycle Bin and record deleted.")
+        target_hash = record.get("hash")
+        target_path = record.get("filepath")
+
+        # Move the physical file to the Recycle Bin
+        _trash_file(target_path)
+
+        # Remove all duplicate records from Firebase database
+        user_files = fb.list_user_files(current_user.uid)
+        deleted_count = 0
+        for f in user_files:
+            same_hash = (target_hash and f.get("hash") == target_hash)
+            same_path = (target_path and f.get("filepath") == target_path)
+            if same_hash or same_path or f.get("id") == str(file_id):
+                fb.delete_uploaded_file(f["id"])
+                deleted_count += 1
+
+        if deleted_count > 1:
+            flash(f"Moved file to Recycle Bin and deleted {deleted_count} duplicate records.")
+        else:
+            flash("File moved to Recycle Bin and record deleted.")
     else:
         flash("File not found or access denied.")
     return redirect(url_for("dashboard"))
