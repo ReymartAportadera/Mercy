@@ -1075,6 +1075,18 @@ def save_scan_to_db(
     try:
         if user_id is None:
             user_id = "system_monitor"
+
+        file_hash = scan_result.get("hash", "")
+        # Prevent logging duplicate scan records for the same file in Firebase
+        if file_hash or filepath:
+            existing_files = fb.list_user_files(user_id)
+            for existing in existing_files:
+                same_hash = (file_hash and existing.get("hash") == file_hash)
+                same_path = (existing.get("filepath") == filepath)
+                if same_hash or same_path:
+                    logger.info("save_scan_to_db: duplicate scan record blocked for %s", filename)
+                    return
+
         
         try:
             size_bytes = os.path.getsize(filepath)
