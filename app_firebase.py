@@ -451,9 +451,8 @@ def dashboard():
     all_files = fb.list_user_files(current_user.uid)
     settings  = get_or_create_user_settings(current_user.uid)
 
-    # Only show scanned files — Pending files are auto-scanned on upload
-    # and should never linger in the dashboard table.
-    files = [f for f in all_files if f.get("status") != "Pending"]
+    # Only show scanned safe/low-risk files — hide Pending and Quarantined
+    files = [f for f in all_files if f.get("status") not in ("Pending", "Quarantined")]
 
     counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
                     medium_threat=0, high_threat=0, critical_threat=0, quarantined=0)
@@ -736,14 +735,17 @@ def scan(file_id):
             )
             file_meta["explanation"] = generate_explanation(file_meta)
 
-            # Auto-quarantine/auto-delete if file is malicious and auto_quarantine setting is enabled
+            # Auto-quarantine: move file to Recycle Bin and remove from dashboard
             settings = get_or_create_user_settings(current_user.uid)
-            if settings.get("auto_quarantine", True) and file_meta["status"] == "Threat":
+            auto_quarantine = settings.get("auto_quarantine", True)
+            if auto_quarantine and file_meta["status"] == "Threat":
                 _trash_file(file_meta.get("filepath", ""))
+                # Delete record so it no longer appears in the dashboard
+                fb.delete_uploaded_file(file_meta["id"])
                 file_meta["status"] = "Quarantined"
-                flash("⚠️ Malicious file detected! The file has been automatically moved to the Recycle Bin.", "warning")
-
-            fb.save_uploaded_file(file_meta)
+                flash("⚠️ Malicious file detected and automatically removed from your device!", "warning")
+            else:
+                fb.save_uploaded_file(file_meta)
 
             return render_template(
                 "scan.html",
@@ -1123,6 +1125,11 @@ def save_scan_to_db(
         if user_id is None:
             user_id = "system_monitor"
 
+        # If the file was auto-quarantined, do NOT save a record to the dashboard
+        if scan_result.get("status") == "Quarantined":
+            logger.info("save_scan_to_db: skipping quarantined file %s (not saved to dashboard)", filename)
+            return
+
         file_hash = scan_result.get("hash", "")
         # Prevent logging duplicate scan records for the same file in Firebase
         if file_hash or filepath:
@@ -1313,6 +1320,9 @@ def realtime_detections_api():
                 raw_detections = json.load(f)
                 for entry in raw_detections:
                     if isinstance(entry, dict):
+                        # Skip quarantined entries — file already removed
+                        if entry.get("status") == "Quarantined":
+                            continue
                         # Generate a synthetic ID using file_path and timestamp
                         path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
                         time_str = entry.get("timestamp", "") or ""
@@ -1330,16 +1340,18 @@ def realtime_detections_api():
         
         recent_data = []
         for scan in files[:10]:
-            if scan.get("status") != "Pending":
-                recent_data.append({
-                    "id":           scan.get("id"),
-                    "timestamp":    scan.get("upload_time"),
-                    "filename":     scan.get("filename"),
-                    "threat_level": scan.get("threat_level", "Low"),
-                    "risk_score":   scan.get("risk_score", 0),
-                    "status":       scan.get("status", "Safe"),
-                    "ai_analysis":  (scan.get("ai_analysis")[:100] + "...") if scan.get("ai_analysis") else None,
-                })
+            # Skip Pending and Quarantined entries from the widget
+            if scan.get("status") in ("Pending", "Quarantined"):
+                continue
+            recent_data.append({
+                "id":           scan.get("id"),
+                "timestamp":    scan.get("upload_time"),
+                "filename":     scan.get("filename"),
+                "threat_level": scan.get("threat_level", "Low"),
+                "risk_score":   scan.get("risk_score", 0),
+                "status":       scan.get("status", "Safe"),
+                "ai_analysis":  (scan.get("ai_analysis")[:100] + "...") if scan.get("ai_analysis") else None,
+            })
     except Exception as exc:
         logger.error("realtime_detections_api recent scans error: %s", exc)
         recent_data = []

@@ -318,8 +318,8 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
             except Exception as e:
                 logger.error(f"Failed to auto-delete malicious file: {e}")
         
-        # Save to database via callback
-        if self.db_callback:
+        # Save to database via callback — skip quarantined files so they don't appear in dashboard
+        if self.db_callback and result.get('status') != 'Quarantined':
             self.db_callback(filename, file_path, result)
         
         # Log to local security log
