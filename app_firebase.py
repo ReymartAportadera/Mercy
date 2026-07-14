@@ -561,6 +561,38 @@ def delete_detection_record_api():
     detection_id = request.form.get("detection_id")
     if not detection_id:
         return jsonify({"error": "Missing detection_id"}), 400
+
+    if detection_id.startswith("local_"):
+        # This is a local system monitor detection stored in TrustFile_Detections.json
+        detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
+        if os.path.exists(detections_file):
+            try:
+                with open(detections_file, "r", encoding="utf-8") as f:
+                    detections = json.load(f)
+
+                updated_detections = []
+                target_filepath = None
+                for entry in detections:
+                    if isinstance(entry, dict):
+                        path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                        time_str = entry.get("timestamp", "") or ""
+                        h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
+                        if f"local_{h}" == detection_id:
+                            target_filepath = path_str
+                        else:
+                            updated_detections.append(entry)
+
+                if target_filepath:
+                    _trash_file(target_filepath)
+                    with open(detections_file, "w", encoding="utf-8") as f:
+                        json.dump(updated_detections, f, indent=2)
+                    return jsonify({"status": "deleted", "message": "File moved to Recycle Bin"})
+            except Exception as e:
+                logger.error("Error deleting local detection: %s", e)
+                return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Local detection file not found"}), 404
+
+    # Otherwise it's a standard Firebase record
     record = fb.get_uploaded_file(detection_id)
     if record:
         _trash_file(record.get("filepath", ""))
@@ -1212,9 +1244,18 @@ def realtime_detections_api():
     if os.path.exists(detections_file):
         try:
             with open(detections_file, "r", encoding="utf-8") as f:
-                detections = json.load(f)
-        except Exception:
-            pass
+                raw_detections = json.load(f)
+                for entry in raw_detections:
+                    if isinstance(entry, dict):
+                        # Generate a synthetic ID using file_path and timestamp
+                        path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                        time_str = entry.get("timestamp", "") or ""
+                        h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
+                        entry["id"] = f"local_{h}"
+                        entry["filepath"] = path_str
+                        detections.append(entry)
+        except Exception as e:
+            logger.error("Error reading TrustFile_Detections.json: %s", e)
             
     try:
         files = fb.list_user_files(current_user.uid)
