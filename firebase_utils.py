@@ -3,8 +3,12 @@ import uuid
 import logging
 import firebase_admin
 from firebase_admin import credentials, db
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+
+# Load .env file if present
+load_dotenv()
 
 # ── Initialize Firebase Admin SDK ─────────────────────────────────────────────
 _cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")

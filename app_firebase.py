@@ -1433,6 +1433,11 @@ if __name__ == "__main__":
         debug=_debug,
         host="0.0.0.0",
         port=5000,
-        exclude_patterns=["*/uploads/*", "*/__pycache__/*"],
+        exclude_patterns=[
+            "**/uploads/*", "**/uploads/**/*",
+            "**\\uploads\\*", "**\\uploads\\**\\*",
+            "**/__pycache__/*", "**/__pycache__/**/*",
+            "**\\__pycache__\\*", "**\\__pycache__\\**\\*"
+        ],
     )
 
