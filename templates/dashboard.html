@@ -2,375 +2,287 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>TrustFile Dashboard</title>
+<title>TrustFile | Dashboard</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div class="container">
+<!-- ===== MOBILE OVERLAY ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar glass">
-        <h2>TrustFile</h2>
-        <a href="{{ url_for('dashboard') }}" class="active"><i class="fa-solid fa-table"></i> Dashboard</a>
-        <a href="{{ url_for('uploadfiles') }}"><i class="fa-solid fa-file"></i> Upload</a>
-        <a href="{{ url_for('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
-        <a href="{{ url_for('reports') }}"><i class="fa-solid fa-chart-line"></i> Reports</a>
-        <a href="{{ url_for('settings') }}"><i class="fa-solid fa-gear"></i> Settings</a>
-        <a href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-    </div>
+<!-- ===== MOBILE TOP NAV ===== -->
+<nav class="mobile-nav">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <span class="mobile-logo">TRUST<span>FILE</span></span>
+    <span class="mobile-user"><i class="fa-solid fa-user-circle"></i></span>
+</nav>
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
+<div class="app-layout">
 
-        <!-- FLASH MESSAGES -->
-        <div class="flash-container">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="flash-message {% if category in ['warning','error'] %}flash-warning{% elif category == 'success' %}flash-success{% endif %}">
-                            {% if category == 'warning' %}<i class="fa-solid fa-triangle-exclamation"></i> {% endif %}
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-text">TRUST<span>FILE</span></div>
+            <button class="sidebar-close" onclick="closeSidebar()"><i class="fa-solid fa-xmark"></i></button>
         </div>
+        <div class="user-pill">
+            <i class="fa-solid fa-user-shield"></i>
+            <span class="user-email">{{ current_user.email }}</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-item active">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('uploadfiles') }}" class="nav-item">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Upload</span>
+            </a>
+            <a href="{{ url_for('history') }}" class="nav-item">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>History</span>
+            </a>
+            <a href="{{ url_for('reports') }}" class="nav-item">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+        </a>
+    </aside>
 
-        <!-- ========== REAL-TIME PROTECTION BANNER ========== -->
-        <div class="real-time-banner glass">
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                {% for category, message in messages %}
+                    <div class="flash-msg {{ 'flash-warn' if category in ['warning','error'] else 'flash-ok' if category == 'success' else '' }}">
+                        <i class="fa-solid {{ 'fa-triangle-exclamation' if category in ['warning','error'] else 'fa-circle-check' if category == 'success' else 'fa-circle-info' }}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Page Header -->
+        <header class="page-header">
             <div>
-                <i class="fa-solid fa-shield-halved" style="color: #ff1e1e;"></i>
-                <strong>Real-time Protection</strong> 
-                <span id="protection-status-text" style="color: #00ff88;">● ACTIVE</span>
-                <span style="font-size: 0.8rem; color: var(--text-dim); margin-left: 10px;">Monitoring entire system</span>
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-sub">Welcome back, {{ current_user.email.split('@')[0] }}</p>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <div id="monitor-status-badge" class="status-badge running" style="display: none;"></div>
-                <a href="{{ url_for('settings') }}" style="color: var(--text-dim); font-size: 0.8rem;">
-                    <i class="fa-solid fa-gear"></i> Settings
+            <div class="header-actions">
+                <div class="protection-badge">
+                    <span class="pulse-dot"></span>
+                    <span id="protection-status-text">ACTIVE</span>
+                </div>
+                <a href="{{ url_for('uploadfiles') }}" class="btn-primary">
+                    <i class="fa-solid fa-plus"></i> Scan File
                 </a>
             </div>
-        </div>
+        </header>
 
-        <!-- TOPBAR -->
-        <div class="topbar">
-            <span>👤 {{ current_user.email }}</span>
-        </div>
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">{{ total_scans }}</div>
+                    <div class="stat-label">Total Scans</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-green"><i class="fa-solid fa-shield-check"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">{{ safe_files }}</div>
+                    <div class="stat-label">Safe Files</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-sky"><i class="fa-solid fa-bug-slash"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">{{ low_threat }}</div>
+                    <div class="stat-label">Low Threat</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-yellow"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">{{ medium_threat }}</div>
+                    <div class="stat-label">Medium Threat</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-orange"><i class="fa-solid fa-radiation"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">{{ high_threat }}</div>
+                    <div class="stat-label">High Threat</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-red"><i class="fa-solid fa-skull-crossbones"></i></div>
+                <div class="stat-info">
+                    <div class="stat-num">{{ critical_threat }}</div>
+                    <div class="stat-label">Critical</div>
+                </div>
+            </div>
+        </section>
 
-        <!-- CARDS -->
-        <div class="cards">
-            <div class="card glass">
-                <h3>{{ total_scans }}</h3>
-                <p>Total Scans</p>
+        <!-- Files Section -->
+        <section class="files-section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-folder-open"></i> Scanned Files</h2>
+                <div class="section-controls">
+                    <div class="search-wrap">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" id="fileSearch" placeholder="Search files..." onkeyup="filterFiles()">
+                    </div>
+                    <select id="threatFilter" onchange="filterFiles()" class="filter-select">
+                        <option value="">All Levels</option>
+                        <option value="safe">Safe</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
             </div>
-            <div class="card glass">
-                <h3>{{ safe_files }}</h3>
-                <p>Safe Files</p>
-            </div>
-            <div class="card glass low">
-                <h3>{{ low_threat }}</h3>
-                <p>Low Threat</p>
-            </div>
-            <div class="card glass medium">
-                <h3>{{ medium_threat }}</h3>
-                <p>Medium Threat</p>
-            </div>
-            <div class="card glass high">
-                <h3>{{ high_threat }}</h3>
-                <p>High Threat</p>
-            </div>
-            <div class="card glass critical">
-                <h3>{{ critical_threat }}</h3>
-                <p>Critical Threat</p>
-            </div>
-        </div>
-
-        <!-- REAL-TIME DETECTIONS WIDGET -->
-        <div class="uploaded-files glass" style="margin-top: 20px;">
-            <h3>
-                <i class="fa-solid fa-bell"></i>
-                Real-time Threat Detections
-                <span style="float: right; font-size: 0.7rem; color: var(--text-dim);" id="last-update-time"></span>
-            </h3>
-            <div id="realtime-detections-container">
-                <p style="text-align: center; color: var(--text-dim);">
-                    <i class="fa-solid fa-circle-info"></i> No real-time detections yet. The system is monitoring your computer.
-                </p>
-            </div>
-        </div>
-
-        <!-- UPLOADED FILES TABLE -->
-        <div class="uploaded-files glass">
-            <h3>Uploaded Files</h3>
 
             {% if files %}
-            <table class="files-table">
-                <thead>
-                    <tr>
-                        <th>Filename</th>
-                        <th>Uploaded</th>
-                        <th>Status</th>
-                        <th>Threat Level</th>
-                        <th>Risk %</th>
-                        <th>Pattern</th>
-                        <th>Entropy</th>
-                        <th>Signature</th>
-                        <th>Size</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="file-cards" id="fileCards">
                 {% for file in files %}
-                    <tr class="{% if file.status == 'Quarantined' %}quarantined-row{% endif %}">
-                        <td>{{ file.filename }}</td>
-                        <td>{{ file.upload_time | format_dt }}</td>
-                        <td class="{{ file.status|lower }}">{{ file.status }}</td>
-                        <td class="{{ file.threat_level|lower }}">{{ file.threat_level if file.threat_level else "-" }}</td>
-                        <td>{{ file.risk_score if file.risk_score else "0" }}%</td>
-                        <td>{{ file.pattern_result if file.pattern_result else "-" }}</td>
-                        <td>{{ file.entropy if file.entropy else "-" }}</td>
-                        <td>{{ file.signature_status if file.signature_status else "-" }}</td>
-                        <td>{{ file.size if file.size else "-" }}</td>
-                        <td>
-                            <a href="{{ url_for('scan_page', file_id=file.id) }}" class="scan-btn" title="View scan results"
-                               style="margin-right:4px; background: rgba(0,204,255,0.12); color:#00ccff; border:1px solid rgba(0,204,255,0.3);">
-                                <i class="fa-solid fa-magnifying-glass"></i> Results
-                            </a>
-                            <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;"
-                                  onsubmit="return confirm('Move this file to the Recycle Bin?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button class="scan-btn delete-btn" title="Move to Recycle Bin">
-                                    <i class="fa-solid fa-trash"></i> Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
+                <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}">
+                    <div class="file-card-icon">
+                        {% set ext = file.filename.rsplit('.', 1)[-1]|lower if '.' in file.filename else 'file' %}
+                        {% if ext in ['pdf'] %}<i class="fa-solid fa-file-pdf"></i>
+                        {% elif ext in ['doc','docx'] %}<i class="fa-solid fa-file-word"></i>
+                        {% elif ext in ['xls','xlsx'] %}<i class="fa-solid fa-file-excel"></i>
+                        {% elif ext in ['zip','rar','7z','tar','gz'] %}<i class="fa-solid fa-file-zipper"></i>
+                        {% elif ext in ['py','js','ts','sh','bat','ps1','php'] %}<i class="fa-solid fa-file-code"></i>
+                        {% elif ext in ['exe','dll','msi'] %}<i class="fa-solid fa-microchip"></i>
+                        {% elif ext in ['jpg','jpeg','png','gif','bmp','svg','webp'] %}<i class="fa-solid fa-file-image"></i>
+                        {% elif ext in ['mp4','avi','mov','mkv'] %}<i class="fa-solid fa-file-video"></i>
+                        {% else %}<i class="fa-solid fa-file-lines"></i>{% endif %}
+                    </div>
+                    <div class="file-card-info">
+                        <div class="file-name" title="{{ file.filename }}">{{ file.filename }}</div>
+                        <div class="file-meta">
+                            <span><i class="fa-solid fa-clock"></i> {{ file.upload_time | format_dt if file.upload_time else 'N/A' }}</span>
+                            <span><i class="fa-solid fa-weight-hanging"></i> {{ file.size if file.size else 'N/A' }}</span>
+                        </div>
+                        <div class="file-risk-bar">
+                            <div class="risk-fill risk-{{ file.threat_level|lower if file.threat_level else 'safe' }}" style="width: {{ file.risk_score if file.risk_score else 0 }}%"></div>
+                        </div>
+                        <div class="file-tags">
+                            <span class="tag-level level-{{ file.threat_level|lower if file.threat_level else 'safe' }}">
+                                {% if file.threat_level|lower == 'critical' %}<i class="fa-solid fa-skull-crossbones"></i>
+                                {% elif file.threat_level|lower == 'high' %}<i class="fa-solid fa-radiation"></i>
+                                {% elif file.threat_level|lower == 'medium' %}<i class="fa-solid fa-triangle-exclamation"></i>
+                                {% elif file.threat_level|lower == 'low' %}<i class="fa-solid fa-bug-slash"></i>
+                                {% else %}<i class="fa-solid fa-shield-check"></i>{% endif %}
+                                {{ file.threat_level if file.threat_level else 'Safe' }}
+                            </span>
+                            <span class="tag-risk">{{ file.risk_score if file.risk_score else 0 }}% Risk</span>
+                            <span class="tag-status status-{{ file.status|lower if file.status else 'safe' }}">{{ file.status if file.status else 'Safe' }}</span>
+                        </div>
+                    </div>
+                    <div class="file-card-actions">
+                        <a href="{{ url_for('scan_page', file_id=file.id) }}" class="action-btn btn-view" title="View Results">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <span>Results</span>
+                        </a>
+                        <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}"
+                              onsubmit="return confirm('Move this file to the Recycle Bin?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="action-btn btn-delete" title="Delete File">
+                                <i class="fa-solid fa-trash"></i>
+                                <span>Delete</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 {% endfor %}
-                </tbody>
-            </table>
+            </div>
+            <p class="no-results-msg" id="noResults" style="display:none;">
+                <i class="fa-solid fa-search"></i> No files match your search.
+            </p>
             {% else %}
-                <p>No files uploaded yet.</p>
+            <div class="empty-state">
+                <i class="fa-solid fa-shield-virus"></i>
+                <h3>No Files Scanned Yet</h3>
+                <p>Upload a file to start scanning for threats.</p>
+                <a href="{{ url_for('uploadfiles') }}" class="btn-primary">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Scan
+                </a>
+            </div>
             {% endif %}
-        </div>
+        </section>
 
-    </div>
+    </main>
 </div>
 
-<script src="{{ url_for('static', filename='theme.js') }}"></script>
 <script>
-    // ==================== REAL-TIME MONITOR CONTROL ====================
-    
-    class SystemMonitor {
-        static async start() {
-            try {
-                const response = await fetch('/api/start_monitor', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-                if (data.success) {
-                    await this.updateStatus();
-                    this.showToast('Real-time protection ENABLED', 'success');
-                } else {
-                    this.showToast('Failed to start: ' + (data.error || 'Unknown error'), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to start monitor:', error);
-                this.showToast('Failed to start protection', 'error');
-            }
-        }
-        
-        static async stop() {
-            try {
-                const response = await fetch('/api/stop_monitor', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-                if (data.success) {
-                    await this.updateStatus();
-                    this.showToast('Real-time protection DISABLED', 'info');
-                } else {
-                    this.showToast('Failed to stop: ' + (data.error || 'Unknown error'), 'error');
-                }
-            } catch (error) {
-                console.error('Failed to stop monitor:', error);
-                this.showToast('Failed to stop protection', 'error');
-            }
-        }
-        
-        static async updateStatus() {
-            try {
-                const response = await fetch('/api/monitor_status');
-                const data = await response.json();
-                
-                const statusText = document.getElementById('protection-status-text');
-                const statusBadge = document.getElementById('monitor-status-badge');
-                const monitoredCount = document.getElementById('monitored-count');
-                
-                if (data.running) {
-                    if (statusText) {
-                        statusText.innerHTML = '● ACTIVE';
-                        statusText.style.color = '#00ff88';
-                    }
-                    if (statusBadge) {
-                        statusBadge.className = 'status-badge running';
-                        statusBadge.style.display = 'inline-block';
-                        statusBadge.innerHTML = '● PROTECTING';
-                    }
-                    if (monitoredCount) {
-                        monitoredCount.innerHTML = `<i class="fa-solid fa-folder-tree"></i> Monitoring ${data.monitored_locations || 'all'} locations`;
-                    }
-                } else {
-                    if (statusText) {
-                        statusText.innerHTML = '○ INACTIVE';
-                        statusText.style.color = '#ff1e1e';
-                    }
-                    if (statusBadge) {
-                        statusBadge.className = 'status-badge stopped';
-                        statusBadge.style.display = 'inline-block';
-                        statusBadge.innerHTML = '⚠ INACTIVE';
-                    }
-                    if (monitoredCount) {
-                        monitoredCount.innerHTML = '';
-                    }
-                }
-            } catch (error) {
-                console.error('Status update failed:', error);
-            }
-        }
-        
-        static showToast(message, type) {
-            // Remove existing toasts
-            const existingToasts = document.querySelectorAll('.monitor-toast');
-            existingToasts.forEach(toast => toast.remove());
-            
-            // Create new toast
-            const toast = document.createElement('div');
-            toast.className = `monitor-toast ${type}`;
-            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle');
-            toast.innerHTML = `
-                <i class="fa-solid ${icon}"></i>
-                <span>${message}</span>
-            `;
-            document.body.appendChild(toast);
-            
-            // Auto remove after 3 seconds
-            setTimeout(() => {
-                toast.style.animation = 'slideOutRight 0.3s ease forwards';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-    }
-    
-    // ==================== DASHBOARD FUNCTIONS ====================
-    
-    // Get user's saved theme from server and apply it
-    document.addEventListener('DOMContentLoaded', function() {
-        const savedTheme = '{{ settings.theme if settings else "dark" }}';
-        if (savedTheme && savedTheme !== ThemeManager.currentTheme) {
-            ThemeManager.setTheme(savedTheme);
-        }
-        
-        // Initialize monitor status
-        SystemMonitor.updateStatus();
-        setInterval(() => SystemMonitor.updateStatus(), 5000);
+// ===== SIDEBAR TOGGLE =====
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+}
 
-        // Start real-time detections polling
-        updateRealtimeDetections();
-        setInterval(updateRealtimeDetections, 5000);
+// ===== FILE SEARCH & FILTER =====
+function filterFiles() {
+    const q = document.getElementById('fileSearch').value.toLowerCase();
+    const level = document.getElementById('threatFilter').value.toLowerCase();
+    const cards = document.querySelectorAll('#fileCards .file-card');
+    let visible = 0;
+    cards.forEach(c => {
+        const nameMatch = (c.dataset.name || '').includes(q);
+        const levelMatch = !level || (c.dataset.level || '') === level;
+        if (nameMatch && levelMatch) { c.style.display = ''; visible++; }
+        else c.style.display = 'none';
     });
+    const noRes = document.getElementById('noResults');
+    if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
+}
 
-    // ==================== REAL-TIME DETECTIONS ====================
-    function updateRealtimeDetections() {
-        fetch('/api/realtime_detections')
-            .then(r => r.json())
-            .then(data => {
-                const container = document.getElementById('realtime-detections-container');
-                const updateTime = document.getElementById('last-update-time');
-                if (updateTime) updateTime.innerHTML = `Last update: ${new Date().toLocaleTimeString()}`;
-
-                const all = [...(data.realtime || []), ...(data.recent_scans || [])];
-                if (!container) return;
-                if (all.length === 0) {
-                    container.innerHTML = '<p style="text-align:center;color:var(--text-dim)"><i class="fa-solid fa-circle-info"></i> No detections yet. System is monitoring.</p>';
-                    return;
-                }
-
-                let html = '<div style="max-height:300px;overflow-y:auto"><table class="files-table"><thead><tr>';
-                html += '<th>Time</th><th>Filename</th><th>Threat Level</th><th>Risk</th><th>Status</th><th>Action</th>';
-                html += '</tr></thead><tbody>';
-
-                all.slice(0, 20).forEach(d => {
-                    const time = d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : 'Just now';
-                    const tc   = (d.threat_level || 'low').toLowerCase();
-                    const icon = tc === 'critical' ? '🔴' : tc === 'high' ? '🟠' : tc === 'medium' ? '🟡' : tc === 'low' ? '🟢' : '⚪';
-                    const del  = d.id ? `<button class="scan-btn delete-btn" style="padding:4px 8px;font-size:.75rem"
-                        onclick="deleteDetection('${d.id}',this)" title="Move to Recycle Bin">
-                        <i class="fa-solid fa-trash"></i></button>` : '';
-                    html += `<tr>
-                        <td style="font-size:.75rem">${time}</td>
-                        <td style="font-family:monospace;font-size:.8rem">${escapeHtml(d.filename||'Unknown')}</td>
-                        <td class="${tc}">${icon} ${d.threat_level||'Low'}</td>
-                        <td>${d.risk_score||0}%</td>
-                        <td class="${(d.status||'safe').toLowerCase()}">${d.status||'Safe'}</td>
-                        <td>${del}</td>
-                    </tr>`;
-                });
-                html += '</tbody></table></div>';
-                container.innerHTML = html;
-            })
-            .catch(e => console.error('Detections error:', e));
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const d = document.createElement('div');
-        d.textContent = text;
-        return d.innerHTML;
-    }
-
-    async function deleteDetection(id, btn) {
-        if (!confirm('Move this file to the Recycle Bin and remove the record?')) return;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-        try {
-            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ||
-                         document.querySelector('input[name="csrf_token"]')?.value || '';
-            const fd = new FormData();
-            fd.append('detection_id', id);
-            fd.append('csrf_token', csrf);
-            const res  = await fetch('/api/delete_detection_record', { method: 'POST', body: fd });
-            const data = await res.json();
-            if (data.status === 'deleted') {
-                btn.closest('tr')?.remove();
-                SystemMonitor.showToast('File moved to Recycle Bin', 'success');
-            } else {
-                SystemMonitor.showToast('Delete failed: ' + (data.error || '?'), 'error');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-trash"></i>';
-            }
-        } catch (e) {
-            SystemMonitor.showToast('Network error', 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+// ===== MONITOR STATUS =====
+async function updateMonitorStatus() {
+    try {
+        const r = await fetch('/api/monitor_status');
+        const d = await r.json();
+        const el = document.getElementById('protection-status-text');
+        if (el) {
+            el.textContent = d.running ? 'ACTIVE' : 'INACTIVE';
+            el.parentElement.className = `protection-badge ${d.running ? '' : 'inactive'}`;
         }
-    }
-    
-    // Add slideOutRight animation for toasts
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideOutRight {
-            from { transform: translateX(0); opacity: 1; }
-            to   { transform: translateX(100%); opacity: 0; }
-        }
-    `;
-    document.head.appendChild(style);
+    } catch(e) {}
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+    updateMonitorStatus();
+    setInterval(updateMonitorStatus, 10000);
+
+    // Auto-hide flash messages
+    document.querySelectorAll('.flash-msg').forEach(m => {
+        setTimeout(() => m.style.opacity = '0', 4000);
+        setTimeout(() => m.remove(), 4500);
+    });
+});
 </script>
-
 </body>
 </html>

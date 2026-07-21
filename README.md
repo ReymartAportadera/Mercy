@@ -4,9 +4,7 @@
 
 **TrustFile** is a file security platform that scans and protects files before access. The system analyzes uploaded files for malicious content using heuristic analysis, VirusTotal API integration, and AI-powered threat classification before allowing users to access or download them.
 
-## Project Purpose
-
-The goal of TrustFile is to detect, analyze, and remove malicious software before files are accessed. TrustFile protects users by scanning potentially harmful files, assessing their threat level, and providing one-click deletion or quarantine options before any damage can occur.
+---
 
 ## Key Features
 
@@ -17,102 +15,61 @@ The goal of TrustFile is to detect, analyze, and remove malicious software befor
 | **VirusTotal Integration** | Uses 70+ antivirus engines for accurate known malware detection |
 | **AI-Powered Analysis** | NVIDIA NIM (Llama 3.1) provides intelligent threat explanations |
 | **Malware Classification** | Identifies ransomware, trojans, keyloggers, worms, and spyware |
-| **Risk Scoring** | 0-100% threat level |
-| **One-Click Removal** | Delete or quarantine infected files immediately |
+| **Risk Scoring** | 0-100% threat level assessment |
+| **Auto-Quarantine & Recycle Bin** | Automatically moves malicious files to the Recycle Bin |
 | **Interactive Dashboard** | File upload and scan management interface |
-| **Exportable Reports** | PDF, HTML, JSON formats for documentation |
+| **Real-time Threat Monitoring** | Watches designated folders for immediate threat detection |
+
+---
 
 ## Technology Stack
 
 | Layer | Technology |
 |-------|------------|
-| **Backend** | Python 3.8+, Flask, SQLAlchemy |
-| **Database** | MySQL |
+| **Backend** | Python 3.8+, Flask |
+| **Database** | Firebase Realtime Database (Google Cloud) |
 | **Security APIs** | VirusTotal API, NVIDIA NIM AI |
 | **Frontend** | HTML5, CSS3, JavaScript, Chart.js |
 
-## Project Structure
+---
 
+## Installation & Setup
 
+To run this project on a new device, follow these steps:
 
-##  Project Structure
+### 1. Set Up the Environment File
+Create a `.env` file in the root of the project. You can copy the template from `.env.example`:
 
-trustfile/
-├── app.py                 # Main Flask application
-├── file_monitor.py        # Real-time file system monitor
-├── requirements.txt       # Python dependencies
-├── api/
-│   ├── malware_api.py     # VirusTotal integration
-│   └── ai_analysis.py     # NVIDIA NIM AI integration
-├── static/
-│   ├── dashboard.css      # Stylesheets
-│   ├── theme.css          
-│   ├── theme.js           # Theme manager
-│   ├── home.css
-│   ├── login.css
-│   ├── report.css
-│   ├── scan.css
-│   ├── setting.css
-│   ├── upload.css
-    ├──history.css 
-    └── uploads/           # User uploaded files
-├── templates/
-│   ├── dashboard.html     # Main dashboard
-│   ├── scan.html          # Scan interface
-│   ├── reports.html       # Reports page
-│   ├── settings.html      # User settings
-│   ├── history.html       # Scan history
-│   ├── home.html          # Landing page
-│   ├── login.html         # Login page
-│   ├── signup.html        # Registration page
-│   └── uploadfiles.html   # File upload page
-└── models/                # Database models
+```bash
+cp .env.example .env
+```
 
+Open the `.env` file and configure the variables:
 
+*   `FIREBASE_DB_URL`: The URL to your Firebase Realtime Database.
+*   `FIREBASE_SERVICE_ACCOUNT`: The absolute path to your downloaded Firebase private key JSON file (e.g., `D:/Flask website/serviceAccountKey.json`).
+*   `VIRUSTOTAL_API_KEY`: Your VirusTotal API Key for scanning files.
+*   `UPLOAD_FOLDER`: Absolute path to the folder where scanned uploads are stored.
 
-## Dependencies
+### 2. Get Firebase Private Credentials
+1. Go to the [Firebase Console](https://console.firebase.google.com/).
+2. Open your project.
+3. Click the Gear Icon ⚙️ (**Project Settings**) -> **Service accounts**.
+4. Click **Generate new private key** and download the `.json` file.
+5. Place the downloaded `.json` file inside your project directory and set its path in the `.env` file under `FIREBASE_SERVICE_ACCOUNT`.
 
-### Core Dependencies
+### 3. Install Python Dependencies
+Activate your virtual environment and install the required modules:
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| Flask | 2.0+ | Web framework for building the application |
-| Flask-SQLAlchemy | 2.5+ | ORM for database operations |
-| Flask-Login | 0.5+ | User session management and authentication |
-| Flask-WTF | 1.0+ | Form handling and CSRF protection |
-| WTForms | 3.0+ | Form validation and rendering |
-| mysql-connector-python | 8.0+ | MySQL database connector |
-| Werkzeug | 2.0+ | WSGI utilities and password hashing |
+```bash
+pip install -r requirements.txt
+```
 
-### Security & Analysis Dependencies
+### 4. Run the Application
+Start the Flask application:
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| requests | 2.25+ | HTTP requests for VirusTotal API |
-| openai | 1.0+ | NVIDIA NIM AI integration |
-| watchdog | 2.1+ | Real-time file system monitoring |
-
-### Frontend Dependencies (CDN)
-
-| Library | Version | Purpose |
-|---------|---------|---------|
-| Font Awesome | 6.5.0 | Icons and visual elements |
-| Chart.js | 4.4.0 | Data visualization for reports |
-
-### requirements.txt
-
-Create a `requirements.txt` file with the following content:
-
-```txt
-Flask>=2.0.0
-Flask-SQLAlchemy>=2.5.0
-Flask-Login>=0.5.0
-Flask-WTF>=1.0.0
-WTForms>=3.0.0
-mysql-connector-python>=8.0.0
-Werkzeug>=2.0.0
-requests>=2.25.0
-openai>=1.0.0
-watchdog>=2.1.0
+```bash
+python app_firebase.py
+```
 
 

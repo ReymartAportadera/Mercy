@@ -2,135 +2,263 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>TrustFile History</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrustFile – Scan History</title>
+<meta name="description" content="Browse your TrustFile scan history organized by date. Click a day folder to see all scanned files and their threat analysis results.">
 <link rel="stylesheet" href="{{ url_for('static', filename='history.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Day Folder Grid ─────────────────────────────────────────── */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.page-header h2 { margin-bottom: 0; border: none; padding: 0; }
+
+.folders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.day-folder {
+    background: rgba(20, 20, 30, 0.85);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+}
+.day-folder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,30,30,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    transition: opacity 0.3s;
+    opacity: 0;
+}
+.day-folder:hover::before { opacity: 1; }
+.day-folder:hover {
+    border-color: rgba(255,30,30,0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.day-folder.highest-critical { border-left: 4px solid #ff1e1e; }
+.day-folder.highest-high     { border-left: 4px solid #ff6600; }
+.day-folder.highest-medium   { border-left: 4px solid #ffcc00; }
+.day-folder.highest-low      { border-left: 4px solid #33ccff; }
+.day-folder.highest-safe     { border-left: 4px solid #00ff88; }
+
+.folder-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+.folder-icon {
+    font-size: 2.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.folder-meta { flex: 1; min-width: 0; }
+.folder-date {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f5f5f5;
+    margin: 0 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.folder-subtitle {
+    font-size: 0.78rem;
+    color: #888;
+}
+.folder-count {
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 3px 10px;
+    color: #ccc;
+    white-space: nowrap;
+    align-self: flex-start;
+}
+
+/* Threat summary pills */
+.threat-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.pill {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+}
+.pill-safe     { background: rgba(0,255,136,0.12);  color: #00ff88; border: 1px solid rgba(0,255,136,0.25); }
+.pill-low      { background: rgba(51,204,255,0.12); color: #33ccff; border: 1px solid rgba(51,204,255,0.25); }
+.pill-medium   { background: rgba(255,204,0,0.12);  color: #ffcc00; border: 1px solid rgba(255,204,0,0.25); }
+.pill-high     { background: rgba(255,102,0,0.12);  color: #ff6600; border: 1px solid rgba(255,102,0,0.25); }
+.pill-critical { background: rgba(255,30,30,0.15);  color: #ff1e1e; border: 1px solid rgba(255,30,30,0.3);  }
+
+.folder-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.view-day-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(255,30,30,0.15);
+    border: 1px solid rgba(255,30,30,0.35);
+    border-radius: 8px;
+    padding: 6px 14px;
+    transition: background 0.2s, transform 0.2s;
+}
+.view-day-btn:hover {
+    background: rgba(255,30,30,0.35);
+    transform: translateX(3px);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 70px 20px;
+    color: #666;
+}
+.empty-state i { font-size: 3rem; margin-bottom: 16px; display: block; color: #333; }
+.empty-state p { font-size: 0.95rem; }
+
+.stat-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 26px;
+}
+.stat-item { display: flex; flex-direction: column; }
+.stat-value { font-size: 1.6rem; font-weight: 800; color: #f5f5f5; line-height: 1; }
+.stat-label { font-size: 0.7rem; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+</style>
 </head>
 <body>
 
 <div class="history-container glass">
-    <a href="{{ url_for('dashboard') }}" class="dashboard-link"><i class="fa-solid fa-table"></i> Dashboard</a>
+    <a href="{{ url_for('dashboard') }}" class="dashboard-link">
+        <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+    </a>
 
-    <h2>Uploaded Files History</h2>
-
-    <!-- Optional Filter Section -->
-    <div class="filter-section">
-        <input type="text" id="aiSearch" placeholder="🔍 Search AI analysis..." onkeyup="filterAI()">
+    <div class="page-header">
+        <h2><i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-red); margin-right: 10px;"></i>Scan History</h2>
+        {% if day_summaries %}
+        <span class="folder-count"><i class="fa-solid fa-calendar-days"></i> {{ day_summaries|length }} day{{ 's' if day_summaries|length != 1 else '' }}</span>
+        {% endif %}
     </div>
 
-    {% if files %}
-    <table class="history-table">
-        <thead>
-            <tr>
-                <th>Filename</th>
-                <th>Upload Date</th>
-                <th>Size</th>
-                <th>Threat Level</th>
-                <th>Risk Score</th>
-                <th>AI Analysis</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for file in files %}
-            <tr>
-                <td>{{ file.filename }}</td>
-                <td>{{ file.upload_time | format_dt("%b %d, %Y %H:%M") }}</td>
-                <td>{{ file.size }}</td>
-                <td class="threat-level {{ file.threat_level|lower }}">{{ file.threat_level }}</td>
-                <td class="risk-score">
-                    {% if file.risk_score %}
-                        <span class="risk-badge risk-{{ file.risk_score|round|int }}">
-                            {{ file.risk_score }}%
-                        </span>
-                    {% else %}
-                        -
+    {% if day_summaries %}
+    <!-- Summary stats -->
+    {% set total_files = namespace(n=0) %}
+    {% set total_threats = namespace(n=0) %}
+    {% for d in day_summaries %}
+        {% set total_files.n = total_files.n + d.total %}
+        {% set total_threats.n = total_threats.n + d.threat_counts.high + d.threat_counts.critical %}
+    {% endfor %}
+    <div class="stat-row">
+        <div class="stat-item">
+            <span class="stat-value">{{ total_files.n }}</span>
+            <span class="stat-label">Total Scanned</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" style="color: #ff6600;">{{ total_threats.n }}</span>
+            <span class="stat-label">High / Critical</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" style="color: #33ccff;">{{ day_summaries|length }}</span>
+            <span class="stat-label">Days Active</span>
+        </div>
+    </div>
+
+    <!-- Day Folder Grid -->
+    <div class="folders-grid">
+        {% for day in day_summaries %}
+        <a href="{{ url_for('history_day', date=day.day_key) }}" class="day-folder highest-{{ day.highest }}">
+            <div class="folder-top">
+                <div class="folder-icon">
+                    {% if day.highest == 'critical' %}🔴
+                    {% elif day.highest == 'high' %}🟠
+                    {% elif day.highest == 'medium' %}🟡
+                    {% elif day.highest == 'low' %}🔵
+                    {% else %}🟢
                     {% endif %}
-                </td>
-                <td class="ai-analysis-cell">
-                    {% if file.ai_analysis %}
-                        <div class="ai-preview">
-                            <i class="fa-solid fa-robot"></i>
-                            <span class="ai-text">{{ file.ai_analysis[:100] }}{% if file.ai_analysis|length > 100 %}...{% endif %}</span>
-                            <button class="view-ai-btn" onclick="showAIModal('{{ file.id }}', '{{ file.filename }}', `{{ file.ai_analysis|escape }}`)">
-                                <i class="fa-solid fa-expand"></i>
-                            </button>
-                        </div>
-                    {% else %}
-                        <span class="no-ai">Not analyzed</span>
-                    {% endif %}
-                </td>
-                <td class="actions">
-                    <a href="{{ url_for('view_result', file_id=file.id) }}">
-                        <button class="btn view-btn">View</button>
-                    </a>
-                    <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn delete-btn">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </div>
+                <div class="folder-meta">
+                    <p class="folder-date">
+                        <i class="fa-solid fa-folder" style="color: #888; margin-right: 6px;"></i>
+                        {{ day.day_label }}
+                    </p>
+                    <p class="folder-subtitle">Click to view all scan results from this day</p>
+                </div>
+                <span class="folder-count">{{ day.total }} file{{ 's' if day.total != 1 else '' }}</span>
+            </div>
+
+            <!-- Threat breakdown pills -->
+            <div class="threat-pills">
+                {% if day.threat_counts.safe > 0 %}
+                <span class="pill pill-safe"><i class="fa-solid fa-check"></i> {{ day.threat_counts.safe }} Safe</span>
+                {% endif %}
+                {% if day.threat_counts.low > 0 %}
+                <span class="pill pill-low"><i class="fa-solid fa-circle-info"></i> {{ day.threat_counts.low }} Low</span>
+                {% endif %}
+                {% if day.threat_counts.medium > 0 %}
+                <span class="pill pill-medium"><i class="fa-solid fa-triangle-exclamation"></i> {{ day.threat_counts.medium }} Medium</span>
+                {% endif %}
+                {% if day.threat_counts.high > 0 %}
+                <span class="pill pill-high"><i class="fa-solid fa-exclamation"></i> {{ day.threat_counts.high }} High</span>
+                {% endif %}
+                {% if day.threat_counts.critical > 0 %}
+                <span class="pill pill-critical"><i class="fa-solid fa-skull-crossbones"></i> {{ day.threat_counts.critical }} Critical</span>
+                {% endif %}
+            </div>
+
+            <div class="folder-footer">
+                <span style="font-size: 0.75rem; color: #666;">
+                    <i class="fa-regular fa-calendar"></i> {{ day.day_key }}
+                </span>
+                <span class="view-day-btn">
+                    View Results <i class="fa-solid fa-arrow-right"></i>
+                </span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
     {% else %}
-    <p class="no-files">No files uploaded yet.</p>
+    <div class="empty-state">
+        <i class="fa-solid fa-folder-open"></i>
+        <p>No scan history found. Upload and scan a file to get started.</p>
+        <a href="{{ url_for('uploadfiles') }}" style="display:inline-block; margin-top:16px; padding:10px 22px; background: rgba(255,30,30,0.15); border:1px solid rgba(255,30,30,0.35); border-radius:8px; color:#fff; text-decoration:none; font-size:0.85rem;">
+            <i class="fa-solid fa-upload"></i> Upload a File
+        </a>
+    </div>
     {% endif %}
 </div>
-
-<!-- AI Analysis Modal -->
-<div id="aiModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fa-solid fa-robot"></i> AI Malware Analysis</h3>
-            <span class="close-modal">&times;</span>
-        </div>
-        <div class="modal-body">
-            <p><strong>File:</strong> <span id="modal-filename"></span></p>
-            <div class="ai-full-analysis" id="modal-analysis"></div>
-        </div>
-    </div>
-</div>
-
-<script>
-function showAIModal(fileId, filename, analysis) {
-    document.getElementById('modal-filename').textContent = filename;
-    document.getElementById('modal-analysis').innerHTML = analysis;
-    document.getElementById('aiModal').style.display = 'block';
-}
-
-// Close modal when clicking X
-document.querySelector('.close-modal').onclick = function() {
-    document.getElementById('aiModal').style.display = 'none';
-}
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('aiModal');
-    if (event.target == modal) {
-        modal.style.display = 'none';
-    }
-}
-
-// Filter function for AI analysis
-function filterAI() {
-    const input = document.getElementById('aiSearch');
-    const filter = input.value.toLowerCase();
-    const rows = document.querySelectorAll('.history-table tbody tr');
-    
-    rows.forEach(row => {
-        const aiCell = row.querySelector('.ai-analysis-cell');
-        if (aiCell) {
-            const aiText = aiCell.innerText.toLowerCase();
-            if (aiText.includes(filter)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        }
-    });
-}
-</script>
 
 </body>
 </html>

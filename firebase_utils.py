@@ -14,12 +14,24 @@ load_dotenv()
 _cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
 _db_url    = os.getenv("FIREBASE_DB_URL")
 
+# Fallback: if not set, check for 'serviceAccountKey.json' in the same folder as this script
+if not _cred_path:
+    default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "serviceAccountKey.json")
+    if os.path.exists(default_path):
+        _cred_path = default_path
+
+# If a relative path is provided, resolve it relative to the script directory
+elif not os.path.isabs(_cred_path):
+    resolved_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), _cred_path)
+    if os.path.exists(resolved_path):
+        _cred_path = resolved_path
+
 if not _cred_path:
     raise RuntimeError(
-        "FIREBASE_SERVICE_ACCOUNT env var is not set. "
-        "Download your service-account JSON from the Firebase console "
+        "FIREBASE_SERVICE_ACCOUNT env var is not set and default 'serviceAccountKey.json' was not found. "
+        "Please download your service-account JSON from the Firebase console "
         "(Project Settings → Service accounts → Generate new private key) "
-        "and set FIREBASE_SERVICE_ACCOUNT=/absolute/path/to/key.json in your .env file."
+        "and place it in the project root as 'serviceAccountKey.json'."
     )
 
 if not _db_url:

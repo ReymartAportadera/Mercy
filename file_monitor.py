@@ -308,18 +308,8 @@ class RealTimeSystemMonitor(FileSystemEventHandler):
                     "info"
                 )
         
-        # Auto-quarantine/auto-delete for all malicious threats
-        if is_threat and self.config.get('auto_quarantine', True):
-            try:
-                from send2trash import send2trash
-                send2trash(file_path)
-                logger.info(f"[Monitor] Malicious file automatically moved to Recycle Bin: {filename}")
-                result['status'] = 'Quarantined'
-            except Exception as e:
-                logger.error(f"Failed to auto-delete malicious file: {e}")
-        
-        # Save to database via callback — skip quarantined files so they don't appear in dashboard
-        if self.db_callback and result.get('status') != 'Quarantined':
+        # Save to database via callback — all files saved for manual review
+        if self.db_callback:
             self.db_callback(filename, file_path, result)
         
         # Log to local security log

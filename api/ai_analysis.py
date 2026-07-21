@@ -1,15 +1,83 @@
 """
-ai_analysis.py — Local Smart Malware Analysis Engine
-Produces detailed, human-readable threat assessments using heuristic rules.
-No external API or API key required.
+ai_analysis.py — Smart Malware Analysis Engine using Google Gemini API
+Falls back to a local heuristic rule-based engine if the API key is not configured or fails.
 """
+import os
+import requests
+import json
+from datetime import datetime
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 def analyze_file_ai(entropy, patterns, imports, risk_score):
     """
+    Analyze a file using Google Gemini API. Falls back to local rules if not set or offline.
+    """
+    if GEMINI_API_KEY:
+        try:
+            # Clean inputs
+            ent_val = float(entropy or 0)
+            risk_val = int(risk_score or 0)
+            pat_val = str(patterns or "")
+            imp_val = str(imports or "")
+
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
+            
+            prompt = (
+                f"Analyze this file for potential malware threats based on static analysis metadata:\n\n"
+                f"Metadata:\n"
+                f"- File Entropy: {ent_val:.2f}/8.0 (measure of randomness; packed/encrypted files usually have high entropy > 7.2)\n"
+                f"- Detected Suspicious Patterns: {pat_val}\n"
+                f"- Risky/Dangerous Imports: {imp_val}\n"
+                f"- Heuristic Risk Score: {risk_val}/100\n\n"
+                f"Please provide a concise 3-4 sentence security assessment. Specify the overall threat verdict "
+                f"(Clean, Low Risk, Medium Risk, High Risk, or Critical Risk), the risk score, key findings (e.g. suspicious behavior, "
+                f"obfuscated entropy, dangerous imports), likely malware family classification if suspicious, and a final recommendation "
+                f"(e.g. safe, run in sandbox, quarantine/delete). Keep the response compact, highly professional, and technical."
+            )
+
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 2048
+                }
+            }
+
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(url, json=payload, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                res_data = response.json()
+                # Extract text response from Gemini's JSON structure
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    text_content = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    if text_content.strip():
+                        return text_content.strip()
+        except Exception:
+            # Fall back to local analysis on error
+            pass
+
+    return analyze_file_ai_local(entropy, patterns, imports, risk_score)
+
+
+def analyze_file_ai_local(entropy, patterns, imports, risk_score):
+    """
     Analyze a file using local rule-based intelligence.
-    Returns a multi-sentence assessment string identical in format
-    to what the NVIDIA LLaMA model previously produced.
+    Returns a multi-sentence assessment string.
     """
     try:
         entropy    = float(entropy or 0)

@@ -38,3 +38,6 @@ Flask website/
 # OS artifacts
 Thumbs.db
 .DS_Store
+
+# Deploy archives
+TrustFile_Deploy.zip

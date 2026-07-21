@@ -1,90 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrustFile | Cybersecurity Report</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>TrustFile | Cybersecurity Reports</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='reports.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<a href="{{ url_for('dashboard') }}" class="scan-btn">
-    <i class="fas fa-tachometer-alt"></i> Back to Dashboard
-</a>
+<!-- MOBILE OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<div class="dashboard">
-    <!-- HEADER -->
-    <header class="header">
-        <h1><i class="fas fa-chart-line"></i> TrustFile Weekly Integrity Report</h1>
-        <div class="stats-overview">
-            <div class="stat-card">
-                <span class="label">Safe Files</span>
-                <span class="value safe">{{ safe_percent }}%</span>
-            </div>
-            <div class="stat-card">
-                <span class="label">Threats Detected</span>
-                <span class="value threat">{{ threat_percent }}%</span>
-            </div>
+<!-- MOBILE TOP NAV -->
+<nav class="mobile-nav">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <span class="mobile-logo">TRUST<span>FILE</span></span>
+    <span class="mobile-user"><i class="fa-solid fa-user-circle"></i></span>
+</nav>
+
+<div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-text">TRUST<span>FILE</span></div>
+            <button class="sidebar-close" onclick="closeSidebar()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-    </header>
+        <div class="user-pill">
+            <i class="fa-solid fa-user-shield"></i>
+            <span class="user-email">{{ current_user.email }}</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-item">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('uploadfiles') }}" class="nav-item">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Upload</span>
+            </a>
+            <a href="{{ url_for('history') }}" class="nav-item">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>History</span>
+            </a>
+            <a href="{{ url_for('reports') }}" class="nav-item active">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+        </a>
+    </aside>
 
-    <!-- MAIN -->
-    <div class="main-content">
-        <!-- CHART SECTION -->
-        <section class="chart-section">
-            <h3><i class="fas fa-calendar-week"></i> Daily File Integrity (7-Day Comparison)</h3>
-            <div class="bar-chart">
-                {% for i in range(7) %}
-                <div class="bar-group">
-                    <div class="bar">
-                        {% set safe_height = (safe_counts[i] / (safe_counts[i] + threat_counts[i] + 0.01) * 100) %}
-                        {% set threat_height = (threat_counts[i] / (safe_counts[i] + threat_counts[i] + 0.01) * 100) %}
-                        <div class="segment safe" style="height: {{ safe_height }}%;"></div>
-                        <div class="segment threat" style="height: {{ threat_height }}%;"></div>
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <header class="page-header">
+            <div>
+                <h1 class="page-title">Integrity Reports</h1>
+                <p class="page-sub">System-wide 7-day threat metrics and severity breakdown</p>
+            </div>
+            <button onclick="window.print()" class="btn-primary">
+                <i class="fa-solid fa-print"></i> Export Report
+            </button>
+        </header>
+
+        <div class="dashboard" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px;">
+            
+            <header class="header" style="border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 24px;">
+                <h2 style="font-size: 1.2rem; font-weight: 800;"><i class="fas fa-shield-halved" style="color: var(--accent);"></i> System Integrity Overview</h2>
+                <div class="stats-overview" style="margin-top: 10px;">
+                    <div class="stat-card" style="background: rgba(0,232,122,0.08); border-color: rgba(0,232,122,0.2);">
+                        <span class="label" style="color: var(--safe);">Safe Ratio</span>
+                        <span class="value safe">{{ safe_percent }}%</span>
                     </div>
-                    <span class="day {% if i == 2 %}highlight{% endif %}">{{ days[i] }}</span>
+                    <div class="stat-card" style="background: rgba(255,30,30,0.08); border-color: rgba(255,30,30,0.2);">
+                        <span class="label" style="color: var(--accent);">Threat Ratio</span>
+                        <span class="value threat">{{ threat_percent }}%</span>
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
-            <div class="legend">
-                <span class="dot safe"></span> Safe Files
-                <span class="dot threat"></span> Threats Detected
-            </div>
-        </section>
+            </header>
 
-        <!-- SEVERITY SECTION -->
-        <section class="severity-section">
-            <h3><i class="fas fa-exclamation-triangle"></i> Threat Severity Breakdown</h3>
-            <div class="severity-list">
-                <div class="severity-item critical">
-                    <span class="rank">Critical</span>
-                    <span class="count">{{ critical }}</span>
-                </div>
-                <div class="severity-item high">
-                    <span class="rank">High</span>
-                    <span class="count">{{ high }}</span>
-                </div>
-                <div class="severity-item medium">
-                    <span class="rank">Medium</span>
-                    <span class="count">{{ medium }}</span>
-                </div>
-                <div class="severity-item low">
-                    <span class="rank">Low</span>
-                    <span class="count">{{ low }}</span>
-                </div>
-            </div>
-        </section>
-    </div>
+            <div class="main-content" style="margin-left: 0; padding: 0;">
+                <!-- CHART SECTION -->
+                <section class="chart-section">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 16px;"><i class="fas fa-calendar-week"></i> 7-Day Activity Comparison</h3>
+                    <div class="bar-chart">
+                        {% for i in range(7) %}
+                        <div class="bar-group">
+                            <div class="bar">
+                                {% set safe_height = (safe_counts[i] / (safe_counts[i] + threat_counts[i] + 0.01) * 100) %}
+                                {% set threat_height = (threat_counts[i] / (safe_counts[i] + threat_counts[i] + 0.01) * 100) %}
+                                <div class="segment safe" style="height: {{ safe_height }}%;"></div>
+                                <div class="segment threat" style="height: {{ threat_height }}%;"></div>
+                            </div>
+                            <span class="day {% if i == 2 %}highlight{% endif %}">{{ days[i] }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="legend" style="margin-top: 14px;">
+                        <span class="dot safe"></span> Safe
+                        <span class="dot threat"></span> Threat
+                    </div>
+                </section>
 
-    <!-- Export Button -->
-    <div style="margin-top: 40px; text-align: center;">
-        <button onclick="window.print()" class="scan-btn" style="background: rgba(0,255,136,0.1); border-color: var(--safe-green); color: var(--safe-green);">
-            <i class="fas fa-print"></i> Export Report
-        </button>
-    </div>
+                <!-- SEVERITY SECTION -->
+                <section class="severity-section" style="margin-top: 24px;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 16px;"><i class="fas fa-triangle-exclamation"></i> Threat Severity Breakdown</h3>
+                    <div class="severity-list">
+                        <div class="severity-item critical">
+                            <span class="rank">Critical</span>
+                            <span class="count">{{ critical }}</span>
+                        </div>
+                        <div class="severity-item high">
+                            <span class="rank">High</span>
+                            <span class="count">{{ high }}</span>
+                        </div>
+                        <div class="severity-item medium">
+                            <span class="rank">Medium</span>
+                            <span class="count">{{ medium }}</span>
+                        </div>
+                        <div class="severity-item low">
+                            <span class="rank">Low</span>
+                            <span class="count">{{ low }}</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+
+    </main>
 </div>
 
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+}
+</script>
 </body>
 </html>

@@ -2,67 +2,256 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Upload File</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>TrustFile | Upload & Scan</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='upload.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* Dropzone Styling */
+.dropzone-container {
+    padding: 32px 24px;
+}
+.dropzone-box {
+    border: 2px dashed rgba(255, 30, 30, 0.3);
+    background: rgba(255, 30, 30, 0.02);
+    border-radius: 16px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+}
+.dropzone-box:hover, .dropzone-box.dragover {
+    border-color: var(--accent);
+    background: rgba(255, 30, 30, 0.06);
+    transform: translateY(-2px);
+}
+.dropzone-icon {
+    width: 64px; height: 64px;
+    background: rgba(255, 30, 30, 0.12);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: var(--accent);
+    font-size: 1.8rem;
+}
+.dropzone-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.dropzone-sub {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+}
+.file-input-hidden {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+.selected-file-preview {
+    display: none;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-top: 20px;
+    text-align: left;
+}
+.selected-file-icon {
+    font-size: 1.5rem;
+    color: var(--accent);
+}
+.selected-file-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.selected-file-size {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+}
+.submit-btn-wrap {
+    margin-top: 24px;
+    text-align: center;
+}
+.upload-btn-lg {
+    padding: 12px 36px;
+    font-size: 0.95rem;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 280px;
+}
+</style>
 </head>
-
 <body>
 
-<div class="container">
+<!-- MOBILE OVERLAY -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- MOBILE TOP NAV -->
+<nav class="mobile-nav">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <span class="mobile-logo">TRUST<span>FILE</span></span>
+    <span class="mobile-user"><i class="fa-solid fa-user-circle"></i></span>
+</nav>
+
+<div class="app-layout">
 
     <!-- SIDEBAR -->
-    <div class="sidebar glass">
-        <h2>TrustFile</h2>
-        <a href="{{ url_for('dashboard') }}"><i class="fa-solid fa-table"></i> Dashboard</a>
-        <a href="{{ url_for('uploadfiles') }}" class="active"><i class="fa-solid fa-file"></i> Upload</a>
-        <a href="{{ url_for('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
-        <a href="{{ url_for('reports') }}"><i class="fa-solid fa-chart-line"></i> Reports</a>
-        <a href="{{ url_for('logout') }}"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
-    </div>
-
-    <!-- MAIN -->
-    <div class="main">
-
-        <!-- TOPBAR -->
-        <div class="topbar glass">
-            <h2>Upload File</h2>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-text">TRUST<span>FILE</span></div>
+            <button class="sidebar-close" onclick="closeSidebar()"><i class="fa-solid fa-xmark"></i></button>
         </div>
+        <div class="user-pill">
+            <i class="fa-solid fa-user-shield"></i>
+            <span class="user-email">{{ current_user.email }}</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-item">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('uploadfiles') }}" class="nav-item active">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Upload</span>
+            </a>
+            <a href="{{ url_for('history') }}" class="nav-item">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>History</span>
+            </a>
+            <a href="{{ url_for('reports') }}" class="nav-item">
+                <i class="fa-solid fa-chart-pie"></i>
+                <span>Reports</span>
+            </a>
+        </nav>
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+        </a>
+    </aside>
 
-        <!-- UPLOAD FORM -->
-        <div class="upload-container">
-            <div class="upload-box glass">
-                <h2>Select File to Scan</h2>
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
 
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="file" name="file" class="file-input" required="true">
-                    <br><br>
-                    <button type="submit" class="upload-btn">Upload</button>
-                </form>
-
-                <!-- ✅ FLASH MESSAGES -->
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                  {% if messages %}
-                    <div class="flash-messages">
-                      {% for category, message in messages %}
-                        <div class="flash {{ category }}">
-                          {{ message }}
-                        </div>
-                      {% endfor %}
+        <!-- Flash Stack -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                {% for category, message in messages %}
+                    <div class="flash-msg {{ 'flash-warn' if category in ['warning','error'] else 'flash-ok' if category == 'success' else '' }}">
+                        <i class="fa-solid {{ 'fa-triangle-exclamation' if category in ['warning','error'] else 'fa-circle-check' if category == 'success' else 'fa-circle-info' }}"></i>
+                        {{ message }}
                     </div>
-                  {% endif %}
-                {% endwith %}
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
 
+        <!-- Header -->
+        <header class="page-header">
+            <div>
+                <h1 class="page-title">Upload File</h1>
+                <p class="page-sub">Select or drag a file to run multi-engine threat analysis</p>
             </div>
-        </div>
+            <a href="{{ url_for('dashboard') }}" class="action-btn btn-view">
+                <i class="fa-solid fa-arrow-left"></i> Dashboard
+            </a>
+        </header>
 
-    </div>
+        <!-- Upload Card -->
+        <section class="files-section">
+            <div class="dropzone-container">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+                    <div class="dropzone-box" id="dropzone">
+                        <input type="file" name="file" id="fileInput" class="file-input-hidden" required onchange="handleFileSelect(this.files)">
+                        <div class="dropzone-icon">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <div class="dropzone-title">Drag & Drop file here or click to browse</div>
+                        <div class="dropzone-sub">Supports Executables, Documents, Archives, Scripts, Images & Audio</div>
+                        
+                        <div class="selected-file-preview" id="filePreview">
+                            <i class="fa-solid fa-file-code selected-file-icon"></i>
+                            <div style="flex: 1; min-width: 0;">
+                                <div class="selected-file-name" id="fileName">file.txt</div>
+                                <div class="selected-file-size" id="fileSize">0 KB</div>
+                            </div>
+                            <i class="fa-solid fa-check-circle" style="color: var(--safe); font-size: 1.2rem;"></i>
+                        </div>
+                    </div>
+
+                    <div class="submit-btn-wrap">
+                        <button type="submit" class="btn-primary upload-btn-lg" id="submitBtn">
+                            <i class="fa-solid fa-play"></i> Start Scan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+    </main>
 </div>
 
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+function handleFileSelect(files) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('filePreview').style.display = 'flex';
+}
+
+// Drag & drop handlers
+const dropzone = document.getElementById('dropzone');
+['dragenter', 'dragover'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    }, false);
+});
+['dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+    }, false);
+});
+dropzone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    document.getElementById('fileInput').files = files;
+    handleFileSelect(files);
+});
+
+document.getElementById('uploadForm').addEventListener('submit', () => {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading & Initializing...';
+});
+</script>
 </body>
 </html>

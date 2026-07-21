@@ -131,8 +131,10 @@ def determine_threat_level(risk_score: int, detection_details: list) -> tuple[st
         level = "High"
     elif risk_score >= 30:
         level = "Medium"
-    else:
+    elif risk_score > 0:
         level = "Low"
+    else:
+        level = "Safe"
     status = "Threat" if level in {"Critical", "High", "Medium"} else "Safe"
     return level, status
 
@@ -327,6 +329,14 @@ app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
 
 _upload_base = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
 app.config["UPLOAD_FOLDER"] = _upload_base
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # ── Custom Jinja2 filters ─────────────────────────────────────────────────────
 @app.template_filter("format_dt")
@@ -451,18 +461,15 @@ def dashboard():
     all_files = fb.list_user_files(current_user.uid)
     settings  = get_or_create_user_settings(current_user.uid)
 
-    # Only show scanned safe/low-risk files — hide Pending and Quarantined
-    files = [f for f in all_files if f.get("status") not in ("Pending", "Quarantined")]
+    # Show all scanned files — only hide Pending (not yet scanned)
+    files = [f for f in all_files if f.get("status") != "Pending"]
 
     counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
-                    medium_threat=0, high_threat=0, critical_threat=0, quarantined=0)
+                    medium_threat=0, high_threat=0, critical_threat=0)
 
     for f in files:
         risk = f.get("risk_score", 0) or 0
-        if f.get("status") == "Quarantined":
-            f["threat_level"] = f.get("threat_level", "Threat")
-            counters["quarantined"] += 1
-        elif risk >= 70:
+        if risk >= 70:
             f["threat_level"] = "Critical"
             counters["critical_threat"] += 1
         elif risk >= 50:
@@ -735,17 +742,8 @@ def scan(file_id):
             )
             file_meta["explanation"] = generate_explanation(file_meta)
 
-            # Auto-quarantine: move file to Recycle Bin and remove from dashboard
-            settings = get_or_create_user_settings(current_user.uid)
-            auto_quarantine = settings.get("auto_quarantine", True)
-            if auto_quarantine and file_meta["status"] == "Threat":
-                _trash_file(file_meta.get("filepath", ""))
-                # Delete record so it no longer appears in the dashboard
-                fb.delete_uploaded_file(file_meta["id"])
-                file_meta["status"] = "Quarantined"
-                flash("⚠️ Malicious file detected and automatically removed from your device!", "warning")
-            else:
-                fb.save_uploaded_file(file_meta)
+            # Always save the file record — manual delete from dashboard
+            fb.save_uploaded_file(file_meta)
 
             return render_template(
                 "scan.html",
@@ -944,11 +942,97 @@ def multiple_scan(file_id):
         scan_semaphore.release()
 
 
+def _get_all_scanned_files():
+    # 1. Load user uploads from Firebase
+    files = fb.list_user_files(current_user.uid)
+    scanned = [f for f in files if f.get("status") != "Pending"]
+    
+    # Track seen paths and hashes to prevent double-counting
+    seen_paths = set(f.get("filepath") for f in scanned if f.get("filepath"))
+    seen_hashes = set(f.get("hash") for f in scanned if f.get("hash"))
+
+    # 2. Load local real-time monitor detections from Desktop JSON
+    detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
+    if os.path.exists(detections_file):
+        try:
+            with open(detections_file, "r", encoding="utf-8") as f:
+                raw_detections = json.load(f)
+                for entry in raw_detections:
+                    if isinstance(entry, dict):
+                        
+                        path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                        time_str = entry.get("timestamp", "") or ""
+                        file_hash = entry.get("hash", "")
+
+                        # Deduplicate if already present in database
+                        if path_str in seen_paths or (file_hash and file_hash in seen_hashes):
+                            continue
+
+                        h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
+                        
+                        local_entry = {
+                            "id": f"local_{h}",
+                            "filename": os.path.basename(path_str),
+                            "filepath": path_str,
+                            "upload_time": time_str,
+                            "status": entry.get("status", "Safe"),
+                            "threat_level": entry.get("threat_level", "Low"),
+                            "risk_score": entry.get("risk_score", 0),
+                            "entropy": entry.get("entropy", 0.0),
+                            "hash": file_hash,
+                            "pattern_result": ", ".join(entry.get("patterns", [])[:3]) if isinstance(entry.get("patterns"), list) else entry.get("pattern_result", ""),
+                            "signature_status": ", ".join(entry.get("heuristics", [])[:3]) if isinstance(entry.get("heuristics"), list) else entry.get("signature_status", ""),
+                            "ai_analysis": entry.get("ai_analysis", ""),
+                            "user_id": current_user.uid
+                        }
+                        scanned.append(local_entry)
+                        if path_str:
+                            seen_paths.add(path_str)
+                        if file_hash:
+                            seen_hashes.add(file_hash)
+        except Exception as e:
+            logger.error("Error reading TrustFile_Detections.json: %s", e)
+            
+    return scanned
+
+
 @app.route("/view_result/<file_id>")
 @login_required
 def view_result(file_id):
     file_meta = fb.get_uploaded_file(str(file_id))
     if not file_meta or file_meta.get("user_id") != current_user.uid:
+        # Fallback to check local monitor detections if local_
+        if str(file_id).startswith("local_"):
+            detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
+            if os.path.exists(detections_file):
+                try:
+                    with open(detections_file, "r", encoding="utf-8") as f:
+                        detections = json.load(f)
+                        for entry in detections:
+                            if isinstance(entry, dict):
+                                path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                                time_str = entry.get("timestamp", "") or ""
+                                h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
+                                if f"local_{h}" == str(file_id):
+                                    local_meta = {
+                                        "id": f"local_{h}",
+                                        "filename": os.path.basename(path_str),
+                                        "filepath": path_str,
+                                        "upload_time": time_str,
+                                        "status": entry.get("status", "Safe"),
+                                        "threat_level": entry.get("threat_level", "Low"),
+                                        "risk_score": entry.get("risk_score", 0),
+                                        "entropy": entry.get("entropy", 0.0),
+                                        "hash": entry.get("hash", ""),
+                                        "pattern_result": ", ".join(entry.get("patterns", [])[:3]) if isinstance(entry.get("patterns"), list) else entry.get("pattern_result", ""),
+                                        "signature_status": ", ".join(entry.get("heuristics", [])[:3]) if isinstance(entry.get("heuristics"), list) else entry.get("signature_status", ""),
+                                        "ai_analysis": entry.get("ai_analysis", ""),
+                                        "user_id": current_user.uid
+                                    }
+                                    return render_template("scan.html", file=local_meta, result=True)
+                except Exception as e:
+                    logger.error("Error reading TrustFile_Detections.json in view_result: %s", e)
+        
         flash("File not found or access denied.")
         return redirect(url_for("dashboard"))
     return render_template("scan.html", file=file_meta, result=True)
@@ -978,6 +1062,39 @@ def _trash_file(filepath: str) -> None:
 @app.route("/delete/<file_id>", methods=["POST"], endpoint="delete_file")
 @login_required
 def delete_file(file_id):
+    if str(file_id).startswith("local_"):
+        # This is a local detection. Trash the physical file and remove from TrustFile_Detections.json
+        detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
+        if os.path.exists(detections_file):
+            try:
+                with open(detections_file, "r", encoding="utf-8") as f:
+                    detections = json.load(f)
+                
+                target_filepath = None
+                for entry in detections:
+                    if isinstance(entry, dict):
+                        path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                        time_str = entry.get("timestamp", "") or ""
+                        h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
+                        if f"local_{h}" == str(file_id):
+                            target_filepath = path_str
+                            break
+                
+                if target_filepath:
+                    _trash_file(target_filepath)
+                    updated = [e for e in detections if (e.get("file_path") or e.get("filepath") or "") != target_filepath]
+                    with open(detections_file, "w", encoding="utf-8") as f:
+                        json.dump(updated, f, indent=4)
+                    flash("Local file moved to Recycle Bin and record deleted.")
+                else:
+                    flash("Local file record not found.")
+            except Exception as e:
+                logger.error("Error deleting local detection: %s", e)
+                flash("Error deleting local record.")
+        else:
+            flash("Local detection log file not found.")
+        return redirect(request.referrer or url_for("history"))
+
     record = fb.get_uploaded_file(str(file_id))
     if record and record.get("user_id") == current_user.uid:
         target_hash = record.get("hash")
@@ -1002,16 +1119,87 @@ def delete_file(file_id):
             flash("File moved to Recycle Bin and record deleted.")
     else:
         flash("File not found or access denied.")
-    return redirect(url_for("dashboard"))
+    return redirect(request.referrer or url_for("history"))
 
 # ── History ───────────────────────────────────────────────────────────────────
 @app.route("/history")
 @login_required
 def history():
-    files = fb.list_user_files(current_user.uid)
-    # Only show scanned files (exclude pending)
-    scanned = [f for f in files if f.get("status") != "Pending"]
-    return render_template("history.html", files=scanned)
+    from collections import defaultdict
+    scanned = _get_all_scanned_files()
+
+    # Group files by scan date (YYYY-MM-DD)
+    grouped = defaultdict(list)
+    for f in scanned:
+        raw_time = f.get("upload_time", "")
+        try:
+            if raw_time:
+                dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+                day_key = dt.strftime("%Y-%m-%d")
+                day_label = dt.strftime("%B %d, %Y")  # e.g. July 19, 2026
+            else:
+                day_key = "Unknown"
+                day_label = "Unknown Date"
+        except Exception:
+            day_key = "Unknown"
+            day_label = "Unknown Date"
+        f["_day_key"] = day_key
+        f["_day_label"] = day_label
+        grouped[day_key].append(f)
+
+    # Build summary list sorted newest-first
+    day_summaries = []
+    for day_key, day_files in sorted(grouped.items(), reverse=True):
+        threat_counts = {"safe": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
+        for df in day_files:
+            tl = (df.get("threat_level") or "safe").lower()
+            if tl in threat_counts:
+                threat_counts[tl] += 1
+            else:
+                threat_counts["safe"] += 1
+        highest = "safe"
+        for level in ["critical", "high", "medium", "low"]:
+            if threat_counts[level] > 0:
+                highest = level
+                break
+        day_summaries.append({
+            "day_key":       day_key,
+            "day_label":     day_files[0]["_day_label"],
+            "total":         len(day_files),
+            "threat_counts": threat_counts,
+            "highest":       highest,
+        })
+
+    return render_template("history.html", day_summaries=day_summaries)
+
+
+@app.route("/history/day/<date>")
+@login_required
+def history_day(date):
+    """Show all scan results for a specific date."""
+    scanned = _get_all_scanned_files()
+
+    day_files = []
+    day_label = date
+    for f in scanned:
+        raw_time = f.get("upload_time", "")
+        try:
+            if raw_time:
+                dt = datetime.fromisoformat(raw_time.replace("Z", "+00:00"))
+                day_key = dt.strftime("%Y-%m-%d")
+                day_label = dt.strftime("%B %d, %Y")
+            else:
+                day_key = "Unknown"
+        except Exception:
+            day_key = "Unknown"
+        if day_key == date:
+            f["_day_label"] = day_label
+            day_files.append(f)
+
+    # Sort newest scan first within the day
+    day_files.sort(key=lambda x: x.get("upload_time", ""), reverse=True)
+
+    return render_template("history_day.html", files=day_files, date=date, day_label=day_label)
 
 # ── Reports ───────────────────────────────────────────────────────────────────
 @app.route("/reports")
@@ -1082,29 +1270,21 @@ def reports():
     )
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-# ── Settings ──────────────────────────────────────────────────────────────────
+# ── Settings (disabled — redirects to dashboard) ──────────────────────────────
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
-    if request.method == "POST":
-        updated = {
-            "auto_scan_enabled":  request.form.get("auto_scan_enabled") == "on",
-            "auto_scan_mode":     request.form.get("auto_scan_mode", "single"),
-            "scan_types":         request.form.getlist("scan_types") or ["heuristic"],
-            "notify_on_threat":   request.form.get("notify_on_threat") == "on",
-            "theme":              request.form.get("theme", "dark"),
-            "auto_quarantine":    request.form.get("auto_quarantine") == "on",
-            "alert_sound":        request.form.get("alert_sound") == "on",
-            "notify_safe":        request.form.get("notify_safe") == "on",
-        }
-        fb.save_user_settings(current_user.uid, updated)
-        flash("Settings saved.")
-        return redirect(url_for("settings"))
-    user_settings = get_or_create_user_settings(current_user.uid)
-    return render_template("settings.html", settings=user_settings)
+    return redirect(url_for("dashboard"))
 
 # ── Monitor API ───────────────────────────────────────────────────────────────
-from file_monitor import start_system_monitor, stop_system_monitor, get_monitor
+try:
+    from file_monitor import start_system_monitor, stop_system_monitor, get_monitor
+except ImportError:
+    # PythonAnywhere / Linux: watchdog & win10toast unavailable — provide stubs
+    logger.warning("file_monitor not available (missing watchdog/win10toast). Real-time monitoring disabled.")
+    def start_system_monitor(*a, **kw): return None
+    def stop_system_monitor(*a, **kw): pass
+    def get_monitor(*a, **kw): return None
 import threading
 
 system_monitor = None
@@ -1124,11 +1304,6 @@ def save_scan_to_db(
     try:
         if user_id is None:
             user_id = "system_monitor"
-
-        # If the file was auto-quarantined, do NOT save a record to the dashboard
-        if scan_result.get("status") == "Quarantined":
-            logger.info("save_scan_to_db: skipping quarantined file %s (not saved to dashboard)", filename)
-            return
 
         file_hash = scan_result.get("hash", "")
         # Prevent logging duplicate scan records for the same file in Firebase
@@ -1320,9 +1495,6 @@ def realtime_detections_api():
                 raw_detections = json.load(f)
                 for entry in raw_detections:
                     if isinstance(entry, dict):
-                        # Skip quarantined entries — file already removed
-                        if entry.get("status") == "Quarantined":
-                            continue
                         # Generate a synthetic ID using file_path and timestamp
                         path_str = entry.get("file_path", "") or entry.get("filepath", "") or ""
                         time_str = entry.get("timestamp", "") or ""
@@ -1340,8 +1512,8 @@ def realtime_detections_api():
         
         recent_data = []
         for scan in files[:10]:
-            # Skip Pending and Quarantined entries from the widget
-            if scan.get("status") in ("Pending", "Quarantined"):
+            # Skip Pending entries only
+            if scan.get("status") == "Pending":
                 continue
             recent_data.append({
                 "id":           scan.get("id"),
