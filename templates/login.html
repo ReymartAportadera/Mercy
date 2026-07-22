@@ -35,7 +35,10 @@
                 <button type="submit" id="loginBtn">Login</button>
             </form>
 
-            <a href="{{ url_for('signup') }}" class="signup-link">Don't have an account? Sign up</a>
+            <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 15px;">
+                <a href="{{ url_for('forgot_password') }}" class="signup-link">Forgot Password?</a>
+                <a href="{{ url_for('signup') }}" class="signup-link">Sign up</a>
+            </div>
         </div>
     </div>
 

@@ -34,8 +34,15 @@ from api.malware_api import check_hash_api, smart_virustotal_scan
 from api.ai_analysis import analyze_file_ai
 from api.advanced_heuristics import run_advanced_heuristics
 
-BINARY_EXTENSIONS = {".zip", ".tar", ".gz", ".exe", ".dll", ".bin", ".dat",
-                     ".pdf", ".doc", ".docx", ".xls", ".xlsx"}
+MEDIA_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".ico",
+    ".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".webm", ".3gp", ".m4v",
+    ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a"
+}
+BINARY_EXTENSIONS = {
+    ".zip", ".tar", ".gz", ".exe", ".dll", ".bin", ".dat", ".pdf", ".doc",
+    ".docx", ".xls", ".xlsx"
+} | MEDIA_EXTENSIONS
 ALL_SCAN_TYPES = ["heuristic", "virustotal", "ai_analysis"]
 
 # ── In-memory byte cache (LRU, max 50 entries to prevent memory bloat) ───────
@@ -420,8 +427,37 @@ def login():
             user = User(uid=user_rec["uid"], username=user_rec["username"], email=user_rec["email"], password_hash=user_rec["password"])
             login_user(user)
             return redirect(url_for("dashboard"))
-        flash("Invalid email or password.")
     return render_template("login.html")
+
+@app.route("/forgot_password", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        new_password = request.form.get("new_password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not email or not new_password or not confirm_password:
+            flash("Please fill in all required fields.")
+            return redirect(url_for("forgot_password"))
+
+        if new_password != confirm_password:
+            flash("Passwords do not match.")
+            return redirect(url_for("forgot_password"))
+
+        user_rec = fb.get_user_by_email(email)
+        if not user_rec:
+            flash("No account registered with that email address.")
+            return redirect(url_for("forgot_password"))
+
+        password_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
+        user_rec["password"] = password_hash
+        fb.save_user(user_rec)
+
+        flash("Your password has been successfully reset! Please log in.")
+        return redirect(url_for("login"))
+
+    return render_template("forgot_password.html")
 
 @app.route("/logout")
 @login_required
