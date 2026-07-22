@@ -688,15 +688,32 @@ function handleFileSelect(files) {
 function startScanQueue() {
     if (!selectedFiles || selectedFiles.length === 0) return;
 
+    // Determine folder name if scanning a folder
+    let folderName = null;
+    if (currentMode === 'folder') {
+        if (selectedFiles[0].webkitRelativePath && selectedFiles[0].webkitRelativePath.includes('/')) {
+            folderName = selectedFiles[0].webkitRelativePath.split('/')[0];
+        } else {
+            folderName = 'Scanned_Folder';
+        }
+    }
+
     // Build queue entries
     scanQueue = [];
     totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0;
 
     for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        let itemFolder = folderName;
+        if (!itemFolder && file.webkitRelativePath && file.webkitRelativePath.includes('/')) {
+            itemFolder = file.webkitRelativePath.split('/')[0];
+        }
+
         scanQueue.push({
-            file: selectedFiles[i],
-            name: selectedFiles[i].name,
-            size: selectedFiles[i].size,
+            file: file,
+            name: file.name,
+            size: file.size,
+            folder_name: itemFolder,
             status: 'standby'
         });
     }
@@ -715,17 +732,24 @@ function startScanQueue() {
 function addMoreToQueue(files) {
     if (!files || files.length === 0) return;
     for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        let itemFolder = null;
+        if (file.webkitRelativePath && file.webkitRelativePath.includes('/')) {
+            itemFolder = file.webkitRelativePath.split('/')[0];
+        }
+
         scanQueue.push({
-            file: files[i],
-            name: files[i].name,
-            size: files[i].size,
+            file: file,
+            name: file.name,
+            size: file.size,
+            folder_name: itemFolder,
             status: 'standby'
         });
     }
     renderQueue();
-    // If not currently scanning, kick off the queue
     if (!isScanning) processNextInQueue();
 }
+
 
 // ============================================================
 //  RENDER STANDBY QUEUE LIST
@@ -835,16 +859,17 @@ async function processNextInQueue() {
     const formData = new FormData();
     formData.append('file', nextItem.file);
 
-    let folderName = null;
-    if (nextItem.file.webkitRelativePath && nextItem.file.webkitRelativePath.includes('/')) {
+    let folderName = nextItem.folder_name;
+    if (!folderName && nextItem.file.webkitRelativePath && nextItem.file.webkitRelativePath.includes('/')) {
         folderName = nextItem.file.webkitRelativePath.split('/')[0];
-    } else if (currentMode === 'folder') {
+    } else if (!folderName && currentMode === 'folder') {
         folderName = 'Scanned_Folder';
     }
 
     if (folderName) {
         formData.append('folder_name', folderName);
     }
+
 
 
     try {
