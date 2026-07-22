@@ -485,6 +485,15 @@ def get_or_create_user_settings(uid: str) -> dict:
         "notify_safe": False,
     }
 
+def _get_effective_folder_name(f: dict) -> str | None:
+    if f.get("folder_name"):
+        return f.get("folder_name")
+    rel = f.get("relative_path") or f.get("filepath") or ""
+    parts = rel.replace("\\", "/").strip("/").split("/")
+    if len(parts) >= 3:
+        return parts[-2]
+    return None
+
 # ── Dashboard ────────────────────────────────────────────────────────────────
 @app.route("/dashboard")
 @login_required
@@ -499,7 +508,6 @@ def dashboard():
 
     standalone_files = []
     folder_groups_dict = {}
-
 
     for f in files:
         risk = f.get("risk_score", 0) or 0
@@ -529,7 +537,8 @@ def dashboard():
         f["threat_ratio"] = risk
 
         # Folder grouping vs Standalone files separation
-        fname = f.get("folder_name")
+        fname = _get_effective_folder_name(f)
+
         if fname:
             if fname not in folder_groups_dict:
                 folder_groups_dict[fname] = {
@@ -636,7 +645,11 @@ def upload_single_file_api():
 # ── Guest Quick Scan (No Login Required — Temporary Session Only) ───────────
 @app.route("/guest_scan", methods=["GET"])
 def guest_scan_page():
-    guest_scans = session.get("guest_scans", [])
+    guest_id = session.get("guest_id")
+    if not guest_id:
+        guest_id = str(uuid.uuid4())
+        session["guest_id"] = guest_id
+    guest_scans = GUEST_SESSIONS.get(guest_id, [])
     return render_template("guest_scan.html", files=guest_scans)
 
 @app.route("/api/guest_upload", methods=["POST"])
@@ -684,11 +697,14 @@ def guest_upload_api():
         "explanation": f"Guest Scan (Temporary Session). Risk score: {risk_score}%"
     }
 
-    if "guest_scans" not in session:
-        session["guest_scans"] = []
+    guest_id = session.get("guest_id")
+    if not guest_id:
+        guest_id = str(uuid.uuid4())
+        session["guest_id"] = guest_id
+
+    if guest_id not in GUEST_SESSIONS:
+        GUEST_SESSIONS[guest_id] = []
     
-    # Prepend new scan record
-    session["guest_scans"].insert(0, guest_record)
     session.modified = True
 
     return jsonify({"success": True, "file": guest_record}), 200
