@@ -63,6 +63,11 @@ def _pop_bytes(file_id):
 def is_binary_file(file_path):
     return os.path.splitext(file_path)[1].lower() in BINARY_EXTENSIONS
 
+# ── In-memory guest session store (no login required) ───────────────────────
+# Maps guest_id (str) -> list of scan result dicts.
+# Data is lost when the worker process restarts, which is intentional.
+GUEST_SESSIONS: dict = {}
+
 scan_semaphore = Semaphore(10)  # max 10 concurrent scans
 
 def safe_file_path(p: str) -> str:
@@ -705,14 +710,17 @@ def guest_upload_api():
 
     if guest_id not in GUEST_SESSIONS:
         GUEST_SESSIONS[guest_id] = []
-    
+    GUEST_SESSIONS[guest_id].append(guest_record)
+
     session.modified = True
 
     return jsonify({"success": True, "file": guest_record}), 200
 
 @app.route("/api/clear_guest_history", methods=["POST"])
 def clear_guest_history():
-    session.pop("guest_scans", None)
+    guest_id = session.get("guest_id")
+    if guest_id and guest_id in GUEST_SESSIONS:
+        del GUEST_SESSIONS[guest_id]
     return jsonify({"status": "cleared"})
 
 @app.route("/upload", methods=["GET", "POST"])
