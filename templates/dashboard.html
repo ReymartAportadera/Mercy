@@ -84,10 +84,6 @@
                 <p class="page-sub">Welcome back, {{ current_user.email.split('@')[0] }}</p>
             </div>
             <div class="header-actions">
-                <div class="protection-badge">
-                    <span class="pulse-dot"></span>
-                    <span id="protection-status-text">ACTIVE</span>
-                </div>
                 <a href="{{ url_for('uploadfiles') }}" class="btn-primary">
                     <i class="fa-solid fa-plus"></i> Scan File
                 </a>
@@ -260,23 +256,8 @@ function filterFiles() {
     if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
 }
 
-// ===== MONITOR STATUS =====
-async function updateMonitorStatus() {
-    try {
-        const r = await fetch('/api/monitor_status');
-        const d = await r.json();
-        const el = document.getElementById('protection-status-text');
-        if (el) {
-            el.textContent = d.running ? 'ACTIVE' : 'INACTIVE';
-            el.parentElement.className = `protection-badge ${d.running ? '' : 'inactive'}`;
-        }
-    } catch(e) {}
-}
-
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
-    updateMonitorStatus();
-    setInterval(updateMonitorStatus, 10000);
 
     // Auto-hide toasts
     document.querySelectorAll('.toast-msg').forEach(m => {
