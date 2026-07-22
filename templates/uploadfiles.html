@@ -835,6 +835,18 @@ async function processNextInQueue() {
     const formData = new FormData();
     formData.append('file', nextItem.file);
 
+    let folderName = null;
+    if (nextItem.file.webkitRelativePath && nextItem.file.webkitRelativePath.includes('/')) {
+        folderName = nextItem.file.webkitRelativePath.split('/')[0];
+    } else if (currentMode === 'folder') {
+        folderName = 'Scanned_Folder';
+    }
+
+    if (folderName) {
+        formData.append('folder_name', folderName);
+    }
+
+
     try {
         const resp = await fetch('/api/upload_single_file', {
             method: 'POST',

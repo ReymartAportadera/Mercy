@@ -497,7 +497,9 @@ def dashboard():
     counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
                     medium_threat=0, high_threat=0, critical_threat=0)
 
+    standalone_files = []
     folder_groups_dict = {}
+
 
     for f in files:
         risk = f.get("risk_score", 0) or 0
@@ -526,7 +528,7 @@ def dashboard():
         f["explanation"] = f.get("explanation", "")
         f["threat_ratio"] = risk
 
-        # Folder grouping
+        # Folder grouping vs Standalone files separation
         fname = f.get("folder_name")
         if fname:
             if fname not in folder_groups_dict:
@@ -544,10 +546,13 @@ def dashboard():
             if risk > grp["max_risk"]:
                 grp["max_risk"] = risk
                 grp["threat_level"] = f["threat_level"]
+        else:
+            standalone_files.append(f)
 
     folder_groups = list(folder_groups_dict.values())
 
-    return render_template("dashboard.html", files=files, folder_groups=folder_groups, settings=settings, **counters)
+    return render_template("dashboard.html", files=standalone_files, folder_groups=folder_groups, settings=settings, **counters)
+
 
 
 # ── API: Single File Upload Stream (Instant Multi-Engine Threat Scan) ────────
