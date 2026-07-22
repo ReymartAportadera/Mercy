@@ -13,6 +13,33 @@
 .dropzone-container {
     padding: 32px 24px;
 }
+.mode-toggle-group {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.mode-btn {
+    padding: 10px 22px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mode-btn.active {
+    background: rgba(255, 30, 30, 0.15);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255, 30, 30, 0.2);
+}
+
 .dropzone-box {
     border: 2px dashed rgba(255, 30, 30, 0.3);
     background: rgba(255, 30, 30, 0.02);
@@ -150,11 +177,12 @@
         <!-- Flash Stack -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="flash-stack">
+                <div class="toast-stack" id="toastStack">
                 {% for category, message in messages %}
-                    <div class="flash-msg {{ 'flash-warn' if category in ['warning','error'] else 'flash-ok' if category == 'success' else '' }}">
+                    <div class="toast-msg {{ 'toast-warn' if category in ['warning','error'] else 'toast-ok' if category == 'success' else 'toast-info' }}">
                         <i class="fa-solid {{ 'fa-triangle-exclamation' if category in ['warning','error'] else 'fa-circle-check' if category == 'success' else 'fa-circle-info' }}"></i>
-                        {{ message }}
+                        <span>{{ message }}</span>
+                        <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
                     </div>
                 {% endfor %}
                 </div>
@@ -164,33 +192,43 @@
         <!-- Header -->
         <header class="page-header">
             <div>
-                <h1 class="page-title">Upload File</h1>
-                <p class="page-sub">Select or drag a file to run multi-engine threat analysis</p>
+                <h1 class="page-title">Upload & Scan</h1>
+                <p class="page-sub">Upload individual files or an entire folder for multi-engine threat analysis</p>
             </div>
             <a href="{{ url_for('dashboard') }}" class="action-btn btn-view">
                 <i class="fa-solid fa-arrow-left"></i> Dashboard
             </a>
         </header>
 
-        <!-- Upload Card -->
+        <!-- Mode Selector & Upload Form -->
         <section class="files-section">
             <div class="dropzone-container">
+                <!-- Mode Toggle -->
+                <div class="mode-toggle-group">
+                    <button type="button" class="mode-btn active" id="btnFileMode" onclick="setMode('file')">
+                        <i class="fa-solid fa-file"></i> Select File(s)
+                    </button>
+                    <button type="button" class="mode-btn" id="btnFolderMode" onclick="setMode('folder')">
+                        <i class="fa-solid fa-folder-open"></i> Scan Entire Folder
+                    </button>
+                </div>
+
                 <form method="POST" enctype="multipart/form-data" id="uploadForm">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="dropzone-box" id="dropzone">
-                        <input type="file" name="file" id="fileInput" class="file-input-hidden" required onchange="handleFileSelect(this.files)">
-                        <div class="dropzone-icon">
+                        <input type="file" name="files" id="fileInput" class="file-input-hidden" multiple required onchange="handleFileSelect(this.files)">
+                        <div class="dropzone-icon" id="dropzoneIcon">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                         </div>
-                        <div class="dropzone-title">Drag & Drop file here or click to browse</div>
-                        <div class="dropzone-sub">Supports Executables, Documents, Archives, Scripts, Images & Audio</div>
+                        <div class="dropzone-title" id="dropzoneTitle">Drag & Drop file(s) or folder here or click to browse</div>
+                        <div class="dropzone-sub">Supports Executables, Documents, Archives, Scripts, Images, Videos & Audio</div>
                         
                         <div class="selected-file-preview" id="filePreview">
-                            <i class="fa-solid fa-file-code selected-file-icon"></i>
+                            <i class="fa-solid fa-folder-tree selected-file-icon" id="previewIcon"></i>
                             <div style="flex: 1; min-width: 0;">
-                                <div class="selected-file-name" id="fileName">file.txt</div>
-                                <div class="selected-file-size" id="fileSize">0 KB</div>
+                                <div class="selected-file-name" id="fileName">0 files selected</div>
+                                <div class="selected-file-size" id="fileSize">0 KB total</div>
                             </div>
                             <i class="fa-solid fa-check-circle" style="color: var(--safe); font-size: 1.2rem;"></i>
                         </div>
@@ -198,7 +236,7 @@
 
                     <div class="submit-btn-wrap">
                         <button type="submit" class="btn-primary upload-btn-lg" id="submitBtn">
-                            <i class="fa-solid fa-play"></i> Start Scan
+                            <i class="fa-solid fa-play"></i> Start Threat Scan
                         </button>
                     </div>
                 </form>
@@ -218,12 +256,59 @@ function closeSidebar() {
     document.getElementById('sidebarOverlay').classList.remove('show');
 }
 
+let currentMode = 'file';
+
+function setMode(mode) {
+    currentMode = mode;
+    const btnFile = document.getElementById('btnFileMode');
+    const btnFolder = document.getElementById('btnFolderMode');
+    const fileInput = document.getElementById('fileInput');
+    const title = document.getElementById('dropzoneTitle');
+    const icon = document.getElementById('dropzoneIcon');
+
+    // Reset input
+    fileInput.value = '';
+    document.getElementById('filePreview').style.display = 'none';
+
+    if (mode === 'folder') {
+        btnFolder.classList.add('active');
+        btnFile.classList.remove('active');
+        fileInput.setAttribute('webkitdirectory', '');
+        fileInput.setAttribute('directory', '');
+        title.textContent = 'Click to select a Folder to scan all files inside';
+        icon.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
+    } else {
+        btnFile.classList.add('active');
+        btnFolder.classList.remove('active');
+        fileInput.removeAttribute('webkitdirectory');
+        fileInput.removeAttribute('directory');
+        title.textContent = 'Drag & Drop file(s) here or click to browse';
+        icon.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i>';
+    }
+}
+
 function handleFileSelect(files) {
     if (!files || files.length === 0) return;
-    const file = files[0];
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
-    document.getElementById('filePreview').style.display = 'flex';
+    const preview = document.getElementById('filePreview');
+    const nameEl = document.getElementById('fileName');
+    const sizeEl = document.getElementById('fileSize');
+    const pIcon = document.getElementById('previewIcon');
+
+    let totalSize = 0;
+    for (let i = 0; i < files.length; i++) {
+        totalSize += files[i].size;
+    }
+
+    if (files.length === 1) {
+        nameEl.textContent = files[0].name;
+        sizeEl.textContent = (files[0].size / 1024).toFixed(1) + ' KB';
+        pIcon.className = 'fa-solid fa-file-code selected-file-icon';
+    } else {
+        nameEl.textContent = files.length + ' files selected for scanning';
+        sizeEl.textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB total';
+        pIcon.className = 'fa-solid fa-folder-tree selected-file-icon';
+    }
+    preview.style.display = 'flex';
 }
 
 // Drag & drop handlers
@@ -250,7 +335,7 @@ dropzone.addEventListener('drop', (e) => {
 document.getElementById('uploadForm').addEventListener('submit', () => {
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading & Initializing...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing & Queueing Scans...';
 });
 </script>
 </body>

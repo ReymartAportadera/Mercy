@@ -525,73 +525,94 @@ def dashboard():
 @login_required
 def uploadfiles():
     if request.method == "POST":
-        f = request.files.get("file")
-        if not f or not f.filename:
-            flash("No file selected.")
+        uploaded_files = request.files.getlist("files") or request.files.getlist("file")
+        # Filter out empty entries
+        valid_files = [f for f in uploaded_files if f and f.filename]
+        
+        if not valid_files:
+            flash("No files selected.", "warning")
             return redirect(request.url)
-        filename = secure_filename(f.filename)
-        if not filename:
-            flash("Filename is invalid. Please rename the file and try again.")
-            return redirect(request.url)
-        # Extension check (reuse ALLOWED_EXTENSIONS from original if needed)
-        ext = os.path.splitext(filename)[1].lower()
+
         allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
-        if ext not in allowed:
-            flash(f"File type '{ext}' is not permitted.")
-            return redirect(request.url)
-        file_bytes = f.read()
-        if not file_bytes:
-            flash("The uploaded file is empty.")
-            return redirect(request.url)
-        file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-        # ── Duplicate detection: check if user already uploaded this exact file ──
+        saved_count = 0
+        duplicate_count = 0
+        last_file_id = None
+
         existing_files = fb.list_user_files(current_user.uid)
-        for existing in existing_files:
-            same_hash = (existing.get("hash") and existing.get("hash") == file_hash)
-            same_name = (existing.get("filename") == filename)
-            
-            if same_hash or same_name:
-                if existing.get("status") == "Pending":
-                    flash(f"⚠️ '{filename}' has already been uploaded and is pending scan.", "warning")
-                else:
-                    flash(f"⚠️ '{filename}' has already been uploaded and scanned. Duplicate blocked.", "warning")
-                return redirect(url_for("dashboard"))
+        existing_hashes = {f.get("hash") for f in existing_files if f.get("hash")}
+        existing_names = {f.get("filename") for f in existing_files if f.get("filename")}
 
-        # Save file to disk
         user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(current_user.uid))
         os.makedirs(user_folder, exist_ok=True)
-        path = os.path.abspath(os.path.join(user_folder, filename))
-        if len(path) > 255:
-            filename = uuid.uuid4().hex + ext
-            path = os.path.abspath(os.path.join(user_folder, filename))
-        with open(path, "wb") as out:
-            out.write(file_bytes)
-        # Store relative path so records are portable across machines
-        relative_path = os.path.join(str(current_user.uid), filename)
-        # Record metadata in Firebase
-        file_record = {
-            "id": str(uuid.uuid4()),
-            "filename": filename,
-            "filepath": path,
-            "relative_path": relative_path,
-            "upload_time": datetime.now(timezone.utc).isoformat(),
-            "status": "Pending",
-            "hash": file_hash,
-            "user_id": current_user.uid,
-            "user_email": getattr(current_user, "email", ""),
-            "username": getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0]),
-            "size": f"{round(len(file_bytes) / 1024, 2)} KB",
-        }
-        fb.save_uploaded_file(file_record)
-        _cache_bytes(file_record["id"], file_bytes)
-        flash("File uploaded successfully.")
 
-        # Check settings for auto scan preference
-        settings = get_or_create_user_settings(current_user.uid)
-        auto_scan_param = "true" if settings.get("auto_scan_enabled", True) else "false"
-        return redirect(url_for("scan_page", file_id=file_record["id"], auto_scan=auto_scan_param))
+        for f in valid_files:
+            raw_filename = os.path.basename(f.filename)
+            filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
+            ext = os.path.splitext(filename)[1].lower()
+
+            if ext not in allowed:
+                continue
+
+            file_bytes = f.read()
+            if not file_bytes:
+                continue
+
+            file_hash = hashlib.sha256(file_bytes).hexdigest()
+
+            # Skip duplicate file if already uploaded
+            if file_hash in existing_hashes or filename in existing_names:
+                duplicate_count += 1
+                continue
+
+            path = os.path.abspath(os.path.join(user_folder, filename))
+            if len(path) > 255:
+                filename = uuid.uuid4().hex + ext
+                path = os.path.abspath(os.path.join(user_folder, filename))
+
+            with open(path, "wb") as out:
+                out.write(file_bytes)
+
+            relative_path = os.path.join(str(current_user.uid), filename)
+            file_id = str(uuid.uuid4())
+            file_record = {
+                "id": file_id,
+                "filename": filename,
+                "filepath": path,
+                "relative_path": relative_path,
+                "upload_time": datetime.now(timezone.utc).isoformat(),
+                "status": "Pending",
+                "hash": file_hash,
+                "user_id": current_user.uid,
+                "user_email": getattr(current_user, "email", ""),
+                "username": getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0]),
+                "size": f"{round(len(file_bytes) / 1024, 2)} KB",
+            }
+            fb.save_uploaded_file(file_record)
+            _cache_bytes(file_id, file_bytes)
+            saved_count += 1
+            last_file_id = file_id
+
+            # Add to tracking sets for batch
+            existing_hashes.add(file_hash)
+            existing_names.add(filename)
+
+        if saved_count == 0:
+            if duplicate_count > 0:
+                flash("Selected files were already scanned or duplicates.", "warning")
+            else:
+                flash("No valid files could be processed.", "warning")
+            return redirect(url_for("dashboard"))
+
+        if saved_count == 1 and last_file_id:
+            flash("File uploaded successfully. Starting scan...", "success")
+            return redirect(url_for("scan_page", file_id=last_file_id, auto_scan="true"))
+        else:
+            flash(f"Successfully queued {saved_count} file(s) for threat analysis.", "success")
+            return redirect(url_for("dashboard"))
+
     return render_template("uploadfiles.html")
+
 
 # ── Delete single detection (X button) ───────────────────────────────────────
 @app.route("/api/delete_detection_record", methods=["POST"])
