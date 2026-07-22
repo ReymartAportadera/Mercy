@@ -44,11 +44,26 @@ if not firebase_admin._apps:          # avoid re-initialising on reload
 # ── Uploaded-File Helpers ──────────────────────────────────────────────────────
 
 def save_uploaded_file(file_record: dict) -> str:
-    """Persist a file record and return its ID."""
+    """Persist a file record under uploaded_files and user_files/{user_id}."""
     file_id = file_record.get("id") or str(uuid.uuid4())
     file_record["id"] = file_id
+
+    # Populate user email and username if missing
+    user_id = file_record.get("user_id")
+    if user_id and (not file_record.get("user_email") or not file_record.get("username")):
+        u = get_user(user_id)
+        if u:
+            file_record["user_email"] = file_record.get("user_email") or u.get("email")
+            file_record["username"] = file_record.get("username") or u.get("username")
+
+    # Save to main uploaded_files node
     db.reference(f"uploaded_files/{file_id}").set(file_record)
-    logger.info("Saved file record %s", file_id)
+
+    # Save to user-specific index node for clean organized Firebase structure
+    if user_id:
+        db.reference(f"user_files/{user_id}/{file_id}").set(file_record)
+
+    logger.info("Saved file record %s for user %s (%s)", file_id, user_id, file_record.get("user_email"))
     return file_id
 
 
@@ -57,6 +72,11 @@ def get_uploaded_file(file_id: str) -> dict | None:
 
 
 def delete_uploaded_file(file_id: str) -> None:
+    rec = get_uploaded_file(file_id)
+    if rec and rec.get("user_id"):
+        user_id = rec["user_id"]
+        db.reference(f"user_files/{user_id}/{file_id}").delete()
+
     db.reference(f"uploaded_files/{file_id}").delete()
     logger.info("Deleted file record %s", file_id)
 

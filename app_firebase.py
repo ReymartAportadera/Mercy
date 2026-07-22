@@ -592,6 +592,8 @@ def uploadfiles():
             "status": "Pending",
             "hash": file_hash,
             "user_id": current_user.uid,
+            "user_email": getattr(current_user, "email", ""),
+            "username": getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0]),
             "size": f"{round(len(file_bytes) / 1024, 2)} KB",
         }
         fb.save_uploaded_file(file_record)
