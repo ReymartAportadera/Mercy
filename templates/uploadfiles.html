@@ -332,11 +332,26 @@ dropzone.addEventListener('drop', (e) => {
     handleFileSelect(files);
 });
 
-document.getElementById('uploadForm').addEventListener('submit', () => {
+document.getElementById('uploadForm').addEventListener('submit', (e) => {
+    const input = document.getElementById('fileInput');
+    if (input.files && input.files.length > 0) {
+        let totalSize = 0;
+        for (let i = 0; i < input.files.length; i++) {
+            totalSize += input.files[i].size;
+        }
+        const maxBytes = 98 * 1024 * 1024; // 98 MB limit
+        if (totalSize > maxBytes) {
+            e.preventDefault();
+            alert('⚠️ Selected upload size (' + (totalSize / (1024*1024)).toFixed(1) + ' MB) exceeds the 100 MB capacity limit per batch.\n\nPlease select a smaller folder or upload files in smaller batches.');
+            return false;
+        }
+    }
+
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing & Queueing Scans...';
 });
 </script>
+
 </body>
 </html>

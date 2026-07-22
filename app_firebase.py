@@ -333,12 +333,17 @@ if not _secret:
     _secret = "insecure-default-replace-me"
 app.config["SECRET_KEY"] = _secret
 
-# Max upload size: 32 MB (protects against resource exhaustion)
-app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024
+# Max upload size: 100 MB (protects against resource exhaustion while allowing multi-file folder scans)
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 
 _upload_base = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
 app.config["UPLOAD_FOLDER"] = _upload_base
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    flash("⚠️ The selected folder or files exceed the 100 MB batch limit. Please upload in smaller batches.", "warning")
+    return redirect(url_for("uploadfiles"))
 
 @app.after_request
 def add_header(response):
