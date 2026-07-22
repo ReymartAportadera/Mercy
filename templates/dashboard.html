@@ -136,95 +136,165 @@
             </div>
         </section>
 
-        <!-- Files Section -->
-        <section class="files-section">
-            <div class="section-header">
-                <h2><i class="fa-solid fa-folder-open"></i> Scanned Files</h2>
-                <div class="section-controls">
-                    <div class="search-wrap">
-                        <i class="fa-solid fa-search"></i>
-                        <input type="text" id="fileSearch" placeholder="Search files..." onkeyup="filterFiles()">
+        <!-- Dashboard Grid Layout: Scanned Files (Left) + Scanned Folders (Right) -->
+        <div class="dashboard-split-grid" style="display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start;">
+            
+            <!-- Left Column: Scanned Files -->
+            <section class="files-section" style="margin-top:0;">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-file-shield"></i> Scanned Files</h2>
+                    <div class="section-controls">
+                        <div class="search-wrap">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="fileSearch" placeholder="Search files..." onkeyup="filterFiles()">
+                        </div>
+                        <select id="threatFilter" onchange="filterFiles()" class="filter-select">
+                            <option value="">All Levels</option>
+                            <option value="safe">Safe</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
                     </div>
-                    <select id="threatFilter" onchange="filterFiles()" class="filter-select">
-                        <option value="">All Levels</option>
-                        <option value="safe">Safe</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                    </select>
                 </div>
-            </div>
 
-            {% if files %}
-            <div class="file-cards" id="fileCards">
-                {% for file in files %}
-                <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}">
-                    <div class="file-card-icon">
-                        {% set ext = file.filename.rsplit('.', 1)[-1]|lower if '.' in file.filename else 'file' %}
-                        {% if ext in ['pdf'] %}<i class="fa-solid fa-file-pdf"></i>
-                        {% elif ext in ['doc','docx'] %}<i class="fa-solid fa-file-word"></i>
-                        {% elif ext in ['xls','xlsx'] %}<i class="fa-solid fa-file-excel"></i>
-                        {% elif ext in ['zip','rar','7z','tar','gz'] %}<i class="fa-solid fa-file-zipper"></i>
-                        {% elif ext in ['py','js','ts','sh','bat','ps1','php'] %}<i class="fa-solid fa-file-code"></i>
-                        {% elif ext in ['exe','dll','msi'] %}<i class="fa-solid fa-microchip"></i>
-                        {% elif ext in ['jpg','jpeg','png','gif','bmp','svg','webp'] %}<i class="fa-solid fa-file-image"></i>
-                        {% elif ext in ['mp4','avi','mov','mkv'] %}<i class="fa-solid fa-file-video"></i>
-                        {% else %}<i class="fa-solid fa-file-lines"></i>{% endif %}
-                    </div>
-                    <div class="file-card-info">
-                        <div class="file-name" title="{{ file.filename }}">{{ file.filename }}</div>
-                        <div class="file-meta">
-                            <span><i class="fa-solid fa-clock"></i> {{ file.upload_time | format_dt if file.upload_time else 'N/A' }}</span>
-                            <span><i class="fa-solid fa-weight-hanging"></i> {{ file.size if file.size else 'N/A' }}</span>
+                {% if files %}
+                <div class="file-cards" id="fileCards">
+                    {% for file in files %}
+                    <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}">
+                        <div class="file-card-icon">
+                            {% set ext = file.filename.rsplit('.', 1)[-1]|lower if '.' in file.filename else 'file' %}
+                            {% if ext in ['pdf'] %}<i class="fa-solid fa-file-pdf"></i>
+                            {% elif ext in ['doc','docx'] %}<i class="fa-solid fa-file-word"></i>
+                            {% elif ext in ['xls','xlsx'] %}<i class="fa-solid fa-file-excel"></i>
+                            {% elif ext in ['zip','rar','7z','tar','gz'] %}<i class="fa-solid fa-file-zipper"></i>
+                            {% elif ext in ['py','js','ts','sh','bat','ps1','php'] %}<i class="fa-solid fa-file-code"></i>
+                            {% elif ext in ['exe','dll','msi'] %}<i class="fa-solid fa-microchip"></i>
+                            {% elif ext in ['jpg','jpeg','png','gif','bmp','svg','webp'] %}<i class="fa-solid fa-file-image"></i>
+                            {% elif ext in ['mp4','avi','mov','mkv'] %}<i class="fa-solid fa-file-video"></i>
+                            {% else %}<i class="fa-solid fa-file-lines"></i>{% endif %}
                         </div>
-                        <div class="file-risk-bar">
-                            <div class="risk-fill risk-{{ file.threat_level|lower if file.threat_level else 'safe' }}" style="width: {{ file.risk_score if file.risk_score else 0 }}%"></div>
+                        <div class="file-card-info">
+                            <div class="file-name" title="{{ file.filename }}">{{ file.filename }}</div>
+                            <div class="file-meta">
+                                <span><i class="fa-solid fa-clock"></i> {{ file.upload_time | format_dt if file.upload_time else 'N/A' }}</span>
+                                <span><i class="fa-solid fa-weight-hanging"></i> {{ file.size if file.size else 'N/A' }}</span>
+                            </div>
+                            <div class="file-risk-bar">
+                                <div class="risk-fill risk-{{ file.threat_level|lower if file.threat_level else 'safe' }}" style="width: {{ file.risk_score if file.risk_score else 0 }}%"></div>
+                            </div>
+                            <div class="file-tags">
+                                <span class="tag-level level-{{ file.threat_level|lower if file.threat_level else 'safe' }}">
+                                    {% if file.threat_level|lower == 'critical' %}<i class="fa-solid fa-skull-crossbones"></i>
+                                    {% elif file.threat_level|lower == 'high' %}<i class="fa-solid fa-radiation"></i>
+                                    {% elif file.threat_level|lower == 'medium' %}<i class="fa-solid fa-triangle-exclamation"></i>
+                                    {% elif file.threat_level|lower == 'low' %}<i class="fa-solid fa-bug-slash"></i>
+                                    {% else %}<i class="fa-solid fa-shield-check"></i>{% endif %}
+                                    {{ file.threat_level if file.threat_level else 'Safe' }}
+                                </span>
+                                <span class="tag-risk">{{ file.risk_score if file.risk_score else 0 }}% Risk</span>
+                                <span class="tag-status status-{{ file.status|lower if file.status else 'safe' }}">{{ file.status if file.status else 'Safe' }}</span>
+                            </div>
                         </div>
-                        <div class="file-tags">
-                            <span class="tag-level level-{{ file.threat_level|lower if file.threat_level else 'safe' }}">
-                                {% if file.threat_level|lower == 'critical' %}<i class="fa-solid fa-skull-crossbones"></i>
-                                {% elif file.threat_level|lower == 'high' %}<i class="fa-solid fa-radiation"></i>
-                                {% elif file.threat_level|lower == 'medium' %}<i class="fa-solid fa-triangle-exclamation"></i>
-                                {% elif file.threat_level|lower == 'low' %}<i class="fa-solid fa-bug-slash"></i>
-                                {% else %}<i class="fa-solid fa-shield-check"></i>{% endif %}
-                                {{ file.threat_level if file.threat_level else 'Safe' }}
-                            </span>
-                            <span class="tag-risk">{{ file.risk_score if file.risk_score else 0 }}% Risk</span>
-                            <span class="tag-status status-{{ file.status|lower if file.status else 'safe' }}">{{ file.status if file.status else 'Safe' }}</span>
+                        <div class="file-card-actions">
+                            <a href="{{ url_for('scan_page', file_id=file.id) }}" class="action-btn btn-view" title="View Results">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <span>Results</span>
+                            </a>
+                            <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}"
+                                  onsubmit="return confirm('Move this file to the Recycle Bin?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="action-btn btn-delete" title="Delete File">
+                                    <i class="fa-solid fa-trash"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </form>
                         </div>
                     </div>
-                    <div class="file-card-actions">
-                        <a href="{{ url_for('scan_page', file_id=file.id) }}" class="action-btn btn-view" title="View Results">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                            <span>Results</span>
-                        </a>
-                        <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}"
-                              onsubmit="return confirm('Move this file to the Recycle Bin?');">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button class="action-btn btn-delete" title="Delete File">
-                                <i class="fa-solid fa-trash"></i>
-                                <span>Delete</span>
-                            </button>
-                        </form>
-                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-            <p class="no-results-msg" id="noResults" style="display:none;">
-                <i class="fa-solid fa-search"></i> No files match your search.
-            </p>
-            {% else %}
-            <div class="empty-state">
-                <i class="fa-solid fa-shield-virus"></i>
-                <h3>No Files Scanned Yet</h3>
-                <p>Upload a file to start scanning for threats.</p>
-                <a href="{{ url_for('uploadfiles') }}" class="btn-primary">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Scan
-                </a>
-            </div>
-            {% endif %}
-        </section>
+                <p class="no-results-msg" id="noResults" style="display:none;">
+                    <i class="fa-solid fa-search"></i> No files match your search.
+                </p>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fa-solid fa-shield-virus"></i>
+                    <h3>No Files Scanned Yet</h3>
+                    <p>Upload a file to start scanning for threats.</p>
+                    <a href="{{ url_for('uploadfiles') }}" class="btn-primary">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload & Scan
+                    </a>
+                </div>
+                {% endif %}
+            </section>
+
+            <!-- Right Column: Scanned Folders Side Panel -->
+            <aside class="folders-side-panel">
+                <div class="section-header" style="margin-bottom:16px;">
+                    <h2><i class="fa-solid fa-folder-tree" style="color:var(--accent);"></i> Scanned Folders</h2>
+                </div>
+
+                {% if folder_groups %}
+                <div class="folders-list" style="display:flex; flex-direction:column; gap:12px;">
+                    {% for grp in folder_groups %}
+                    <div class="folder-accordion-card" style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:all 0.2s ease;">
+                        
+                        <!-- Folder Header -->
+                        <div class="folder-accordion-header" onclick="toggleFolderAccordion(this)" style="padding:14px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                                <i class="fa-solid fa-folder-open" style="font-size:1.3rem; color:var(--accent);"></i>
+                                <div style="min-width:0;">
+                                    <div style="font-weight:700; font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ grp.name }}</div>
+                                    <div style="font-size:0.73rem; color:var(--text-dim);">
+                                        {{ grp.files|length }} file(s) {% if grp.threat_count > 0 %}• <span style="color:#ff4d4d; font-weight:700;">{{ grp.threat_count }} Threat(s)</span>{% else %}• <span style="color:var(--safe); font-weight:700;">All Safe</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="tag-level level-{{ grp.threat_level|lower }}" style="font-size:0.7rem; padding:3px 8px;">
+                                    {{ grp.threat_level }}
+                                </span>
+                                <i class="fa-solid fa-chevron-down accordion-arrow" style="font-size:0.8rem; color:var(--text-dim); transition:transform 0.2s ease;"></i>
+                            </div>
+                        </div>
+
+                        <!-- Expanded Files List inside Folder -->
+                        <div class="folder-accordion-body" style="display:none; padding:12px 16px; background:rgba(0,0,0,0.2); border-top:1px solid var(--border);">
+                            <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); margin-bottom:8px;">Contained Files & Results</div>
+                            <div style="display:flex; flex-direction:column; gap:6px;">
+                                {% for f in grp.files %}
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; background:var(--surface1); border-radius:8px; border:1px solid var(--border);">
+                                    <div style="min-width:0; flex:1;">
+                                        <div style="font-size:0.8rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ f.filename }}">{{ f.filename }}</div>
+                                        <div style="font-size:0.7rem; color:var(--text-dim);">Risk: {{ f.risk_score if f.risk_score else 0 }}%</div>
+                                    </div>
+                                    <span class="tag-level level-{{ f.threat_level|lower if f.threat_level else 'safe' }}" style="font-size:0.68rem; padding:2px 6px;">
+                                        {{ f.threat_level if f.threat_level else 'Safe' }}
+                                    </span>
+                                    <a href="{{ url_for('scan_page', file_id=f.id) }}" style="color:var(--accent); font-size:0.8rem; padding:3px 6px;" title="Inspect">
+                                        <i class="fa-solid fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding:24px 16px;">
+                    <i class="fa-solid fa-folder-closed" style="font-size:2rem;"></i>
+                    <h4 style="font-size:0.9rem; margin-top:8px;">No Folder Scans Yet</h4>
+                    <p style="font-size:0.78rem;">Upload an entire folder on the Upload page to group scan results here.</p>
+                </div>
+                {% endif %}
+            </aside>
+
+        </div>
+
 
     </main>
 </div>
@@ -238,6 +308,22 @@ function toggleSidebar() {
 function closeSidebar() {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// ===== FOLDER ACCORDION TOGGLE =====
+function toggleFolderAccordion(headerEl) {
+    const card = headerEl.parentElement;
+    const body = card.querySelector('.folder-accordion-body');
+    const arrow = headerEl.querySelector('.accordion-arrow');
+    const isOpen = body.style.display === 'block';
+
+    if (isOpen) {
+        body.style.display = 'none';
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    } else {
+        body.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    }
 }
 
 // ===== FILE SEARCH & FILTER =====
@@ -255,6 +341,7 @@ function filterFiles() {
     const noRes = document.getElementById('noResults');
     if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
 }
+
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {

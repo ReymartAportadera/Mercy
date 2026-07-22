@@ -492,11 +492,12 @@ def dashboard():
     all_files = fb.list_user_files(current_user.uid)
     settings  = get_or_create_user_settings(current_user.uid)
 
-    # Show all user files (scanned, clean, infected, pending)
     files = all_files
 
     counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
                     medium_threat=0, high_threat=0, critical_threat=0)
+
+    folder_groups_dict = {}
 
     for f in files:
         risk = f.get("risk_score", 0) or 0
@@ -515,15 +516,38 @@ def dashboard():
         else:
             f["threat_level"] = "Safe"
             counters["safe_files"] += 1
+
         try:
             size = os.path.getsize(f["filepath"])
             f["size"] = f"{round(size / 1024, 2)} KB"
         except Exception:
             f["size"] = f.get("size", "N/A")
+
         f["explanation"] = f.get("explanation", "")
         f["threat_ratio"] = risk
 
-    return render_template("dashboard.html", files=files, settings=settings, **counters)
+        # Folder grouping
+        fname = f.get("folder_name")
+        if fname:
+            if fname not in folder_groups_dict:
+                folder_groups_dict[fname] = {
+                    "name": fname,
+                    "files": [],
+                    "threat_count": 0,
+                    "max_risk": 0,
+                    "threat_level": "Safe"
+                }
+            grp = folder_groups_dict[fname]
+            grp["files"].append(f)
+            if risk > 0:
+                grp["threat_count"] += 1
+            if risk > grp["max_risk"]:
+                grp["max_risk"] = risk
+                grp["threat_level"] = f["threat_level"]
+
+    folder_groups = list(folder_groups_dict.values())
+
+    return render_template("dashboard.html", files=files, folder_groups=folder_groups, settings=settings, **counters)
 
 
 # ── API: Single File Upload Stream (Instant Multi-Engine Threat Scan) ────────
@@ -537,6 +561,9 @@ def upload_single_file_api():
     raw_filename = os.path.basename(f.filename)
     filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
     ext = os.path.splitext(filename)[1].lower()
+
+    # Extract folder name if provided or present in relative path
+    folder_name = request.form.get("folder_name") or (f.filename.split("/")[0] if "/" in f.filename else None)
 
     allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
 
@@ -577,6 +604,7 @@ def upload_single_file_api():
     file_record = {
         "id": file_id,
         "filename": filename,
+        "folder_name": folder_name,
         "filepath": path,
         "relative_path": relative_path,
         "upload_time": datetime.now(timezone.utc).isoformat(),
@@ -600,8 +628,71 @@ def upload_single_file_api():
     return jsonify({"success": True, "file_id": file_id, "filename": filename, "status": status, "risk_score": risk_score}), 200
 
 
+# ── Guest Quick Scan (No Login Required — Temporary Session Only) ───────────
+@app.route("/guest_scan", methods=["GET"])
+def guest_scan_page():
+    guest_scans = session.get("guest_scans", [])
+    return render_template("guest_scan.html", files=guest_scans)
 
-# ── Upload ───────────────────────────────────────────────────────────────────
+@app.route("/api/guest_upload", methods=["POST"])
+def guest_upload_api():
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"error": "No file provided"}), 400
+
+    raw_filename = os.path.basename(f.filename)
+    filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
+    ext = os.path.splitext(filename)[1].lower()
+
+    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
+
+    if ext not in allowed:
+        return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
+
+    file_bytes = f.read()
+    if not file_bytes:
+        return jsonify({"skipped": True, "reason": "Empty file"}), 200
+
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    # Run instant threat scan
+    scan_res = _run_full_heuristic_scan(filename, file_bytes, file_hash)
+    risk_score = scan_res.get("risk_score", 0)
+    status = "Infected" if risk_score >= 50 else "Clean"
+    threat_level = "Critical" if risk_score >= 70 else "High" if risk_score >= 50 else "Medium" if risk_score >= 30 else "Low" if risk_score > 0 else "Safe"
+
+    file_id = str(uuid.uuid4())
+    guest_record = {
+        "id": file_id,
+        "filename": filename,
+        "folder_name": request.form.get("folder_name"),
+        "upload_time": datetime.now(timezone.utc).isoformat(),
+        "status": status,
+        "risk_score": risk_score,
+        "threat_level": threat_level,
+        "hash": file_hash,
+        "size": f"{round(len(file_bytes) / 1024, 2)} KB",
+        "pattern_result": ", ".join(scan_res.get("heuristics", [])) or "None",
+        "signature_status": ", ".join(scan_res.get("suspicious", [])) or "None",
+        "risky_imports": ", ".join(scan_res.get("risky_imports", [])) or "None",
+        "entropy": str(scan_res.get("entropy", 0)),
+        "explanation": f"Guest Scan (Temporary Session). Risk score: {risk_score}%"
+    }
+
+    if "guest_scans" not in session:
+        session["guest_scans"] = []
+    
+    # Prepend new scan record
+    session["guest_scans"].insert(0, guest_record)
+    session.modified = True
+
+    return jsonify({"success": True, "file": guest_record}), 200
+
+@app.route("/api/clear_guest_history", methods=["POST"])
+def clear_guest_history():
+    session.pop("guest_scans", None)
+    return jsonify({"status": "cleared"})
+
 @app.route("/upload", methods=["GET", "POST"])
 
 @login_required

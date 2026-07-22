@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>TrustFile | Quick Guest Scan</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='scan.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+.guest-banner {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+    padding: 14px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.dropzone-box {
+    border: 2px dashed rgba(255, 30, 30, 0.3);
+    background: rgba(255, 30, 30, 0.02);
+    border-radius: 16px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+}
+.dropzone-box:hover, .dropzone-box.dragover {
+    border-color: var(--accent);
+    background: rgba(255, 30, 30, 0.06);
+}
+.file-input-hidden { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.mode-toggle-group { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+.mode-btn {
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+}
+.mode-btn.active { background: rgba(255,30,30,0.15); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body style="background: var(--bg-dark); color: var(--text-main); font-family: 'Inter', sans-serif;">
+
+<!-- NAVBAR FOR GUESTS -->
+<nav style="padding: 16px 32px; background: var(--surface1); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+    <div style="font-weight: 900; font-size: 1.3rem; letter-spacing: 1px; color: #fff;">
+        TRUST<span style="color: var(--accent);">FILE</span>
+        <span style="font-size: 0.7rem; font-weight: 700; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 3px 8px; border-radius: 99px; margin-left: 8px;">GUEST MODE</span>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <a href="{{ url_for('login') }}" class="btn-primary" style="padding: 8px 18px; font-size: 0.85rem; border-radius: 8px; text-decoration: none;">
+            <i class="fa-solid fa-right-to-bracket"></i> Login / Sign Up
+        </a>
+    </div>
+</nav>
+
+<div style="max-width: 1000px; margin: 32px auto; padding: 0 20px;">
+
+    <!-- Banner -->
+    <div class="guest-banner">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-user-clock" style="font-size: 1.3rem;"></i>
+            <div>
+                <strong style="font-size: 0.92rem;">Temporary Guest Session Active</strong>
+                <div style="font-size: 0.78rem; opacity: 0.9;">No account or login required. Scan results exist ONLY in your browser session and are never saved to history.</div>
+            </div>
+        </div>
+        <button onclick="clearGuestSession()" style="background: rgba(255,30,30,0.12); border: 1px solid rgba(255,30,30,0.3); color: var(--accent); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700;">
+            <i class="fa-solid fa-trash"></i> Clear Session
+        </button>
+    </div>
+
+    <!-- Mode & Upload Box -->
+    <div style="background: var(--surface1); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
+        <div class="mode-toggle-group">
+            <button type="button" class="mode-btn active" id="btnFileMode" onclick="setMode('file')">
+                <i class="fa-solid fa-file"></i> Select File(s)
+            </button>
+            <button type="button" class="mode-btn" id="btnFolderMode" onclick="setMode('folder')">
+                <i class="fa-solid fa-folder-open"></i> Scan Entire Folder
+            </button>
+        </div>
+
+        <div class="dropzone-box" id="dropzone">
+            <input type="file" id="guestFileInput" class="file-input-hidden" multiple onchange="handleGuestFiles(this.files)">
+            <div style="font-size: 2.2rem; color: var(--accent); margin-bottom: 12px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+            <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;" id="dropTitle">Drag & Drop file(s) or click to browse</div>
+            <div style="font-size: 0.82rem; color: var(--text-dim);">Instant Multi-Engine Threat Scan (Executables, Documents, Scripts, Media)</div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <button class="btn-primary" id="btnGuestScan" onclick="startGuestScan()" disabled style="padding: 12px 36px; font-size: 0.95rem; border-radius: 10px;">
+                <i class="fa-solid fa-play"></i> Start Quick Threat Scan
+            </button>
+        </div>
+    </div>
+
+    <!-- Scanned Guest Results List -->
+    <div style="margin-top: 32px;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-shield-virus" style="color: var(--accent);"></i>
+            Temporary Guest Scan Results
+        </h3>
+
+        <div id="guestResultsList" style="display: flex; flex-direction: column; gap: 12px;">
+            {% if files %}
+                {% for f in files %}
+                <div style="background: var(--surface1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+                    <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+                        <i class="fa-solid fa-file-code" style="font-size: 1.5rem; color: var(--accent);"></i>
+                        <div style="min-width: 0;">
+                            <div style="font-weight: 700; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.filename }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-dim);">
+                                {{ f.size }} • Risk Score: <strong>{{ f.risk_score }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="tag-level level-{{ f.threat_level|lower }}">
+                        {{ f.threat_level }}
+                    </span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 40px; background: var(--surface1); border: 1px solid var(--border); border-radius: 14px; color: var(--text-dim);">
+                    <i class="fa-solid fa-file-shield" style="font-size: 2.2rem; margin-bottom: 10px;"></i>
+                    <div style="font-size: 0.95rem; font-weight: 600;">No Guest Files Scanned Yet</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 4px;">Upload a file or folder above to run an instant guest security check.</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+let selectedGuestFiles = null;
+
+function setMode(mode) {
+    const input = document.getElementById('guestFileInput');
+    const title = document.getElementById('dropTitle');
+    input.value = '';
+    selectedGuestFiles = null;
+    document.getElementById('btnGuestScan').disabled = true;
+
+    if (mode === 'folder') {
+        document.getElementById('btnFolderMode').classList.add('active');
+        document.getElementById('btnFileMode').classList.remove('active');
+        input.setAttribute('webkitdirectory', '');
+        input.setAttribute('directory', '');
+        title.textContent = 'Click to select a Folder — all files inside will be scanned';
+    } else {
+        document.getElementById('btnFileMode').classList.add('active');
+        document.getElementById('btnFolderMode').classList.remove('active');
+        input.removeAttribute('webkitdirectory');
+        input.removeAttribute('directory');
+        title.textContent = 'Drag & Drop file(s) here or click to browse';
+    }
+}
+
+function handleGuestFiles(files) {
+    if (!files || files.length === 0) return;
+    selectedGuestFiles = files;
+    document.getElementById('btnGuestScan').disabled = false;
+    document.getElementById('dropTitle').textContent = files.length + ' file(s) selected for guest scan';
+}
+
+async function startGuestScan() {
+    if (!selectedGuestFiles || selectedGuestFiles.length === 0) return;
+    const btn = document.getElementById('btnGuestScan');
+    btn.disabled = true;
+
+    const files = selectedGuestFiles;
+    for (let i = 0; i < files.length; i++) {
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Scanning ${i + 1} of ${files.length}: ${files[i].name.substring(0, 15)}...`;
+        const formData = new FormData();
+        formData.append('file', files[i]);
+        if (files[i].webkitRelativePath) {
+            const folderName = files[i].webkitRelativePath.split('/')[0];
+            formData.append('folder_name', folderName);
+        }
+        try {
+            await fetch('/api/guest_upload', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': CSRF_TOKEN },
+                body: formData
+            });
+        } catch (err) {
+            console.error('Guest upload error:', err);
+        }
+    }
+    window.location.reload();
+}
+
+async function clearGuestSession() {
+    await fetch('/api/clear_guest_history', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF_TOKEN }
+    });
+    window.location.reload();
+}
+</script>
+</body>
+</html>

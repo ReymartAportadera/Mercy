@@ -16,6 +16,7 @@
     <header class="topbar">
         <div class="logo">TRUST<span>FILE</span></div>
         <div class="nav-actions">
+            <a href="{{ url_for('guest_scan_page') }}" class="btn" style="background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa;"><i class="fa-solid fa-bolt"></i> Quick Guest Scan</a>
             <a href="{{ url_for('login') }}" class="btn">Login</a>
             <a href="{{ url_for('dashboard') }}" class="btn active">Dashboard</a>
         </div>
@@ -32,11 +33,13 @@
                 Ensure file safety before opening or sharing with our advanced neural defense.
             </p>
 
-            <div class="cta-group fade-in-up delay-3">
+            <div class="cta-group fade-in-up delay-3" style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
                 <a href="{{ url_for('dashboard') }}" class="primary-btn">Initialize Scan</a>
+                <a href="{{ url_for('guest_scan_page') }}" class="primary-btn" style="background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.5); color: #60a5fa;">⚡ Quick Guest Scan (No Account Required)</a>
             </div>
         </div>
     </main>
+
 
 </body>
 </html>
