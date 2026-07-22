@@ -332,13 +332,55 @@ dropzone.addEventListener('drop', (e) => {
     handleFileSelect(files);
 });
 
-document.getElementById('uploadForm').addEventListener('submit', () => {
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('fileInput');
+    const files = input.files;
+
+    if (!files || files.length === 0) return;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing & Queueing Scans...';
-});
 
+    let queuedCount = 0;
+    let lastFileId = null;
+    const totalFiles = files.length;
+
+    for (let i = 0; i < totalFiles; i++) {
+        const file = files[i];
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading ${i + 1} of ${totalFiles}: ${file.name.substring(0, 15)}...`;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const resp = await fetch('/api/upload_single_file', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData
+            });
+
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.success) {
+                    queuedCount++;
+                    lastFileId = data.file_id;
+                }
+            }
+        } catch (err) {
+            console.error('File upload error:', err);
+        }
+    }
+
+    if (totalFiles === 1 && lastFileId) {
+        window.location.href = `/scan/${lastFileId}?auto_scan=true`;
+    } else {
+        window.location.href = '/dashboard';
+    }
+});
 </script>
+
 
 </body>
 </html>

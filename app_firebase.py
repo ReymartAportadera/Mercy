@@ -526,8 +526,69 @@ def dashboard():
     return render_template("dashboard.html", files=files, settings=settings, **counters)
 
 
+# ── API: Single File Upload Stream (Bypasses Nginx Batch Payload Limits) ────
+@app.route("/api/upload_single_file", methods=["POST"])
+@login_required
+def upload_single_file_api():
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify({"error": "No file provided"}), 400
+
+    raw_filename = os.path.basename(f.filename)
+    filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
+    ext = os.path.splitext(filename)[1].lower()
+
+    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
+
+    if ext not in allowed:
+        return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
+
+    file_bytes = f.read()
+    if not file_bytes:
+        return jsonify({"skipped": True, "reason": "Empty file"}), 200
+
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+
+    existing_files = fb.list_user_files(current_user.uid)
+    for existing in existing_files:
+        if (existing.get("hash") and existing.get("hash") == file_hash) or existing.get("filename") == filename:
+            return jsonify({"duplicate": True, "filename": filename}), 200
+
+    user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(current_user.uid))
+    os.makedirs(user_folder, exist_ok=True)
+
+    path = os.path.abspath(os.path.join(user_folder, filename))
+    if len(path) > 255:
+        filename = uuid.uuid4().hex + ext
+        path = os.path.abspath(os.path.join(user_folder, filename))
+
+    with open(path, "wb") as out:
+        out.write(file_bytes)
+
+    relative_path = os.path.join(str(current_user.uid), filename)
+    file_id = str(uuid.uuid4())
+    file_record = {
+        "id": file_id,
+        "filename": filename,
+        "filepath": path,
+        "relative_path": relative_path,
+        "upload_time": datetime.now(timezone.utc).isoformat(),
+        "status": "Pending",
+        "hash": file_hash,
+        "user_id": current_user.uid,
+        "user_email": getattr(current_user, "email", ""),
+        "username": getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0]),
+        "size": f"{round(len(file_bytes) / 1024, 2)} KB",
+    }
+    fb.save_uploaded_file(file_record)
+    _cache_bytes(file_id, file_bytes)
+
+    return jsonify({"success": True, "file_id": file_id, "filename": filename}), 200
+
+
 # ── Upload ───────────────────────────────────────────────────────────────────
 @app.route("/upload", methods=["GET", "POST"])
+
 @login_required
 def uploadfiles():
     if request.method == "POST":
