@@ -468,29 +468,16 @@ def logout():
     return redirect(url_for("login"))
 
 def get_or_create_user_settings(uid: str) -> dict:
-    settings = fb.get_user_settings(uid) or {}
-    dirty = False
-    defaults = {
+    return {
         "auto_scan_enabled": True,
         "auto_scan_mode": "single",
         "scan_types": ["heuristic"],
         "notify_on_threat": True,
         "theme": "dark",
-        "auto_quarantine": True,
+        "auto_quarantine": False,
         "alert_sound": True,
         "notify_safe": False,
     }
-    for k, v in defaults.items():
-        if k not in settings:
-            if k == "scan_types" and "default_scan_types" in settings:
-                val = settings["default_scan_types"]
-                settings["scan_types"] = [val] if isinstance(val, str) else val
-            else:
-                settings[k] = v
-            dirty = True
-    if dirty:
-        fb.save_user_settings(uid, settings)
-    return settings
 
 # ── Dashboard ────────────────────────────────────────────────────────────────
 @app.route("/dashboard")

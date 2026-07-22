@@ -119,15 +119,15 @@ def delete_user(uid: str) -> None:
     db.reference(f"users/{uid}").delete()
     logger.info("Deleted user %s", uid)
 
-# ── User-Settings Helpers ─────────────────────────────────────────────────────
+# ── User-Settings Helpers (Disabled / In-Memory Defaults) ───────────────────
 
 def save_user_settings(uid: str, settings: dict) -> None:
-    db.reference(f"user_settings/{uid}").set(settings)
+    pass
 
 
 def get_user_settings(uid: str) -> dict | None:
-    return db.reference(f"user_settings/{uid}").get()
+    return None
 
 
 def delete_user_settings(uid: str) -> None:
-    db.reference(f"user_settings/{uid}").delete()
+    pass
