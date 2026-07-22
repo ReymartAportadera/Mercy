@@ -492,8 +492,8 @@ def dashboard():
     all_files = fb.list_user_files(current_user.uid)
     settings  = get_or_create_user_settings(current_user.uid)
 
-    # Show all scanned files — only hide Pending (not yet scanned)
-    files = [f for f in all_files if f.get("status") != "Pending"]
+    # Show all user files (scanned, clean, infected, pending)
+    files = all_files
 
     counters = dict(total_scans=len(files), safe_files=0, low_threat=0,
                     medium_threat=0, high_threat=0, critical_threat=0)
@@ -526,7 +526,7 @@ def dashboard():
     return render_template("dashboard.html", files=files, settings=settings, **counters)
 
 
-# ── API: Single File Upload Stream (Bypasses Nginx Batch Payload Limits) ────
+# ── API: Single File Upload Stream (Instant Multi-Engine Threat Scan) ────────
 @app.route("/api/upload_single_file", methods=["POST"])
 @login_required
 def upload_single_file_api():
@@ -567,23 +567,38 @@ def upload_single_file_api():
 
     relative_path = os.path.join(str(current_user.uid), filename)
     file_id = str(uuid.uuid4())
+
+    # Run instant heuristic threat scan
+    scan_res = _run_full_heuristic_scan(filename, file_bytes, file_hash)
+    risk_score = scan_res.get("risk_score", 0)
+    status = "Infected" if risk_score >= 50 else "Clean"
+    threat_level = "Critical" if risk_score >= 70 else "High" if risk_score >= 50 else "Medium" if risk_score >= 30 else "Low" if risk_score > 0 else "Safe"
+
     file_record = {
         "id": file_id,
         "filename": filename,
         "filepath": path,
         "relative_path": relative_path,
         "upload_time": datetime.now(timezone.utc).isoformat(),
-        "status": "Pending",
+        "status": status,
+        "risk_score": risk_score,
+        "threat_level": threat_level,
         "hash": file_hash,
         "user_id": current_user.uid,
         "user_email": getattr(current_user, "email", ""),
         "username": getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0]),
         "size": f"{round(len(file_bytes) / 1024, 2)} KB",
+        "pattern_result": ", ".join(scan_res.get("heuristics", [])) or "None",
+        "signature_status": ", ".join(scan_res.get("suspicious", [])) or "None",
+        "risky_imports": ", ".join(scan_res.get("risky_imports", [])) or "None",
+        "entropy": str(scan_res.get("entropy", 0)),
+        "explanation": f"Scanned upon upload. Risk score: {risk_score}%"
     }
     fb.save_uploaded_file(file_record)
     _cache_bytes(file_id, file_bytes)
 
-    return jsonify({"success": True, "file_id": file_id, "filename": filename}), 200
+    return jsonify({"success": True, "file_id": file_id, "filename": filename, "status": status, "risk_score": risk_score}), 200
+
 
 
 # ── Upload ───────────────────────────────────────────────────────────────────
