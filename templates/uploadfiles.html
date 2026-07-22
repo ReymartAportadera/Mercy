@@ -6,9 +6,13 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>TrustFile | Upload & Scan</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='scan.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* ============================================================
+   UPLOAD PAGE STYLES
+   ============================================================ */
 .dropzone-container { padding: 32px 24px; }
 
 .mode-toggle-group {
@@ -37,7 +41,6 @@
     color: #fff;
     box-shadow: 0 0 15px rgba(255, 30, 30, 0.2);
 }
-
 .dropzone-box {
     border: 2px dashed rgba(255, 30, 30, 0.3);
     background: rgba(255, 30, 30, 0.02);
@@ -66,14 +69,7 @@
 }
 .dropzone-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
 .dropzone-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 20px; }
-
-.file-input-hidden {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-}
-
+.file-input-hidden { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .selected-file-preview {
     display: none;
     align-items: center;
@@ -88,62 +84,303 @@
 .selected-file-icon { font-size: 1.5rem; color: var(--accent); }
 .selected-file-name { font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .selected-file-size { font-size: 0.75rem; color: var(--text-dim); }
-
-.submit-btn-wrap { margin-top: 24px; text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.submit-btn-wrap { margin-top: 24px; text-align: center; }
 .upload-btn-lg { padding: 12px 36px; font-size: 0.95rem; border-radius: 10px; min-width: 180px; }
 
-/* Progress section */
-.upload-progress-wrap {
+/* ============================================================
+   SCAN QUEUE PANEL
+   ============================================================ */
+.scan-queue-wrap {
     display: none;
-    margin-top: 24px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-}
-.progress-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--text-dim);
-}
-.progress-bar-outer {
-    background: rgba(255,30,30,0.12);
-    border-radius: 99px;
-    height: 10px;
-    overflow: hidden;
-    margin-bottom: 10px;
-}
-.progress-bar-inner {
-    height: 100%;
-    background: linear-gradient(90deg, #ff1e1e, #ff6b6b);
-    border-radius: 99px;
-    width: 0%;
-    transition: width 0.3s ease;
-}
-.progress-file-name {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-top: 0;
 }
 
-/* Upload done section */
-.upload-done-wrap {
+/* Currently Scanning Section */
+.scanning-now-panel {
+    background: var(--surface2);
+    border: 1px solid rgba(255, 30, 30, 0.25);
+    border-radius: 14px;
+    padding: 28px 24px;
+    text-align: center;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+.scanning-now-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(255, 30, 30, 0.07) 0%, transparent 70%);
+    animation: scanPulse 2s ease-in-out infinite;
+}
+@keyframes scanPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+.scanning-now-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.scanning-now-label .dot-blink {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: dotBlink 1s ease-in-out infinite;
+}
+@keyframes dotBlink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.3; transform: scale(0.7); }
+}
+
+/* Folder Scanner Animation (reused from scan.css) */
+.folder-scanner-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pulse-aura {
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 30, 30, 0.3);
+    animation: auraPulse 2s ease-out infinite;
+}
+.pulse-aura::after {
+    content: '';
+    position: absolute;
+    inset: 10px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 30, 30, 0.15);
+    animation: auraPulse 2s ease-out infinite 0.5s;
+}
+@keyframes auraPulse {
+    0% { transform: scale(0.8); opacity: 1; }
+    100% { transform: scale(1.3); opacity: 0; }
+}
+.folder-visual {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.folder-icon {
+    font-size: 3rem;
+    color: var(--accent);
+    animation: iconFloat 2s ease-in-out infinite;
+}
+@keyframes iconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+.folder-laser {
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    border-radius: 3px;
+    animation: laserScan 1s ease-in-out infinite;
+}
+@keyframes laserScan {
+    0%, 100% { width: 20px; opacity: 0.4; }
+    50% { width: 70px; opacity: 1; }
+}
+.data-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.particle {
+    position: absolute;
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    opacity: 0;
+}
+.p1 { top: 20%; left: 10%; animation: floatParticle 2.5s ease-in-out infinite 0s; }
+.p2 { top: 60%; left: 80%; animation: floatParticle 2.5s ease-in-out infinite 0.6s; }
+.p3 { top: 10%; left: 60%; animation: floatParticle 2.5s ease-in-out infinite 1.2s; }
+.p4 { top: 70%; left: 20%; animation: floatParticle 2.5s ease-in-out infinite 1.8s; }
+@keyframes floatParticle {
+    0% { opacity: 0; transform: translateY(0) scale(0); }
+    50% { opacity: 1; transform: translateY(-20px) scale(1); }
+    100% { opacity: 0; transform: translateY(-40px) scale(0); }
+}
+
+.scanning-filename {
+    font-weight: 700;
+    font-size: 0.95rem;
+    max-width: 300px;
+    margin: 0 auto 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.status-text-inline {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    animation: textFade 1.5s ease-in-out infinite;
+}
+@keyframes textFade {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+/* Standby Queue */
+.queue-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 4px;
+}
+.queue-header-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.queue-count-badge {
+    background: rgba(255,30,30,0.15);
+    border: 1px solid rgba(255,30,30,0.3);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.queue-list::-webkit-scrollbar { width: 4px; }
+.queue-list::-webkit-scrollbar-track { background: transparent; }
+.queue-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.queue-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    animation: slideInQueue 0.3s ease;
+}
+@keyframes slideInQueue {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.queue-item.removing {
+    animation: removeQueue 0.3s ease forwards;
+}
+@keyframes removeQueue {
+    to { opacity: 0; transform: translateX(20px); height: 0; padding: 0; margin: 0; }
+}
+.queue-item-icon {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+.queue-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.queue-item-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.queue-item-size {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+}
+.queue-item-status {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+.queue-item-status.scanning {
+    background: rgba(255,30,30,0.12);
+    border-color: rgba(255,30,30,0.3);
+    color: var(--accent);
+    animation: textFade 1s infinite;
+}
+.queue-item-status.done {
+    background: rgba(16,185,129,0.12);
+    border-color: rgba(16,185,129,0.3);
+    color: var(--safe);
+}
+.queue-delete-btn {
+    background: rgba(255,30,30,0.08);
+    border: 1px solid rgba(255,30,30,0.2);
+    border-radius: 6px;
+    color: var(--accent);
+    padding: 5px 9px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+.queue-delete-btn:hover {
+    background: rgba(255,30,30,0.2);
+    border-color: var(--accent);
+}
+.queue-empty-msg {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-dim);
+    font-size: 0.82rem;
     display: none;
-    margin-top: 24px;
+}
+
+/* Done Panel */
+.scan-done-panel {
+    display: none;
+    margin-top: 20px;
     background: rgba(16,185,129,0.08);
     border: 1px solid rgba(16,185,129,0.3);
     border-radius: 12px;
-    padding: 20px;
+    padding: 24px;
     text-align: center;
 }
-.upload-done-wrap .done-icon { font-size: 2rem; color: var(--safe); margin-bottom: 10px; }
-.upload-done-wrap .done-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
-.upload-done-wrap .done-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 16px; }
+.scan-done-icon { font-size: 2.2rem; color: var(--safe); margin-bottom: 10px; }
+.scan-done-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.scan-done-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 16px; }
 .done-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-.btn-reset {
+.btn-secondary {
     padding: 10px 22px;
     border-radius: var(--radius-sm);
     background: var(--surface2);
@@ -158,7 +395,7 @@
     align-items: center;
     gap: 8px;
 }
-.btn-reset:hover { background: rgba(255,30,30,0.12); border-color: var(--accent); }
+.btn-secondary:hover { background: rgba(255,30,30,0.12); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -214,7 +451,7 @@
     <!-- MAIN CONTENT -->
     <main class="main-content">
 
-        <!-- Flash Toast Notifications -->
+        <!-- Flash Notifications -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="toast-stack" id="toastStack">
@@ -244,66 +481,107 @@
         <section class="files-section">
             <div class="dropzone-container">
 
-                <!-- Mode Toggle -->
-                <div class="mode-toggle-group" id="modeToggleGroup">
-                    <button type="button" class="mode-btn active" id="btnFileMode" onclick="setMode('file')">
-                        <i class="fa-solid fa-file"></i> Select File(s)
-                    </button>
-                    <button type="button" class="mode-btn" id="btnFolderMode" onclick="setMode('folder')">
-                        <i class="fa-solid fa-folder-open"></i> Scan Entire Folder
-                    </button>
-                </div>
-
-                <!-- Upload Form -->
+                <!-- ========= UPLOAD SECTION ========= -->
                 <div id="uploadSection">
+                    <div class="mode-toggle-group">
+                        <button type="button" class="mode-btn active" id="btnFileMode" onclick="setMode('file')">
+                            <i class="fa-solid fa-file"></i> Select File(s)
+                        </button>
+                        <button type="button" class="mode-btn" id="btnFolderMode" onclick="setMode('folder')">
+                            <i class="fa-solid fa-folder-open"></i> Scan Entire Folder
+                        </button>
+                    </div>
+
                     <div class="dropzone-box" id="dropzone">
-                        <input type="file" name="files" id="fileInput" class="file-input-hidden" multiple onchange="handleFileSelect(this.files)">
+                        <input type="file" id="fileInput" class="file-input-hidden" multiple onchange="handleFileSelect(this.files)">
                         <div class="dropzone-icon" id="dropzoneIcon">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                         </div>
                         <div class="dropzone-title" id="dropzoneTitle">Drag & Drop file(s) here or click to browse</div>
                         <div class="dropzone-sub">Supports Executables, Documents, Archives, Scripts, Images, Videos & Audio</div>
-
                         <div class="selected-file-preview" id="filePreview">
                             <i class="fa-solid fa-file-code selected-file-icon" id="previewIcon"></i>
-                            <div style="flex: 1; min-width: 0;">
+                            <div style="flex:1;min-width:0;">
                                 <div class="selected-file-name" id="fileName">0 files selected</div>
-                                <div class="selected-file-size" id="fileSize">0 KB total</div>
+                                <div class="selected-file-size" id="fileSize">0 KB</div>
                             </div>
-                            <i class="fa-solid fa-check-circle" style="color: var(--safe); font-size: 1.2rem;"></i>
+                            <i class="fa-solid fa-check-circle" style="color:var(--safe);font-size:1.2rem;"></i>
                         </div>
                     </div>
 
-                    <div class="submit-btn-wrap">
-                        <button type="button" class="btn-primary upload-btn-lg" id="submitBtn" onclick="startUpload()">
+                    <div class="submit-btn-wrap" style="margin-top:24px;">
+                        <button type="button" class="btn-primary upload-btn-lg" id="submitBtn" onclick="startScanQueue()" disabled>
                             <i class="fa-solid fa-play"></i> Start Threat Scan
                         </button>
                     </div>
                 </div>
 
-                <!-- Progress Section (shown during upload) -->
-                <div class="upload-progress-wrap" id="progressWrap">
-                    <div class="progress-label" id="progressLabel">Uploading 1 of 1...</div>
-                    <div class="progress-bar-outer">
-                        <div class="progress-bar-inner" id="progressBar"></div>
-                    </div>
-                    <div class="progress-file-name" id="progressFileName">Preparing...</div>
-                </div>
+                <!-- ========= SCAN QUEUE PANEL ========= -->
+                <div class="scan-queue-wrap" id="scanQueueWrap">
 
-                <!-- Done Section (shown after all uploads complete) -->
-                <div class="upload-done-wrap" id="doneSectionWrap">
-                    <div class="done-icon"><i class="fa-solid fa-shield-check"></i></div>
-                    <div class="done-title" id="doneTitle">Files Queued for Threat Analysis!</div>
-                    <div class="done-sub" id="doneSub">All files have been uploaded and are being scanned.</div>
-                    <div class="done-actions">
-                        <button class="btn-reset" onclick="resetUploadPage()">
-                            <i class="fa-solid fa-plus"></i> Upload More Files
-                        </button>
-                        <a href="{{ url_for('dashboard') }}" class="btn-primary" style="padding:10px 22px; font-size:0.85rem; border-radius:var(--radius-sm); display:inline-flex; align-items:center; gap:8px;">
-                            <i class="fa-solid fa-gauge-high"></i> View Dashboard
-                        </a>
+                    <!-- Currently Scanning -->
+                    <div class="scanning-now-panel" id="scanningNowPanel">
+                        <div class="scanning-now-label">
+                            <span class="dot-blink"></span> Now Scanning
+                        </div>
+                        <div class="folder-scanner-container">
+                            <div class="pulse-aura"></div>
+                            <div class="folder-visual">
+                                <i class="fa-solid fa-file-shield folder-icon" id="scanAnimIcon"></i>
+                                <div class="folder-laser"></div>
+                            </div>
+                            <div class="data-particles">
+                                <span class="particle p1"></span>
+                                <span class="particle p2"></span>
+                                <span class="particle p3"></span>
+                                <span class="particle p4"></span>
+                            </div>
+                        </div>
+                        <div class="scanning-filename" id="scanningFilename">Preparing...</div>
+                        <div class="status-text-inline" id="scanningStatusText">Initializing scan engines...</div>
                     </div>
+
+                    <!-- Standby Queue -->
+                    <div id="standbyQueueSection" style="display:none;">
+                        <div class="queue-header">
+                            <div class="queue-header-label">
+                                <i class="fa-solid fa-layer-group"></i>
+                                Scan Queue &nbsp;— Standby
+                                <span class="queue-count-badge" id="queueCountBadge">0</span>
+                            </div>
+                            <button type="button" class="btn-secondary" onclick="clearEntireQueue()" style="font-size:0.75rem; padding:5px 12px;">
+                                <i class="fa-solid fa-trash"></i> Clear All
+                            </button>
+                        </div>
+                        <div class="queue-list" id="queueList"></div>
+                        <div class="queue-empty-msg" id="queueEmptyMsg">No more files in queue.</div>
+                    </div>
+
+                    <!-- Add More Files (while scanning) -->
+                    <div style="margin-top:16px; text-align:center;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('addMoreInput').click()" id="addMoreBtn">
+                            <i class="fa-solid fa-plus"></i> Add More Files to Queue
+                        </button>
+                        <input type="file" id="addMoreInput" multiple style="display:none;" onchange="addMoreToQueue(this.files)">
+                    </div>
+
+                    <!-- All Done Panel -->
+                    <div class="scan-done-panel" id="scanDonePanel">
+                        <div class="scan-done-icon"><i class="fa-solid fa-shield-check"></i></div>
+                        <div class="scan-done-title" id="scanDoneTitle">All files scanned!</div>
+                        <div class="scan-done-sub" id="scanDoneSub">All selected files have been processed by the threat analysis engines.</div>
+                        <div class="done-actions">
+                            <button class="btn-secondary" onclick="resetToUpload()">
+                                <i class="fa-solid fa-plus"></i> Upload More Files
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn-primary" style="padding:10px 22px; font-size:0.85rem; border-radius:var(--radius-sm); display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
+                                <i class="fa-solid fa-gauge-high"></i> View Dashboard
+                            </a>
+                        </div>
+                    </div>
+
                 </div>
+                <!-- ========= END SCAN QUEUE PANEL ========= -->
 
             </div>
         </section>
@@ -312,6 +590,9 @@
 </div>
 
 <script>
+// ============================================================
+//  SIDEBAR
+// ============================================================
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
     document.getElementById('sidebarOverlay').classList.toggle('show');
@@ -321,13 +602,34 @@ function closeSidebar() {
     document.getElementById('sidebarOverlay').classList.remove('show');
 }
 
+// ============================================================
+//  STATE
+// ============================================================
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 let currentMode = 'file';
-let selectedFiles = null;
+let selectedFiles = null;      // initial FileList
+let scanQueue = [];            // [{file, name, size, id (optional), status}]
+let isScanning = false;
+let scanStatInterval = null;
+let totalQueued = 0;
+let totalDone = 0;
+let totalDupes = 0;
+let totalSkipped = 0;
 
+const scanMessages = [
+    'Analyzing file structure...',
+    'Checking for malware patterns...',
+    'Running heuristic analysis...',
+    'Querying VirusTotal cloud...',
+    'Processing AI threat model...',
+    'Finalizing threat verdict...'
+];
+
+// ============================================================
+//  MODE TOGGLE
+// ============================================================
 function setMode(mode) {
     currentMode = mode;
-    const btnFile = document.getElementById('btnFileMode');
-    const btnFolder = document.getElementById('btnFolderMode');
     const fileInput = document.getElementById('fileInput');
     const title = document.getElementById('dropzoneTitle');
     const icon = document.getElementById('dropzoneIcon');
@@ -338,16 +640,16 @@ function setMode(mode) {
     document.getElementById('submitBtn').disabled = true;
 
     if (mode === 'folder') {
-        btnFolder.classList.add('active');
-        btnFile.classList.remove('active');
+        document.getElementById('btnFolderMode').classList.add('active');
+        document.getElementById('btnFileMode').classList.remove('active');
         fileInput.setAttribute('webkitdirectory', '');
         fileInput.setAttribute('directory', '');
         fileInput.removeAttribute('multiple');
         title.textContent = 'Click to select a Folder — all files inside will be scanned';
         icon.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
     } else {
-        btnFile.classList.add('active');
-        btnFolder.classList.remove('active');
+        document.getElementById('btnFileMode').classList.add('active');
+        document.getElementById('btnFolderMode').classList.remove('active');
         fileInput.removeAttribute('webkitdirectory');
         fileInput.removeAttribute('directory');
         fileInput.setAttribute('multiple', '');
@@ -356,144 +658,305 @@ function setMode(mode) {
     }
 }
 
+// ============================================================
+//  FILE SELECTION
+// ============================================================
 function handleFileSelect(files) {
     if (!files || files.length === 0) return;
     selectedFiles = files;
 
     const preview = document.getElementById('filePreview');
-    const nameEl = document.getElementById('fileName');
-    const sizeEl = document.getElementById('fileSize');
-    const pIcon = document.getElementById('previewIcon');
-    const btn = document.getElementById('submitBtn');
-
     let totalSize = 0;
     for (let i = 0; i < files.length; i++) totalSize += files[i].size;
 
     if (files.length === 1) {
-        nameEl.textContent = files[0].name;
-        sizeEl.textContent = (files[0].size / 1024).toFixed(1) + ' KB';
-        pIcon.className = 'fa-solid fa-file-code selected-file-icon';
+        document.getElementById('fileName').textContent = files[0].name;
+        document.getElementById('fileSize').textContent = (files[0].size / 1024).toFixed(1) + ' KB';
+        document.getElementById('previewIcon').className = 'fa-solid fa-file-code selected-file-icon';
     } else {
-        nameEl.textContent = files.length + ' files selected for scanning';
-        sizeEl.textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB total';
-        pIcon.className = 'fa-solid fa-folder-tree selected-file-icon';
+        document.getElementById('fileName').textContent = files.length + ' files selected for scanning';
+        document.getElementById('fileSize').textContent = (totalSize / (1024 * 1024)).toFixed(2) + ' MB total';
+        document.getElementById('previewIcon').className = 'fa-solid fa-folder-tree selected-file-icon';
     }
     preview.style.display = 'flex';
-    btn.disabled = false;
+    document.getElementById('submitBtn').disabled = false;
 }
 
-async function startUpload() {
-    if (!selectedFiles || selectedFiles.length === 0) {
-        alert('Please select files or a folder first.');
+// ============================================================
+//  START SCAN QUEUE
+// ============================================================
+function startScanQueue() {
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    // Build queue entries
+    scanQueue = [];
+    totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0;
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+        scanQueue.push({
+            file: selectedFiles[i],
+            name: selectedFiles[i].name,
+            size: selectedFiles[i].size,
+            status: 'standby'
+        });
+    }
+
+    // Switch UI
+    document.getElementById('uploadSection').style.display = 'none';
+    document.getElementById('scanQueueWrap').style.display = 'block';
+
+    renderQueue();
+    processNextInQueue();
+}
+
+// ============================================================
+//  ADD MORE FILES WHILE SCANNING
+// ============================================================
+function addMoreToQueue(files) {
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+        scanQueue.push({
+            file: files[i],
+            name: files[i].name,
+            size: files[i].size,
+            status: 'standby'
+        });
+    }
+    renderQueue();
+    // If not currently scanning, kick off the queue
+    if (!isScanning) processNextInQueue();
+}
+
+// ============================================================
+//  RENDER STANDBY QUEUE LIST
+// ============================================================
+function renderQueue() {
+    const list = document.getElementById('queueList');
+    const standbySection = document.getElementById('standbyQueueSection');
+    const emptyMsg = document.getElementById('queueEmptyMsg');
+    const badge = document.getElementById('queueCountBadge');
+
+    const standbyItems = scanQueue.filter(i => i.status === 'standby');
+    badge.textContent = standbyItems.length;
+
+    list.innerHTML = '';
+
+    if (standbyItems.length === 0) {
+        standbySection.style.display = isScanning ? 'block' : 'none';
+        emptyMsg.style.display = 'block';
         return;
     }
 
-    const files = selectedFiles;
-    const totalFiles = files.length;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    standbySection.style.display = 'block';
+    emptyMsg.style.display = 'none';
 
-    // Hide upload section, show progress
-    document.getElementById('uploadSection').style.display = 'none';
-    document.getElementById('modeToggleGroup').style.display = 'none';
-    document.getElementById('progressWrap').style.display = 'block';
+    standbyItems.forEach((item, idx) => {
+        const realIdx = scanQueue.indexOf(item);
+        const sizeLabel = item.size < 1024 * 1024
+            ? (item.size / 1024).toFixed(1) + ' KB'
+            : (item.size / (1024 * 1024)).toFixed(2) + ' MB';
 
-    let queuedCount = 0;
-    let duplicateCount = 0;
-    let skippedCount = 0;
-    let lastFileId = null;
-
-    const progressBar = document.getElementById('progressBar');
-    const progressLabel = document.getElementById('progressLabel');
-    const progressFileName = document.getElementById('progressFileName');
-
-    for (let i = 0; i < totalFiles; i++) {
-        const file = files[i];
-        const percent = Math.round(((i) / totalFiles) * 100);
-
-        progressBar.style.width = percent + '%';
-        progressLabel.textContent = 'Uploading ' + (i + 1) + ' of ' + totalFiles + ' files...';
-        progressFileName.textContent = file.name;
-
-        const formData = new FormData();
-        formData.append('file', file);
-
-        try {
-            const resp = await fetch('/api/upload_single_file', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken },
-                body: formData
-            });
-
-            if (resp.ok) {
-                const data = await resp.json();
-                if (data.success) {
-                    queuedCount++;
-                    lastFileId = data.file_id;
-                } else if (data.duplicate) {
-                    duplicateCount++;
-                } else if (data.skipped) {
-                    skippedCount++;
-                }
-            }
-        } catch (err) {
-            console.error('Upload error for', file.name, err);
-        }
-    }
-
-    // All done
-    progressBar.style.width = '100%';
-    progressLabel.textContent = 'Upload complete!';
-
-    // Hide progress, show done section
-    setTimeout(() => {
-        document.getElementById('progressWrap').style.display = 'none';
-        const doneWrap = document.getElementById('doneSectionWrap');
-        const doneTitle = document.getElementById('doneTitle');
-        const doneSub = document.getElementById('doneSub');
-
-        if (totalFiles === 1 && lastFileId) {
-            // Single file — redirect to scan page
-            window.location.href = '/scan/' + lastFileId + '?auto_scan=true';
-            return;
-        }
-
-        let title = queuedCount + ' file(s) queued for threat analysis!';
-        let sub = '';
-        if (duplicateCount > 0) sub += duplicateCount + ' duplicate(s) skipped. ';
-        if (skippedCount > 0) sub += skippedCount + ' unsupported file type(s) skipped. ';
-        if (queuedCount === 0) {
-            title = 'No new files were uploaded.';
-            sub = 'All selected files are already scanned or unsupported. ' + sub;
-        } else {
-            sub += 'Go to the Dashboard to view scan results.';
-        }
-
-        doneTitle.textContent = title;
-        doneSub.textContent = sub;
-        doneWrap.style.display = 'block';
-    }, 600);
+        const el = document.createElement('div');
+        el.className = 'queue-item';
+        el.id = 'qitem-' + realIdx;
+        el.innerHTML = `
+            <i class="fa-solid ${getFileIcon(item.name)} queue-item-icon"></i>
+            <div class="queue-item-info">
+                <div class="queue-item-name" title="${escHtml(item.name)}">${escHtml(item.name)}</div>
+                <div class="queue-item-size">${sizeLabel}</div>
+            </div>
+            <span class="queue-item-status">Standby</span>
+            <button class="queue-delete-btn" onclick="removeFromQueue(${realIdx})" title="Remove from queue">
+                <i class="fa-solid fa-xmark"></i> Remove
+            </button>
+        `;
+        list.appendChild(el);
+    });
 }
 
-function resetUploadPage() {
-    // Reset everything so user can upload more files
-    selectedFiles = null;
+// ============================================================
+//  REMOVE A STANDBY FILE
+// ============================================================
+function removeFromQueue(idx) {
+    const el = document.getElementById('qitem-' + idx);
+    if (el) {
+        el.classList.add('removing');
+        setTimeout(() => {
+            scanQueue[idx].status = 'removed';
+            renderQueue();
+        }, 300);
+    } else {
+        scanQueue[idx].status = 'removed';
+        renderQueue();
+    }
+}
+
+function clearEntireQueue() {
+    scanQueue.forEach(item => {
+        if (item.status === 'standby') item.status = 'removed';
+    });
+    renderQueue();
+}
+
+// ============================================================
+//  PROCESS NEXT FILE IN QUEUE
+// ============================================================
+async function processNextInQueue() {
+    const nextItem = scanQueue.find(i => i.status === 'standby');
+
+    if (!nextItem) {
+        // All done
+        isScanning = false;
+        clearInterval(scanStatInterval);
+        showScanDone();
+        return;
+    }
+
+    isScanning = true;
+    nextItem.status = 'scanning';
+
+    // Update "Now Scanning" panel
+    document.getElementById('scanAnimIcon').className = 'fa-solid ' + getFileIcon(nextItem.name) + ' folder-icon';
+    document.getElementById('scanningFilename').textContent = nextItem.name;
+    document.getElementById('scanDonePanel').style.display = 'none';
+
+    // Animate status text
+    let msgIdx = 0;
+    clearInterval(scanStatInterval);
+    document.getElementById('scanningStatusText').textContent = scanMessages[0];
+    scanStatInterval = setInterval(() => {
+        msgIdx = (msgIdx + 1) % scanMessages.length;
+        document.getElementById('scanningStatusText').textContent = scanMessages[msgIdx];
+    }, 1400);
+
+    renderQueue();
+
+    // Upload file
+    const formData = new FormData();
+    formData.append('file', nextItem.file);
+
+    try {
+        const resp = await fetch('/api/upload_single_file', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_TOKEN },
+            body: formData
+        });
+
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.success) {
+                totalQueued++;
+                nextItem.status = 'done';
+                nextItem.file_id = data.file_id;
+
+                // Trigger background scan for this file
+                fetch('/scan/' + data.file_id, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': CSRF_TOKEN,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'csrf_token=' + encodeURIComponent(CSRF_TOKEN)
+                }).catch(() => {}); // Fire-and-forget scan
+
+            } else if (data.duplicate) {
+                totalDupes++;
+                nextItem.status = 'done';
+            } else if (data.skipped) {
+                totalSkipped++;
+                nextItem.status = 'done';
+            } else {
+                nextItem.status = 'done';
+            }
+        } else {
+            nextItem.status = 'done';
+        }
+    } catch (err) {
+        console.error('Error uploading', nextItem.name, err);
+        nextItem.status = 'done';
+    }
+
+    // Brief pause so the animation is visible for at least 1 second
+    await new Promise(r => setTimeout(r, 1200));
+
+    totalDone++;
+    renderQueue();
+
+    // Process next
+    processNextInQueue();
+}
+
+// ============================================================
+//  ALL DONE
+// ============================================================
+function showScanDone() {
+    clearInterval(scanStatInterval);
+    document.getElementById('scanningNowPanel').style.display = 'none';
+    document.getElementById('addMoreBtn').style.display = 'none';
+    document.getElementById('standbyQueueSection').style.display = 'none';
+
+    let title = totalQueued > 0
+        ? totalQueued + ' file(s) successfully queued for threat analysis!'
+        : 'Scan queue complete.';
+    let sub = '';
+    if (totalDupes > 0) sub += totalDupes + ' duplicate(s) skipped. ';
+    if (totalSkipped > 0) sub += totalSkipped + ' unsupported file(s) skipped. ';
+    sub += totalQueued > 0 ? 'Check the Dashboard for live scan results.' : 'All selected files were already scanned or unsupported.';
+
+    document.getElementById('scanDoneTitle').textContent = title;
+    document.getElementById('scanDoneSub').textContent = sub;
+    document.getElementById('scanDonePanel').style.display = 'block';
+}
+
+// ============================================================
+//  RESET TO UPLOAD FORM
+// ============================================================
+function resetToUpload() {
+    scanQueue = [];
+    isScanning = false;
+    totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0;
+    clearInterval(scanStatInterval);
 
     document.getElementById('fileInput').value = '';
+    document.getElementById('addMoreInput').value = '';
     document.getElementById('filePreview').style.display = 'none';
     document.getElementById('submitBtn').disabled = true;
-    document.getElementById('doneSectionWrap').style.display = 'none';
-    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('scanQueueWrap').style.display = 'none';
     document.getElementById('uploadSection').style.display = 'block';
-    document.getElementById('modeToggleGroup').style.display = 'flex';
+    document.getElementById('scanningNowPanel').style.display = 'block';
+    document.getElementById('addMoreBtn').style.display = 'inline-flex';
+    document.getElementById('scanDonePanel').style.display = 'none';
+    document.getElementById('standbyQueueSection').style.display = 'none';
 
-    // Reset to file mode
     setMode('file');
 }
 
-// Initialize: disable button until files selected
-document.getElementById('submitBtn').disabled = true;
+// ============================================================
+//  HELPERS
+// ============================================================
+function getFileIcon(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    const map = {
+        exe: 'fa-gear', dll: 'fa-gear', bat: 'fa-terminal', cmd: 'fa-terminal',
+        ps1: 'fa-terminal', py: 'fa-python', js: 'fa-js', vbs: 'fa-code',
+        pdf: 'fa-file-pdf', doc: 'fa-file-word', docx: 'fa-file-word',
+        xls: 'fa-file-excel', xlsx: 'fa-file-excel',
+        zip: 'fa-file-zipper', rar: 'fa-file-zipper', gz: 'fa-file-zipper',
+        jpg: 'fa-file-image', jpeg: 'fa-file-image', png: 'fa-file-image',
+        gif: 'fa-file-image', mp4: 'fa-file-video', avi: 'fa-file-video',
+        mp3: 'fa-file-audio', txt: 'fa-file-lines', html: 'fa-file-code',
+        css: 'fa-file-code'
+    };
+    return map[ext] || 'fa-file';
+}
 
-// Drag & drop
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============================================================
+//  DRAG & DROP
+// ============================================================
 const dropzone = document.getElementById('dropzone');
 ['dragenter', 'dragover'].forEach(ev => {
     dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }, false);
