@@ -4,212 +4,913 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>TrustFile | Quick Guest Scan</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='scan.css') }}">
+<title>TrustFile | Quick Scan — No Account Needed</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-.guest-banner {
-    background: rgba(59, 130, 246, 0.12);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    color: #60a5fa;
-    padding: 14px 20px;
-    border-radius: 12px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+  :root {
+    --bg:         #0b0d12;
+    --surface:    #13161e;
+    --surface2:   #1a1e28;
+    --surface3:   #21263a;
+    --border:     rgba(255,255,255,0.07);
+    --border2:    rgba(255,255,255,0.12);
+    --accent:     #ef4444;
+    --accent2:    #f97316;
+    --blue:       #3b82f6;
+    --green:      #22c55e;
+    --yellow:     #eab308;
+    --purple:     #a855f7;
+    --text:       #f1f5f9;
+    --text-dim:   #64748b;
+    --text-muted: #334155;
+    --radius:     14px;
+    --radius-sm:  8px;
+    --shadow:     0 4px 24px rgba(0,0,0,0.4);
+    --glow-red:   0 0 24px rgba(239,68,68,0.2);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; min-height: 100vh; }
+
+  /* ── Navbar ── */
+  nav {
+    padding: 14px 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo { font-size: 1.25rem; font-weight: 900; letter-spacing: 1.5px; }
+  .logo span { color: var(--accent); }
+  .badge-guest {
+    font-size: 0.7rem; font-weight: 700; background: rgba(59,130,246,0.15);
+    color: #60a5fa; border: 1px solid rgba(59,130,246,0.3);
+    padding: 3px 10px; border-radius: 99px; margin-left: 10px;
+    vertical-align: middle;
+  }
+  .btn-login {
+    padding: 9px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+    background: linear-gradient(135deg, var(--accent), #dc2626);
+    color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 7px;
+    transition: opacity .2s; border: none; cursor: pointer;
+    box-shadow: var(--glow-red);
+  }
+  .btn-login:hover { opacity: .85; }
+
+  /* ── Layout ── */
+  .page { max-width: 1040px; margin: 0 auto; padding: 36px 20px 80px; }
+
+  /* ── Hero ── */
+  .hero { text-align: center; margin-bottom: 36px; }
+  .hero h1 { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.5px; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p { color: var(--text-dim); margin-top: 10px; font-size: 0.95rem; max-width: 540px; margin-inline: auto; }
+  .hero-notice {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.25);
+    color: #facc15; border-radius: 99px; padding: 5px 16px; font-size: 0.78rem; font-weight: 600;
+    margin-top: 14px;
+  }
+
+  /* ── Engine badges ── */
+  .engines-row {
+    display: flex; gap: 10px; justify-content: center; margin: 24px 0 32px;
     flex-wrap: wrap;
-}
-.dropzone-box {
-    border: 2px dashed rgba(255, 30, 30, 0.3);
-    background: rgba(255, 30, 30, 0.02);
-    border-radius: 16px;
-    padding: 40px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    position: relative;
-}
-.dropzone-box:hover, .dropzone-box.dragover {
-    border-color: var(--accent);
-    background: rgba(255, 30, 30, 0.06);
-}
-.file-input-hidden { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.mode-toggle-group { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
-.mode-btn {
-    padding: 9px 20px;
-    border-radius: var(--radius-sm);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    font-weight: 700; font-size: 0.85rem; cursor: pointer;
-    display: flex; align-items: center; gap: 8px;
-}
-.mode-btn.active { background: rgba(255,30,30,0.15); border-color: var(--accent); color: #fff; }
+  }
+  .engine-chip {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 99px; padding: 7px 18px; font-size: 0.8rem; font-weight: 600;
+  }
+  .engine-chip i { font-size: 0.9rem; }
+  .chip-heur { color: #a78bfa; }
+  .chip-vt   { color: #60a5fa; }
+  .chip-ai   { color: #34d399; }
+
+  /* ── Upload card ── */
+  .upload-card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 20px; padding: 28px; margin-bottom: 28px;
+    box-shadow: var(--shadow);
+  }
+
+  /* Mode tabs */
+  .mode-tabs { display: flex; gap: 10px; margin-bottom: 22px; }
+  .mode-tab {
+    flex: 1; padding: 10px; border-radius: var(--radius-sm);
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text-dim); font-weight: 700; font-size: 0.85rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all .2s;
+  }
+  .mode-tab.active {
+    background: rgba(239,68,68,0.12); border-color: var(--accent); color: #fff;
+  }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed rgba(239,68,68,0.25);
+    background: rgba(239,68,68,0.02);
+    border-radius: var(--radius); padding: 44px 24px;
+    text-align: center; cursor: pointer; position: relative;
+    transition: all .25s;
+  }
+  .dropzone:hover, .dropzone.over {
+    border-color: var(--accent); background: rgba(239,68,68,0.07);
+  }
+  .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .dz-icon { font-size: 2.6rem; color: var(--accent); margin-bottom: 12px; }
+  .dz-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+  .dz-sub { font-size: 0.8rem; color: var(--text-dim); }
+
+  /* File queue */
+  #queueWrap { margin-top: 18px; display: none; }
+  .queue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .queue-header span { font-size: 0.82rem; color: var(--text-dim); font-weight: 600; }
+  .queue-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+  .queue-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+  .queue-item .qi-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .queue-item .qi-size { color: var(--text-dim); font-size: 0.75rem; }
+  .qi-remove { background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+  .qi-remove:hover { color: var(--accent); }
+
+  /* Scan button */
+  .scan-action { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 22px; }
+  .btn-scan {
+    padding: 14px 44px; border-radius: 12px; font-size: 1rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent) 0%, #dc2626 100%);
+    color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: var(--glow-red); transition: all .2s;
+    letter-spacing: 0.3px;
+  }
+  .btn-scan:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(239,68,68,0.4); }
+  .btn-scan:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+  .btn-clear-all {
+    padding: 11px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 700;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim);
+    cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 8px;
+  }
+  .btn-clear-all:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Overall progress bar ── */
+  #progressSection { display: none; margin-top: 18px; }
+  .progress-track { background: var(--surface2); border-radius: 99px; height: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width .4s ease; width: 0%; }
+  .progress-label { display: flex; justify-content: space-between; margin-top: 8px; font-size: 0.78rem; color: var(--text-dim); }
+
+  /* ── Results section ── */
+  .results-section { margin-top: 10px; }
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .results-header h2 { font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 9px; }
+  .summary-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .s-pill { padding: 4px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+  .s-pill.safe     { background: rgba(34,197,94,0.12);  color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .s-pill.low      { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+  .s-pill.medium   { background: rgba(234,179,8,0.12);  color: #fbbf24; border: 1px solid rgba(234,179,8,0.25); }
+  .s-pill.high     { background: rgba(249,115,22,0.12); color: #fb923c; border: 1px solid rgba(249,115,22,0.25); }
+  .s-pill.critical { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+
+  /* ── Result Card ── */
+  .result-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    margin-bottom: 14px; box-shadow: var(--shadow);
+    transition: border-color .2s;
+  }
+  .result-card.threat-critical { border-color: rgba(239,68,68,0.35); }
+  .result-card.threat-high     { border-color: rgba(249,115,22,0.3); }
+  .result-card.threat-medium   { border-color: rgba(234,179,8,0.25); }
+  .result-card.threat-low      { border-color: rgba(59,130,246,0.2); }
+  .result-card.threat-safe     { border-color: rgba(34,197,94,0.2); }
+
+  /* Card header */
+  .rc-header {
+    display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+    cursor: pointer; user-select: none;
+  }
+  .rc-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+  .rc-info { flex: 1; min-width: 0; }
+  .rc-name { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-meta { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+  .rc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .threat-badge {
+    padding: 5px 13px; border-radius: 99px; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.5px;
+  }
+  .badge-critical { background: rgba(239,68,68,0.15);  color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  .badge-high     { background: rgba(249,115,22,0.15); color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+  .badge-medium   { background: rgba(234,179,8,0.15);  color: #fbbf24; border: 1px solid rgba(234,179,8,0.3); }
+  .badge-low      { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .badge-safe     { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .rc-score { font-size: 1.2rem; font-weight: 900; }
+  .expand-btn { font-size: 0.85rem; color: var(--text-dim); transition: transform .3s; }
+  .result-card.expanded .expand-btn { transform: rotate(180deg); }
+
+  /* Score ring */
+  .score-ring { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring circle { fill: none; stroke-width: 4; stroke-linecap: round; }
+  .ring-bg   { stroke: var(--surface3); }
+  .ring-fill { stroke-dasharray: 113; stroke-dashoffset: 113; transition: stroke-dashoffset 1s ease; }
+  .score-ring .ring-label {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 800;
+  }
+
+  /* Card body */
+  .rc-body { display: none; border-top: 1px solid var(--border); }
+  .result-card.expanded .rc-body { display: block; }
+
+  .rc-explanation {
+    margin: 18px 20px 4px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 10px; padding: 13px 16px;
+    font-size: 0.85rem; color: var(--text-dim); line-height: 1.6;
+  }
+  .rc-explanation strong { color: var(--text); }
+
+  /* Engine panels */
+  .engine-panels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; padding: 14px 20px 20px; }
+  @media (max-width: 700px) { .engine-panels { grid-template-columns: 1fr; } }
+  .ep {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+  }
+  .ep-title { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; text-transform: uppercase; }
+  .ep-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+  .ep-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .ep-label { color: var(--text-dim); font-weight: 500; white-space: nowrap; }
+  .ep-val { text-align: right; font-weight: 600; max-width: 60%; word-break: break-word; }
+  .ep-val.clean  { color: #4ade80; }
+  .ep-val.warn   { color: #fbbf24; }
+  .ep-val.danger { color: #f87171; }
+  .ep-val.blue   { color: #60a5fa; }
+  .ep-val.purple { color: #c084fc; }
+
+  /* VT bar */
+  .vt-bar-track { background: var(--surface3); border-radius: 99px; height: 5px; margin-top: 6px; overflow: hidden; }
+  .vt-bar-fill  { height: 100%; border-radius: 99px; transition: width .8s ease; }
+
+  /* Scanning skeleton */
+  .skeleton-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 18px 20px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .sk-box { background: var(--surface2); border-radius: 8px; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer {
+    0%,100% { opacity: .5; } 50% { opacity: 1; }
+  }
+  .sk-icon { width: 42px; height: 42px; border-radius: 10px; }
+  .sk-lines { flex: 1; }
+  .sk-line { height: 10px; border-radius: 99px; margin-bottom: 8px; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+  }
+  .empty-state i { font-size: 3rem; color: var(--text-muted); margin-bottom: 14px; }
+  .empty-state h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .empty-state p  { font-size: 0.83rem; color: var(--text-dim); }
 </style>
 </head>
-<body style="background: var(--bg-dark); color: var(--text-main); font-family: 'Inter', sans-serif;">
+<body>
 
-<!-- NAVBAR FOR GUESTS -->
-<nav style="padding: 16px 32px; background: var(--surface1); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
-    <div style="font-weight: 900; font-size: 1.3rem; letter-spacing: 1px; color: #fff;">
-        TRUST<span style="color: var(--accent);">FILE</span>
-        <span style="font-size: 0.7rem; font-weight: 700; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 3px 8px; border-radius: 99px; margin-left: 8px;">GUEST MODE</span>
-    </div>
-    <div style="display: flex; gap: 12px; align-items: center;">
-        <a href="{{ url_for('login') }}" class="btn-primary" style="padding: 8px 18px; font-size: 0.85rem; border-radius: 8px; text-decoration: none;">
-            <i class="fa-solid fa-right-to-bracket"></i> Login / Sign Up
-        </a>
-    </div>
+<!-- Navbar -->
+<nav>
+  <div class="logo">TRUST<span>FILE</span><span class="badge-guest">GUEST MODE</span></div>
+  <a href="{{ url_for('login') }}" class="btn-login">
+    <i class="fa-solid fa-right-to-bracket"></i> Sign Up / Login
+  </a>
 </nav>
 
-<div style="max-width: 1000px; margin: 32px auto; padding: 0 20px;">
+<div class="page">
 
-    <!-- Banner -->
-    <div class="guest-banner">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <i class="fa-solid fa-user-clock" style="font-size: 1.3rem;"></i>
-            <div>
-                <strong style="font-size: 0.92rem;">Temporary Guest Session Active</strong>
-                <div style="font-size: 0.78rem; opacity: 0.9;">No account or login required. Scan results exist ONLY in your browser session and are never saved to history.</div>
+  <!-- Hero -->
+  <div class="hero">
+    <h1>Instant <em>Threat Scan</em></h1>
+    <p>Upload any file or folder — we run the same 3-engine scan used by our registered users. No account needed.</p>
+    <div class="hero-notice">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+      Temporary session &mdash; results are not saved after you leave
+    </div>
+  </div>
+
+  <!-- Engine chips -->
+  <div class="engines-row">
+    <div class="engine-chip chip-heur"><i class="fa-solid fa-magnifying-glass-chart"></i> Deep Heuristics</div>
+    <div class="engine-chip chip-vt">  <i class="fa-solid fa-shield-halved"></i> VirusTotal</div>
+    <div class="engine-chip chip-ai">  <i class="fa-solid fa-robot"></i> AI Analysis</div>
+  </div>
+
+  <!-- Upload Card -->
+  <div class="upload-card">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabFile"   onclick="setMode('file')">
+        <i class="fa-solid fa-file"></i> Select File(s)
+      </button>
+      <button class="mode-tab"        id="tabFolder" onclick="setMode('folder')">
+        <i class="fa-solid fa-folder-open"></i> Scan Entire Folder
+      </button>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" multiple onchange="handleFiles(this.files)">
+      <div class="dz-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <div class="dz-title" id="dzTitle">Drag & Drop files here, or click to browse</div>
+      <div class="dz-sub">Supports: .exe .dll .py .js .ps1 .bat .vbs .pdf .doc .zip and more</div>
+    </div>
+
+    <!-- Queue -->
+    <div id="queueWrap">
+      <div class="queue-header">
+        <span id="queueCount">0 file(s) ready</span>
+        <button class="qi-remove" onclick="clearAll()" title="Remove all"><i class="fa-solid fa-xmark"></i> Remove all</button>
+      </div>
+      <div class="queue-list" id="queueList"></div>
+    </div>
+
+    <!-- Progress bar -->
+    <div id="progressSection">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label">
+        <span id="progressLabel">Preparing…</span>
+        <span id="progressCount"></span>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="scan-action">
+      <button class="btn-scan" id="btnScan" onclick="startScan()" disabled>
+        <i class="fa-solid fa-radar" id="scanIcon"></i>
+        <span id="scanBtnTxt">Start Scan</span>
+      </button>
+      <button class="btn-clear-all" onclick="clearSession()">
+        <i class="fa-solid fa-trash"></i> Clear Results
+      </button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-section">
+    <div class="results-header" id="resultsHeader" style="display:none;">
+      <h2><i class="fa-solid fa-shield-virus" style="color:var(--accent)"></i> Scan Results</h2>
+      <div class="summary-pills" id="summaryPills"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <i class="fa-solid fa-shield-halved"></i>
+      <h3>No files scanned yet</h3>
+      <p>Upload a file or folder above to run an instant 3-engine threat scan.</p>
+    </div>
+
+    <!-- Dashboard Split Grid Layout: Scanned Files (Left) + Scanned Folders (Right) -->
+    <div class="dashboard-split-grid" id="guestResultsGrid" style="display:none; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; margin-top: 20px;">
+      
+      <!-- Left Column: Scanned Files -->
+      <section class="files-section">
+        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+          <h2 style="font-size:1.05rem; font-weight:800; margin:0;"><i class="fa-solid fa-file-shield" style="color:var(--accent);"></i> Scanned Files</h2>
+          <div class="section-controls" style="display:flex; gap:8px; align-items:center;">
+            <div class="search-wrap" style="position:relative;">
+              <i class="fa-solid fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:0.8rem;"></i>
+              <input type="text" id="guestFileSearch" placeholder="Search files..." onkeyup="filterGuestFiles()" style="padding:6px 10px 6px 28px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem; width:150px;">
             </div>
+            <select id="guestFileThreatFilter" onchange="filterGuestFiles()" style="padding:6px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
+              <option value="">All Levels</option>
+              <option value="safe">Safe</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
         </div>
-        <button onclick="clearGuestSession()" style="background: rgba(255,30,30,0.12); border: 1px solid rgba(255,30,30,0.3); color: var(--accent); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700;">
-            <i class="fa-solid fa-trash"></i> Clear Session
-        </button>
+
+        <div id="guestFilesList" style="display:flex; flex-direction:column; gap:14px;"></div>
+        <p class="no-results-msg" id="noGuestFileResults" style="display:none; text-align:center; color:var(--text-dim); padding:20px; font-size:0.85rem;">
+          <i class="fa-solid fa-search"></i> No files match your search filter.
+        </p>
+      </section>
+
+      <!-- Right Column: Scanned Folders -->
+      <aside class="folders-side-panel">
+        <div class="section-header" style="margin-bottom:16px; display:flex; flex-direction:column; gap:10px;">
+          <h2 style="margin:0; font-size:1.05rem; font-weight:800;"><i class="fa-solid fa-folder-tree" style="color:var(--accent);"></i> Scanned Folders</h2>
+          <div style="display:flex; gap:8px;">
+            <div class="search-wrap" style="position:relative; flex:1;">
+              <i class="fa-solid fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:0.8rem;"></i>
+              <input type="text" id="guestFolderSearch" placeholder="Search folders..." onkeyup="filterGuestFolders()" style="width:100%; padding:6px 8px 6px 28px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
+            </div>
+            <select id="guestFolderThreatFilter" onchange="filterGuestFolders()" style="padding:6px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
+              <option value="">All Levels</option>
+              <option value="safe">Safe</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="guestFoldersList" style="display:flex; flex-direction:column; gap:12px;"></div>
+        <p class="no-results-msg" id="noGuestFolderResults" style="display:none; text-align:center; color:var(--text-dim); padding:20px; font-size:0.85rem;">
+          <i class="fa-solid fa-search"></i> No folders match your search filter.
+        </p>
+      </aside>
+
     </div>
+  </div>
 
-    <!-- Mode & Upload Box -->
-    <div style="background: var(--surface1); border: 1px solid var(--border); border-radius: 16px; padding: 28px;">
-        <div class="mode-toggle-group">
-            <button type="button" class="mode-btn active" id="btnFileMode" onclick="setMode('file')">
-                <i class="fa-solid fa-file"></i> Select File(s)
-            </button>
-            <button type="button" class="mode-btn" id="btnFolderMode" onclick="setMode('folder')">
-                <i class="fa-solid fa-folder-open"></i> Scan Entire Folder
-            </button>
-        </div>
-
-        <div class="dropzone-box" id="dropzone">
-            <input type="file" id="guestFileInput" class="file-input-hidden" multiple onchange="handleGuestFiles(this.files)">
-            <div style="font-size: 2.2rem; color: var(--accent); margin-bottom: 12px;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-            <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;" id="dropTitle">Drag & Drop file(s) or click to browse</div>
-            <div style="font-size: 0.82rem; color: var(--text-dim);">Instant Multi-Engine Threat Scan (Executables, Documents, Scripts, Media)</div>
-        </div>
-
-        <div style="margin-top: 20px; text-align: center;">
-            <button class="btn-primary" id="btnGuestScan" onclick="startGuestScan()" disabled style="padding: 12px 36px; font-size: 0.95rem; border-radius: 10px;">
-                <i class="fa-solid fa-play"></i> Start Quick Threat Scan
-            </button>
-        </div>
-    </div>
-
-    <!-- Scanned Guest Results List -->
-    <div style="margin-top: 32px;">
-        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <i class="fa-solid fa-shield-virus" style="color: var(--accent);"></i>
-            Temporary Guest Scan Results
-        </h3>
-
-        <div id="guestResultsList" style="display: flex; flex-direction: column; gap: 12px;">
-            {% if files %}
-                {% for f in files %}
-                <div style="background: var(--surface1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px;">
-                    <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
-                        <i class="fa-solid fa-file-code" style="font-size: 1.5rem; color: var(--accent);"></i>
-                        <div style="min-width: 0;">
-                            <div style="font-weight: 700; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.filename }}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-dim);">
-                                {{ f.size }} • Risk Score: <strong>{{ f.risk_score }}%</strong>
-                            </div>
-                        </div>
-                    </div>
-                    <span class="tag-level level-{{ f.threat_level|lower }}">
-                        {{ f.threat_level }}
-                    </span>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div style="text-align: center; padding: 40px; background: var(--surface1); border: 1px solid var(--border); border-radius: 14px; color: var(--text-dim);">
-                    <i class="fa-solid fa-file-shield" style="font-size: 2.2rem; margin-bottom: 10px;"></i>
-                    <div style="font-size: 0.95rem; font-weight: 600;">No Guest Files Scanned Yet</div>
-                    <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 4px;">Upload a file or folder above to run an instant guest security check.</div>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-</div>
+</div><!-- /page -->
 
 <script>
-const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-let selectedGuestFiles = null;
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+let queue = [];       // array of File objects
+let scanRunning = false;
+let allScanRecords = [];
+let resultCount = { safe:0, low:0, medium:0, high:0, critical:0 };
 
+{% if files %}
+const serverFiles = {{ files | tojson }};
+document.addEventListener('DOMContentLoaded', () => {
+  serverFiles.forEach(f => {
+    if (f && f.id) allScanRecords.push(f);
+  });
+  renderAllGuestResults();
+});
+{% endif %}
+
+/* ── Mode toggle ─────────────────────────────────────────────────────── */
 function setMode(mode) {
-    const input = document.getElementById('guestFileInput');
-    const title = document.getElementById('dropTitle');
-    input.value = '';
-    selectedGuestFiles = null;
-    document.getElementById('btnGuestScan').disabled = true;
+  const inp = document.getElementById('fileInput');
+  inp.value = ''; queue = []; updateQueue();
+  document.getElementById('tabFile').classList.toggle('active', mode === 'file');
+  document.getElementById('tabFolder').classList.toggle('active', mode === 'folder');
+  if (mode === 'folder') {
+    inp.setAttribute('webkitdirectory', ''); inp.setAttribute('directory', '');
+    document.getElementById('dzTitle').textContent = 'Click to choose a Folder — all files inside will be scanned';
+  } else {
+    inp.removeAttribute('webkitdirectory'); inp.removeAttribute('directory');
+    document.getElementById('dzTitle').textContent = 'Drag & Drop files here, or click to browse';
+  }
+}
 
-    if (mode === 'folder') {
-        document.getElementById('btnFolderMode').classList.add('active');
-        document.getElementById('btnFileMode').classList.remove('active');
-        input.setAttribute('webkitdirectory', '');
-        input.setAttribute('directory', '');
-        title.textContent = 'Click to select a Folder — all files inside will be scanned';
-    } else {
-        document.getElementById('btnFileMode').classList.add('active');
-        document.getElementById('btnFolderMode').classList.remove('active');
-        input.removeAttribute('webkitdirectory');
-        input.removeAttribute('directory');
-        title.textContent = 'Drag & Drop file(s) here or click to browse';
+/* ── Drag & drop ──────────────────────────────────────────────────────── */
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  handleFiles(e.dataTransfer.files);
+});
+
+/* ── File handling ────────────────────────────────────────────────────── */
+function handleFiles(files) {
+  if (!files || files.length === 0) return;
+  for (const f of files) {
+    if (!queue.find(q => q.name === f.name && q.size === f.size)) queue.push(f);
+  }
+  updateQueue();
+}
+
+function updateQueue() {
+  const wrap = document.getElementById('queueWrap');
+  const list = document.getElementById('queueList');
+  const btn  = document.getElementById('btnScan');
+  if (queue.length === 0) { wrap.style.display = 'none'; btn.disabled = true; return; }
+  wrap.style.display = 'block';
+  document.getElementById('queueCount').textContent = `${queue.length} file(s) ready to scan`;
+  list.innerHTML = '';
+  queue.forEach((f, i) => {
+    const size = f.size < 1024 ? `${f.size} B` : f.size < 1048576 ? `${(f.size/1024).toFixed(1)} KB` : `${(f.size/1048576).toFixed(1)} MB`;
+    const div = document.createElement('div');
+    div.className = 'queue-item';
+    div.innerHTML = `
+      <i class="fa-solid fa-file" style="color:var(--text-dim)"></i>
+      <span class="qi-name" title="${f.name}">${f.name}</span>
+      <span class="qi-size">${size}</span>
+      <button class="qi-remove" onclick="removeFromQueue(${i})"><i class="fa-solid fa-xmark"></i></button>`;
+    list.appendChild(div);
+  });
+  btn.disabled = scanRunning;
+}
+
+function removeFromQueue(i) {
+  queue.splice(i, 1);
+  updateQueue();
+}
+function clearAll() { queue = []; document.getElementById('fileInput').value = ''; updateQueue(); }
+
+/* ── Scan pipeline ────────────────────────────────────────────────────── */
+async function startScan() {
+  if (queue.length === 0 || scanRunning) return;
+  scanRunning = true;
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('scanIcon').className = 'fa-solid fa-spinner fa-spin';
+  document.getElementById('progressSection').style.display = 'block';
+
+  const total = queue.length;
+  let done = 0;
+
+  for (let i = 0; i < total; i++) {
+    const file = queue[i];
+    setProgress(done, total, file.name);
+
+    const fd = new FormData();
+    fd.append('file', file);
+    if (file.webkitRelativePath) {
+      fd.append('folder_name', file.webkitRelativePath.split('/')[0]);
     }
-}
 
-function handleGuestFiles(files) {
-    if (!files || files.length === 0) return;
-    selectedGuestFiles = files;
-    document.getElementById('btnGuestScan').disabled = false;
-    document.getElementById('dropTitle').textContent = files.length + ' file(s) selected for guest scan';
-}
-
-async function startGuestScan() {
-    if (!selectedGuestFiles || selectedGuestFiles.length === 0) return;
-    const btn = document.getElementById('btnGuestScan');
-    btn.disabled = true;
-
-    const files = selectedGuestFiles;
-    for (let i = 0; i < files.length; i++) {
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Scanning ${i + 1} of ${files.length}: ${files[i].name.substring(0, 15)}...`;
-        const formData = new FormData();
-        formData.append('file', files[i]);
-        if (files[i].webkitRelativePath) {
-            const folderName = files[i].webkitRelativePath.split('/')[0];
-            formData.append('folder_name', folderName);
-        }
-        try {
-            await fetch('/api/guest_upload', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': CSRF_TOKEN },
-                body: formData
-            });
-        } catch (err) {
-            console.error('Guest upload error:', err);
-        }
-    }
-    window.location.reload();
-}
-
-async function clearGuestSession() {
-    await fetch('/api/clear_guest_history', {
+    try {
+      const r = await fetch('/api/guest_upload', {
         method: 'POST',
-        headers: { 'X-CSRFToken': CSRF_TOKEN }
+        headers: { 'X-CSRFToken': CSRF },
+        body: fd
+      });
+      const data = await r.json();
+      if (data.file) {
+        addScanRecord(data.file);
+      }
+    } catch(err) {
+      console.error('Scan error:', err);
+    }
+    done++;
+    setProgress(done, total, '');
+  }
+
+  queue = [];
+  updateQueue();
+  scanRunning = false;
+  document.getElementById('scanIcon').className = 'fa-solid fa-radar';
+  document.getElementById('scanBtnTxt').textContent = 'Start Scan';
+  document.getElementById('progressSection').style.display = 'none';
+}
+
+function setProgress(done, total, name) {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = done < total ? `Scanning: ${name.substring(0,40)}` : 'All done!';
+  document.getElementById('progressCount').textContent = `${done}/${total}`;
+  document.getElementById('scanBtnTxt').textContent = `Scanning ${done+1}/${total}…`;
+}
+
+function addScanRecord(f) {
+  if (!f || !f.id) return;
+  allScanRecords = allScanRecords.filter(r => r.id !== f.id);
+  allScanRecords.unshift(f);
+  renderAllGuestResults();
+}
+
+function renderAllGuestResults() {
+  const emptyState = document.getElementById('emptyState');
+  const resultsHeader = document.getElementById('resultsHeader');
+  const resultsGrid = document.getElementById('guestResultsGrid');
+  const filesList = document.getElementById('guestFilesList');
+  const foldersList = document.getElementById('guestFoldersList');
+
+  if (allScanRecords.length === 0) {
+    if (emptyState) emptyState.style.display = 'block';
+    if (resultsHeader) resultsHeader.style.display = 'none';
+    if (resultsGrid) resultsGrid.style.display = 'none';
+    return;
+  }
+
+  if (emptyState) emptyState.style.display = 'none';
+  if (resultsHeader) resultsHeader.style.display = 'flex';
+  if (resultsGrid) resultsGrid.style.display = 'grid';
+
+  const standaloneFiles = [];
+  const folderGroupsDict = {};
+  resultCount = { safe:0, low:0, medium:0, high:0, critical:0 };
+  const threatOrder = { 'safe': 0, 'low': 1, 'medium': 2, 'high': 3, 'critical': 4 };
+
+  allScanRecords.forEach(f => {
+    countThreat(f.threat_level);
+    const folder = f.folder_name;
+    if (folder) {
+      if (!folderGroupsDict[folder]) {
+        folderGroupsDict[folder] = {
+          name: folder,
+          files: [],
+          threat_count: 0,
+          highest_threat: 'Safe',
+          highest_rank: 0
+        };
+      }
+      const grp = folderGroupsDict[folder];
+      grp.files.push(f);
+      const lvl = (f.threat_level || 'Safe');
+      const rank = threatOrder[lvl.toLowerCase()] || 0;
+      if (rank > 0) grp.threat_count++;
+      if (rank > grp.highest_rank) {
+        grp.highest_rank = rank;
+        grp.highest_threat = lvl;
+      }
+    } else {
+      standaloneFiles.push(f);
+    }
+  });
+
+  updateSummaryPills();
+
+  // Render Standalone Files
+  filesList.innerHTML = '';
+  if (standaloneFiles.length === 0) {
+    filesList.innerHTML = `<div style="padding:16px; color:var(--text-dim); text-align:center; font-size:0.82rem; background:var(--surface); border:1px solid var(--border); border-radius:12px;"><i class="fa-solid fa-file"></i> No single files scanned yet.</div>`;
+  } else {
+    standaloneFiles.forEach(f => {
+      filesList.appendChild(buildCard(f));
     });
-    window.location.reload();
+  }
+
+  // Render Folder Groups
+  foldersList.innerHTML = '';
+  const folderGroups = Object.values(folderGroupsDict);
+  if (folderGroups.length === 0) {
+    foldersList.innerHTML = `<div style="padding:16px; color:var(--text-dim); text-align:center; font-size:0.82rem; background:var(--surface); border:1px solid var(--border); border-radius:12px;"><i class="fa-solid fa-folder-closed"></i> No folders scanned yet.</div>`;
+  } else {
+    folderGroups.forEach(grp => {
+      foldersList.appendChild(buildFolderCard(grp));
+    });
+  }
+
+  // Animate SVG score rings
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.ring-fill').forEach(ring => {
+      const card = ring.closest('.result-card');
+      if (card && card.dataset.score) {
+        const score = parseInt(card.dataset.score) || 0;
+        ring.style.strokeDashoffset = 113 - (113 * score / 100);
+      }
+    });
+  });
+
+  filterGuestFiles();
+  filterGuestFolders();
+}
+
+function buildFolderCard(grp) {
+  const lvl = (grp.highest_threat || 'Safe').toLowerCase();
+  const div = document.createElement('div');
+  div.className = 'folder-accordion-card';
+  div.dataset.name = grp.name.toLowerCase();
+  div.dataset.level = lvl;
+  div.style.cssText = 'background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; transition:all 0.2s ease;';
+
+  const containedHtml = grp.files.map(f => `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; background:var(--surface2); border-radius:8px; border:1px solid var(--border);">
+      <div style="min-width:0; flex:1;">
+        <div style="font-size:0.8rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(f.filename)}">${escHtml(f.filename)}</div>
+        <div style="font-size:0.7rem; color:var(--text-dim);">Risk: ${f.risk_score || 0}%</div>
+      </div>
+      <span class="threat-badge badge-${(f.threat_level||'safe').toLowerCase()}" style="font-size:0.68rem; padding:2px 8px;">
+        ${escHtml(f.threat_level || 'Safe')}
+      </span>
+    </div>
+  `).join('');
+
+  div.innerHTML = `
+    <div class="folder-accordion-header" onclick="toggleFolderAccordion(this)" style="padding:14px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+        <i class="fa-solid fa-folder-open" style="font-size:1.3rem; color:var(--accent);"></i>
+        <div style="min-width:0;">
+          <div style="font-weight:700; font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(grp.name)}">${escHtml(grp.name)}</div>
+          <div style="font-size:0.73rem; color:var(--text-dim);">
+            ${grp.files.length} file(s) ${grp.threat_count > 0 ? `&bull; <span style="color:#f87171; font-weight:700;">${grp.threat_count} Threat(s)</span>` : `&bull; <span style="color:#4ade80; font-weight:700;">All Safe</span>`}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="threat-badge badge-${lvl}" style="font-size:0.7rem; padding:3px 8px;">${grp.highest_threat}</span>
+        <button class="action-btn btn-delete" onclick="event.stopPropagation(); deleteGuestItem(null, '${escHtml(grp.name)}')" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer;" title="Delete Folder">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+        <i class="fa-solid fa-chevron-down accordion-arrow" style="font-size:0.8rem; color:var(--text-dim); transition:transform 0.2s ease;"></i>
+      </div>
+    </div>
+    <div class="folder-accordion-body" style="display:none; padding:12px 16px; background:rgba(0,0,0,0.2); border-top:1px solid var(--border);">
+      <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); margin-bottom:8px;">Contained Files & Results</div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${containedHtml}
+      </div>
+    </div>
+  `;
+  return div;
+}
+
+function toggleFolderAccordion(headerEl) {
+  const card = headerEl.parentElement;
+  const body = card.querySelector('.folder-accordion-body');
+  const arrow = headerEl.querySelector('.accordion-arrow');
+  const isOpen = body.style.display === 'block';
+
+  if (isOpen) {
+    body.style.display = 'none';
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+  } else {
+    body.style.display = 'block';
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+}
+
+function buildCard(f) {
+  const lvl = (f.threat_level || 'safe').toLowerCase();
+  const score = f.risk_score || 0;
+
+  const colors = {safe:'#22c55e', low:'#3b82f6', medium:'#eab308', high:'#f97316', critical:'#ef4444'};
+  const ringColor = colors[lvl] || '#64748b';
+
+  const icons = {safe:'fa-shield-check', low:'fa-shield', medium:'fa-triangle-exclamation', high:'fa-radiation', critical:'fa-biohazard'};
+  const iconName = icons[lvl] || 'fa-file-shield';
+  const iconBg   = {safe:'rgba(34,197,94,.12)', low:'rgba(59,130,246,.12)', medium:'rgba(234,179,8,.12)', high:'rgba(249,115,22,.12)', critical:'rgba(239,68,68,.15)'}[lvl] || 'rgba(100,116,139,.1)';
+
+  const vt = f.virustotal || {};
+  const vtPos = vt.positives || 0; const vtTotal = vt.engine_count || 0;
+  const vtPct = vtTotal ? Math.round((vtPos/vtTotal)*100) : 0;
+  const vtColor = vtPos === 0 ? 'clean' : vtPos < 3 ? 'warn' : 'danger';
+  const vtBarColor = vtPos === 0 ? '#22c55e' : vtPos < 3 ? '#eab308' : '#ef4444';
+
+  const ai = f.ai_analysis || {};
+  const aiLabel = ai.label || ai.verdict || (score >= 50 ? 'Malicious' : score >= 30 ? 'Suspicious' : 'Benign');
+  const aiConf  = ai.confidence ? Math.round(ai.confidence * 100) + '%' : 'N/A';
+  const aiColor = aiLabel.toLowerCase().includes('mal') ? 'danger' : aiLabel.toLowerCase().includes('sus') ? 'warn' : 'clean';
+
+  const card = document.createElement('div');
+  card.className = `result-card threat-${lvl}`;
+  card.dataset.name = (f.filename || '').toLowerCase();
+  card.dataset.level = lvl;
+  card.dataset.score = score;
+
+  card.innerHTML = `
+    <div class="rc-header" onclick="toggleCard(this.parentElement)">
+      <div class="rc-icon" style="background:${iconBg}; color:${ringColor}">
+        <i class="fa-solid ${iconName}"></i>
+      </div>
+      <div class="rc-info">
+        <div class="rc-name" title="${escHtml(f.filename)}">${escHtml(f.filename)}</div>
+        <div class="rc-meta">${escHtml(f.size || '')} &bull; SHA256: ${(f.hash||'').substring(0,16)}… &bull; ${formatTime(f.upload_time)}</div>
+      </div>
+      <div class="rc-right">
+        <div class="score-ring">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle class="ring-bg"   cx="22" cy="22" r="18"/>
+            <circle class="ring-fill" cx="22" cy="22" r="18" stroke="${ringColor}" stroke-dasharray="113" stroke-dashoffset="113"/>
+          </svg>
+          <div class="ring-label" style="color:${ringColor}">${score}%</div>
+        </div>
+        <span class="threat-badge badge-${lvl}">${f.threat_level || 'Safe'}</span>
+        <button class="action-btn btn-delete" onclick="event.stopPropagation(); deleteGuestItem('${f.id}', null)" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer;" title="Delete File Record">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+        <i class="fa-solid fa-chevron-down expand-btn"></i>
+      </div>
+    </div>
+
+    <div class="rc-body">
+      <div class="rc-explanation">
+        <strong>Analysis:</strong> ${escHtml(f.explanation || 'No explanation available.')}
+      </div>
+
+      <div class="engine-panels">
+        <!-- Engine 1: Heuristics -->
+        <div class="ep">
+          <div class="ep-title" style="color:#a78bfa"><i class="fa-solid fa-magnifying-glass-chart"></i> Heuristics</div>
+          <div class="ep-row"><span class="ep-label">Risk Score</span><span class="ep-val ${score>=70?'danger':score>=30?'warn':'clean'}">${score}%</span></div>
+          <div class="ep-row"><span class="ep-label">Entropy</span><span class="ep-val ${(f.entropy||0)>7?'danger':(f.entropy||0)>5.5?'warn':'clean'}">${typeof f.entropy === 'number' ? f.entropy.toFixed(3) : f.entropy}</span></div>
+          <div class="ep-row"><span class="ep-label">Patterns</span><span class="ep-val ${f.pattern_result&&f.pattern_result!=='No suspicious patterns'?'warn':'clean'}">${escHtml((f.pattern_result||'Clean').substring(0,60))}</span></div>
+          <div class="ep-row"><span class="ep-label">Signatures</span><span class="ep-val ${f.signature_status&&f.signature_status!=='No signatures detected'?'warn':'clean'}">${escHtml((f.signature_status||'None').substring(0,60))}</span></div>
+          <div class="ep-row"><span class="ep-label">Risky Imports</span><span class="ep-val ${f.risky_imports&&f.risky_imports!=='None'?'warn':'clean'}">${escHtml(f.risky_imports||'None')}</span></div>
+        </div>
+
+        <!-- Engine 2: VirusTotal -->
+        <div class="ep">
+          <div class="ep-title" style="color:#60a5fa"><i class="fa-solid fa-shield-halved"></i> VirusTotal</div>
+          ${vt.error ? `<div class="ep-row"><span class="ep-val warn">Service unavailable</span></div>` : `
+          <div class="ep-row"><span class="ep-label">Detections</span><span class="ep-val ${vtColor}">${vtPos} / ${vtTotal}</span></div>
+          <div class="ep-row"><span class="ep-label">Detection Rate</span><span class="ep-val ${vtColor}">${vtPct}%</span></div>
+          <div class="ep-row" style="display:block">
+            <div class="vt-bar-track"><div class="vt-bar-fill" style="width:${vtPct}%;background:${vtBarColor}"></div></div>
+          </div>
+          <div class="ep-row"><span class="ep-label">Method</span><span class="ep-val blue">${escHtml(vt.method||'hash_lookup')}</span></div>
+          ${vtPos > 0 ? `<div class="ep-row"><span class="ep-label">Status</span><span class="ep-val danger"><i class="fa-solid fa-circle-exclamation"></i> Flagged</span></div>` : `<div class="ep-row"><span class="ep-label">Status</span><span class="ep-val clean"><i class="fa-solid fa-circle-check"></i> Clean</span></div>`}
+          `}
+        </div>
+
+        <!-- Engine 3: AI Analysis -->
+        <div class="ep">
+          <div class="ep-title" style="color:#34d399"><i class="fa-solid fa-robot"></i> AI Analysis</div>
+          ${ai.error ? `<div class="ep-row"><span class="ep-val warn">AI unavailable</span></div>` : `
+          <div class="ep-row"><span class="ep-label">Verdict</span><span class="ep-val ${aiColor}">${escHtml(aiLabel)}</span></div>
+          <div class="ep-row"><span class="ep-label">Confidence</span><span class="ep-val purple">${aiConf}</span></div>
+          ${ai.reason ? `<div class="ep-row" style="flex-direction:column;gap:4px"><span class="ep-label">Reasoning</span><span class="ep-val" style="max-width:100%;text-align:left;color:var(--text-dim)">${escHtml((ai.reason||'').substring(0,120))}</span></div>` : ''}
+          `}
+        </div>
+      </div>
+    </div>`;
+  return card;
+}
+
+function toggleCard(card) {
+  card.classList.toggle('expanded');
+}
+
+function deleteGuestItem(fileId, folderName) {
+  if (fileId) {
+    allScanRecords = allScanRecords.filter(f => str(f.id) !== str(fileId));
+    fetch('/api/delete_guest_item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ file_id: fileId })
+    });
+  } else if (folderName) {
+    allScanRecords = allScanRecords.filter(f => f.folder_name !== folderName);
+    fetch('/api/delete_guest_item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ folder_name: folderName })
+    });
+  }
+  renderAllGuestResults();
+}
+
+function filterGuestFiles() {
+  const q = (document.getElementById('guestFileSearch')?.value || '').toLowerCase();
+  const level = (document.getElementById('guestFileThreatFilter')?.value || '').toLowerCase();
+  const cards = document.querySelectorAll('#guestFilesList .result-card');
+  let visible = 0;
+  cards.forEach(c => {
+    const nameMatch = (c.dataset.name || '').includes(q);
+    const levelMatch = !level || (c.dataset.level || '') === level;
+    if (nameMatch && levelMatch) { c.style.display = ''; visible++; }
+    else c.style.display = 'none';
+  });
+  const noRes = document.getElementById('noGuestFileResults');
+  if (noRes) noRes.style.display = (cards.length > 0 && visible === 0) ? 'block' : 'none';
+}
+
+function filterGuestFolders() {
+  const q = (document.getElementById('guestFolderSearch')?.value || '').toLowerCase();
+  const level = (document.getElementById('guestFolderThreatFilter')?.value || '').toLowerCase();
+  const cards = document.querySelectorAll('#guestFoldersList .folder-accordion-card');
+  let visible = 0;
+  cards.forEach(c => {
+    const nameMatch = (c.dataset.name || '').includes(q);
+    const levelMatch = !level || (c.dataset.level || '') === level;
+    if (nameMatch && levelMatch) { c.style.display = ''; visible++; }
+    else c.style.display = 'none';
+  });
+  const noRes = document.getElementById('noGuestFolderResults');
+  if (noRes) noRes.style.display = (cards.length > 0 && visible === 0) ? 'block' : 'none';
+}
+
+/* ── Summary pills ───────────────────────────────────────────────────── */
+function countThreat(level) {
+  const k = (level||'safe').toLowerCase();
+  if (resultCount[k] !== undefined) resultCount[k]++;
+}
+
+function updateSummaryPills() {
+  const el = document.getElementById('summaryPills');
+  if (!el) return;
+  el.innerHTML = '';
+  const labels = { critical:'Critical', high:'High', medium:'Medium', low:'Low', safe:'Safe' };
+  for (const [k, label] of Object.entries(labels)) {
+    if (resultCount[k] > 0) {
+      const sp = document.createElement('span');
+      sp.className = `s-pill ${k}`;
+      sp.textContent = `${resultCount[k]} ${label}`;
+      el.appendChild(sp);
+    }
+  }
+}
+
+/* ── Clear session ───────────────────────────────────────────────────── */
+async function clearSession() {
+  if (!confirm('Clear all scan results for this session?')) return;
+  await fetch('/api/clear_guest_history', { method:'POST', headers:{'X-CSRFToken':CSRF} });
+  allScanRecords = [];
+  renderAllGuestResults();
+}
+
+/* ── Helpers ─────────────────────────────────────────────────────────── */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatTime(iso) {
+  if (!iso) return '';
+  try { const d = new Date(iso); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch { return ''; }
+}
+function str(val) {
+  return String(val || '');
 }
 </script>
 </body>

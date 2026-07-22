@@ -658,6 +658,7 @@ def guest_scan_page():
     guest_scans = GUEST_SESSIONS.get(guest_id, [])
     return render_template("guest_scan.html", files=guest_scans)
 
+
 @app.route("/api/guest_upload", methods=["POST"])
 def guest_upload_api():
     f = request.files.get("file")
@@ -679,11 +680,43 @@ def guest_upload_api():
 
     file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    # Run instant threat scan
+    # ── Engine 1: Full heuristic scan (same as logged-in users) ──────────────
     scan_res = _run_full_heuristic_scan(filename, file_bytes, file_hash)
     risk_score = scan_res.get("risk_score", 0)
-    status = "Infected" if risk_score >= 50 else "Clean"
-    threat_level = "Critical" if risk_score >= 70 else "High" if risk_score >= 50 else "Medium" if risk_score >= 30 else "Low" if risk_score > 0 else "Safe"
+
+    # ── Engine 2: VirusTotal (hash lookup first, then file upload) ────────────
+    vt_result = {}
+    try:
+        vt_raw = smart_virustotal_scan(None, file_hash)
+        if vt_raw and "scans" not in vt_raw:
+            vt_raw["scans"] = {}
+        vt_result = vt_raw or {}
+        vt_pos   = vt_result.get("positives", 0)
+        vt_total = vt_result.get("engine_count", 0)
+        if vt_total and vt_pos:
+            risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
+    except Exception as exc:
+        logger.warning("Guest scan - VirusTotal error: %s", exc)
+        vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
+
+    # ── Engine 3: AI analysis ─────────────────────────────────────────────────
+    ai_result = {}
+    try:
+        ai_result = analyze_file_ai(
+            entropy=scan_res.get("entropy", 0),
+            patterns=scan_res.get("pattern_result", "None"),
+            imports=scan_res.get("risky_imports_str", "None"),
+            risk_score=risk_score,
+        )
+    except Exception as exc:
+        logger.warning("Guest scan - AI analysis error: %s", exc)
+        ai_result = {"error": str(exc)}
+
+    # ── Final threat classification ───────────────────────────────────────────
+    detection_details = (scan_res.get("suspicious_functions", []) + scan_res.get("heuristics", []))
+    if vt_result.get("positives", 0):
+        detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count',0)} engines")
+    threat_level, status = determine_threat_level(risk_score, detection_details)
 
     file_id = str(uuid.uuid4())
     guest_record = {
@@ -1370,7 +1403,53 @@ def delete_file(file_id):
             flash("File moved to Recycle Bin and record deleted.")
     else:
         flash("File not found or access denied.")
-    return redirect(request.referrer or url_for("history"))
+    return redirect(request.referrer or url_for("dashboard"))
+
+
+# ── Delete folder ─────────────────────────────────────────────────────────────
+@app.route("/delete_folder/<path:folder_name>", methods=["POST"], endpoint="delete_folder")
+@login_required
+def delete_folder(folder_name):
+    user_files = fb.list_user_files(current_user.uid)
+    deleted_count = 0
+    for f in user_files:
+        eff_folder = _get_effective_folder_name(f)
+        raw_folder = f.get("folder_name")
+        if eff_folder == folder_name or raw_folder == folder_name:
+            target_path = f.get("filepath")
+            if target_path:
+                _trash_file(target_path)
+            fb.delete_uploaded_file(f["id"])
+            deleted_count += 1
+    if deleted_count > 0:
+        flash(f"Folder '{folder_name}' and {deleted_count} contained file record(s) moved to Recycle Bin.")
+    else:
+        flash(f"No records found for folder '{folder_name}'.")
+    return redirect(request.referrer or url_for("dashboard"))
+
+
+# ── Delete guest item (file or folder) ────────────────────────────────────────
+@app.route("/api/delete_guest_item", methods=["POST"])
+def delete_guest_item_api():
+    data = request.get_json(silent=True) or {}
+    file_id = data.get("file_id")
+    folder_name = data.get("folder_name")
+
+    guest_id = session.get("guest_id")
+    if not guest_id or guest_id not in GUEST_SESSIONS:
+        return jsonify({"success": False, "message": "No active guest session"}), 404
+
+    items = GUEST_SESSIONS[guest_id]
+    if file_id:
+        GUEST_SESSIONS[guest_id] = [e for e in items if str(e.get("id")) != str(file_id)]
+    elif folder_name:
+        GUEST_SESSIONS[guest_id] = [
+            e for e in items 
+            if e.get("folder_name") != folder_name and _get_effective_folder_name(e) != folder_name
+        ]
+    session.modified = True
+    return jsonify({"success": True})
+
 
 # ── History ───────────────────────────────────────────────────────────────────
 @app.route("/history")

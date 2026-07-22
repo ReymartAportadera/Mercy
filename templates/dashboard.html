@@ -231,14 +231,28 @@
 
             <!-- Right Column: Scanned Folders Side Panel -->
             <aside class="folders-side-panel">
-                <div class="section-header" style="margin-bottom:16px;">
-                    <h2><i class="fa-solid fa-folder-tree" style="color:var(--accent);"></i> Scanned Folders</h2>
+                <div class="section-header" style="margin-bottom:16px; display:flex; flex-direction:column; gap:10px;">
+                    <h2 style="margin:0;"><i class="fa-solid fa-folder-tree" style="color:var(--accent);"></i> Scanned Folders</h2>
+                    <div style="display:flex; gap:8px;">
+                        <div class="search-wrap" style="position:relative; flex:1;">
+                            <i class="fa-solid fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-dim); font-size:0.8rem;"></i>
+                            <input type="text" id="folderSearch" placeholder="Search folders..." onkeyup="filterFolders()" style="width:100%; padding:6px 8px 6px 28px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
+                        </div>
+                        <select id="folderThreatFilter" onchange="filterFolders()" style="padding:6px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
+                            <option value="">All Levels</option>
+                            <option value="safe">Safe</option>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
                 </div>
 
                 {% if folder_groups %}
-                <div class="folders-list" style="display:flex; flex-direction:column; gap:12px;">
+                <div class="folders-list" id="foldersList" style="display:flex; flex-direction:column; gap:12px;">
                     {% for grp in folder_groups %}
-                    <div class="folder-accordion-card" style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:all 0.2s ease;">
+                    <div class="folder-accordion-card" data-name="{{ grp.name|lower }}" data-level="{{ grp.threat_level|lower }}" style="background:var(--surface2); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:all 0.2s ease;">
                         
                         <!-- Folder Header -->
                         <div class="folder-accordion-header" onclick="toggleFolderAccordion(this)" style="padding:14px 16px; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px;">
@@ -256,6 +270,12 @@
                                 <span class="tag-level level-{{ grp.threat_level|lower }}" style="font-size:0.7rem; padding:3px 8px;">
                                     {{ grp.threat_level }}
                                 </span>
+                                <form method="POST" action="{{ url_for('delete_folder', folder_name=grp.name) }}" onsubmit="event.stopPropagation(); return confirm('Move folder \'{{ grp.name }}\' and all contained file records to Recycle Bin?');" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-btn btn-delete" style="padding:4px 8px; font-size:0.75rem;" title="Delete Folder" onclick="event.stopPropagation();">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
                                 <i class="fa-solid fa-chevron-down accordion-arrow" style="font-size:0.8rem; color:var(--text-dim); transition:transform 0.2s ease;"></i>
                             </div>
                         </div>
@@ -284,6 +304,9 @@
                     </div>
                     {% endfor %}
                 </div>
+                <p class="no-results-msg" id="noFolderResults" style="display:none; text-align:center; color:var(--text-dim); padding:20px; font-size:0.85rem;">
+                    <i class="fa-solid fa-search"></i> No folders match your search filter.
+                </p>
                 {% else %}
                 <div class="empty-state" style="padding:24px 16px;">
                     <i class="fa-solid fa-folder-closed" style="font-size:2rem;"></i>
@@ -342,6 +365,21 @@ function filterFiles() {
     if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
 }
 
+// ===== FOLDER SEARCH & FILTER =====
+function filterFolders() {
+    const q = document.getElementById('folderSearch').value.toLowerCase();
+    const level = document.getElementById('folderThreatFilter').value.toLowerCase();
+    const cards = document.querySelectorAll('#foldersList .folder-accordion-card');
+    let visible = 0;
+    cards.forEach(c => {
+        const nameMatch = (c.dataset.name || '').includes(q);
+        const levelMatch = !level || (c.dataset.level || '') === level;
+        if (nameMatch && levelMatch) { c.style.display = ''; visible++; }
+        else c.style.display = 'none';
+    });
+    const noRes = document.getElementById('noFolderResults');
+    if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
+}
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
