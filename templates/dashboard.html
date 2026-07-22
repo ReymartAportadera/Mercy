@@ -62,14 +62,15 @@
     <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content">
 
-        <!-- Flash Messages -->
+        <!-- Flash Toast Notifications (fixed overlay, doesn't affect layout) -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="flash-stack">
+                <div class="toast-stack" id="toastStack">
                 {% for category, message in messages %}
-                    <div class="flash-msg {{ 'flash-warn' if category in ['warning','error'] else 'flash-ok' if category == 'success' else '' }}">
+                    <div class="toast-msg {{ 'toast-warn' if category in ['warning','error'] else 'toast-ok' if category == 'success' else 'toast-info' }}">
                         <i class="fa-solid {{ 'fa-triangle-exclamation' if category in ['warning','error'] else 'fa-circle-check' if category == 'success' else 'fa-circle-info' }}"></i>
-                        {{ message }}
+                        <span>{{ message }}</span>
+                        <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
                     </div>
                 {% endfor %}
                 </div>
@@ -277,10 +278,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateMonitorStatus();
     setInterval(updateMonitorStatus, 10000);
 
-    // Auto-hide flash messages
-    document.querySelectorAll('.flash-msg').forEach(m => {
-        setTimeout(() => m.style.opacity = '0', 4000);
-        setTimeout(() => m.remove(), 4500);
+    // Auto-hide toasts
+    document.querySelectorAll('.toast-msg').forEach(m => {
+        setTimeout(() => { m.style.opacity = '0'; }, 5000);
+        setTimeout(() => m.remove(), 5500);
     });
 });
 </script>

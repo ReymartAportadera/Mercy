@@ -548,7 +548,7 @@ def uploadfiles():
             return redirect(request.url)
         # Extension check (reuse ALLOWED_EXTENSIONS from original if needed)
         ext = os.path.splitext(filename)[1].lower()
-        allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz"}
+        allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
         if ext not in allowed:
             flash(f"File type '{ext}' is not permitted.")
             return redirect(request.url)

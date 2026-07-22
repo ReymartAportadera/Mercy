@@ -286,29 +286,70 @@ body {
 }
 
 /* ── Flash ── */
-.flash-stack { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
-.flash-msg {
+/* ============================================================
+   TOAST NOTIFICATIONS (Fixed overlay, won't disrupt layout)
+   ============================================================ */
+.toast-stack {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 380px;
+    width: calc(100vw - 40px);
+}
+
+.toast-msg {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 16px;
+    padding: 14px 16px;
     border-radius: var(--radius-sm);
     font-size: 0.88rem;
     font-weight: 500;
-    background: rgba(255,30,30,0.12);
-    border: 1px solid rgba(255,30,30,0.3);
+    border: 1px solid rgba(255,30,30,0.35);
+    background: rgba(18,12,12,0.97);
     color: #ffa0a0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    backdrop-filter: blur(12px);
+    animation: toastSlideIn 0.3s ease;
     transition: opacity 0.5s;
 }
-.flash-msg.flash-ok {
-    background: rgba(0,232,122,0.1);
-    border-color: rgba(0,232,122,0.3);
+.toast-msg span { flex: 1; }
+.toast-msg.toast-ok {
+    background: rgba(8,20,14,0.97);
+    border-color: rgba(0,232,122,0.4);
     color: #80ffb8;
 }
-.flash-msg.flash-warn {
-    background: rgba(255,194,0,0.1);
-    border-color: rgba(255,194,0,0.3);
+.toast-msg.toast-warn {
+    background: rgba(18,15,6,0.97);
+    border-color: rgba(255,194,0,0.4);
     color: #ffe080;
+}
+.toast-msg.toast-info {
+    background: rgba(10,12,20,0.97);
+    border-color: rgba(80,140,255,0.4);
+    color: #a0bfff;
+}
+.toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+    opacity: 0.6;
+    line-height: 1;
+    padding: 0 4px;
+    margin: 0;
+    min-width: unset;
+    animation: none;
+}
+.toast-close:hover { opacity: 1; }
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 1; transform: translateX(0); }
 }
 
 /* ============================================================
