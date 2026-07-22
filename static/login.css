@@ -162,7 +162,10 @@ input:focus {
     width: 100%;
 }
 
-#togglePassword {
+#togglePassword,
+#togglePassword1,
+#togglePassword2,
+.toggle-password-icon {
     position: absolute;
     right: 15px;
     top: 50%;

@@ -112,6 +112,8 @@ def get_file_type_entropy_threshold(file_path: str) -> float:
         return 5.8
     if ext in {".exe", ".dll", ".bin", ".dat"}:
         return 7.0
+    if ext in MEDIA_EXTENSIONS or ext in {".zip", ".tar", ".gz", ".7z", ".rar", ".docx", ".xlsx", ".pptx"}:
+        return 7.95
     return 6.5
 
 def _in_memory_heuristics(text: str) -> list:
