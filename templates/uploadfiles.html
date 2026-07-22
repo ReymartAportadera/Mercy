@@ -9,10 +9,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-/* Dropzone Styling */
-.dropzone-container {
-    padding: 32px 24px;
-}
+.dropzone-container { padding: 32px 24px; }
+
 .mode-toggle-group {
     display: flex;
     justify-content: center;
@@ -66,22 +64,16 @@
     color: var(--accent);
     font-size: 1.8rem;
 }
-.dropzone-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-.dropzone-sub {
-    font-size: 0.82rem;
-    color: var(--text-dim);
-    margin-bottom: 20px;
-}
+.dropzone-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+.dropzone-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 20px; }
+
 .file-input-hidden {
     position: absolute;
     inset: 0;
     opacity: 0;
     cursor: pointer;
 }
+
 .selected-file-preview {
     display: none;
     align-items: center;
@@ -93,32 +85,80 @@
     margin-top: 20px;
     text-align: left;
 }
-.selected-file-icon {
-    font-size: 1.5rem;
-    color: var(--accent);
+.selected-file-icon { font-size: 1.5rem; color: var(--accent); }
+.selected-file-name { font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selected-file-size { font-size: 0.75rem; color: var(--text-dim); }
+
+.submit-btn-wrap { margin-top: 24px; text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.upload-btn-lg { padding: 12px 36px; font-size: 0.95rem; border-radius: 10px; min-width: 180px; }
+
+/* Progress section */
+.upload-progress-wrap {
+    display: none;
+    margin-top: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
 }
-.selected-file-name {
+.progress-label {
+    font-size: 0.85rem;
     font-weight: 600;
-    font-size: 0.9rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.selected-file-size {
-    font-size: 0.75rem;
+    margin-bottom: 10px;
     color: var(--text-dim);
 }
-.submit-btn-wrap {
+.progress-bar-outer {
+    background: rgba(255,30,30,0.12);
+    border-radius: 99px;
+    height: 10px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+.progress-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #ff1e1e, #ff6b6b);
+    border-radius: 99px;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+.progress-file-name {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Upload done section */
+.upload-done-wrap {
+    display: none;
     margin-top: 24px;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.3);
+    border-radius: 12px;
+    padding: 20px;
     text-align: center;
 }
-.upload-btn-lg {
-    padding: 12px 36px;
-    font-size: 0.95rem;
-    border-radius: 10px;
-    width: 100%;
-    max-width: 280px;
+.upload-done-wrap .done-icon { font-size: 2rem; color: var(--safe); margin-bottom: 10px; }
+.upload-done-wrap .done-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.upload-done-wrap .done-sub { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 16px; }
+.done-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.btn-reset {
+    padding: 10px 22px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
+.btn-reset:hover { background: rgba(255,30,30,0.12); border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -174,7 +214,7 @@
     <!-- MAIN CONTENT -->
     <main class="main-content">
 
-        <!-- Flash Stack -->
+        <!-- Flash Toast Notifications -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 <div class="toast-stack" id="toastStack">
@@ -200,11 +240,12 @@
             </a>
         </header>
 
-        <!-- Mode Selector & Upload Form -->
+        <!-- Upload Card -->
         <section class="files-section">
             <div class="dropzone-container">
+
                 <!-- Mode Toggle -->
-                <div class="mode-toggle-group">
+                <div class="mode-toggle-group" id="modeToggleGroup">
                     <button type="button" class="mode-btn active" id="btnFileMode" onclick="setMode('file')">
                         <i class="fa-solid fa-file"></i> Select File(s)
                     </button>
@@ -213,19 +254,18 @@
                     </button>
                 </div>
 
-                <form method="POST" enctype="multipart/form-data" id="uploadForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
+                <!-- Upload Form -->
+                <div id="uploadSection">
                     <div class="dropzone-box" id="dropzone">
-                        <input type="file" name="files" id="fileInput" class="file-input-hidden" multiple required onchange="handleFileSelect(this.files)">
+                        <input type="file" name="files" id="fileInput" class="file-input-hidden" multiple onchange="handleFileSelect(this.files)">
                         <div class="dropzone-icon" id="dropzoneIcon">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                         </div>
-                        <div class="dropzone-title" id="dropzoneTitle">Drag & Drop file(s) or folder here or click to browse</div>
+                        <div class="dropzone-title" id="dropzoneTitle">Drag & Drop file(s) here or click to browse</div>
                         <div class="dropzone-sub">Supports Executables, Documents, Archives, Scripts, Images, Videos & Audio</div>
-                        
+
                         <div class="selected-file-preview" id="filePreview">
-                            <i class="fa-solid fa-folder-tree selected-file-icon" id="previewIcon"></i>
+                            <i class="fa-solid fa-file-code selected-file-icon" id="previewIcon"></i>
                             <div style="flex: 1; min-width: 0;">
                                 <div class="selected-file-name" id="fileName">0 files selected</div>
                                 <div class="selected-file-size" id="fileSize">0 KB total</div>
@@ -235,11 +275,36 @@
                     </div>
 
                     <div class="submit-btn-wrap">
-                        <button type="submit" class="btn-primary upload-btn-lg" id="submitBtn">
+                        <button type="button" class="btn-primary upload-btn-lg" id="submitBtn" onclick="startUpload()">
                             <i class="fa-solid fa-play"></i> Start Threat Scan
                         </button>
                     </div>
-                </form>
+                </div>
+
+                <!-- Progress Section (shown during upload) -->
+                <div class="upload-progress-wrap" id="progressWrap">
+                    <div class="progress-label" id="progressLabel">Uploading 1 of 1...</div>
+                    <div class="progress-bar-outer">
+                        <div class="progress-bar-inner" id="progressBar"></div>
+                    </div>
+                    <div class="progress-file-name" id="progressFileName">Preparing...</div>
+                </div>
+
+                <!-- Done Section (shown after all uploads complete) -->
+                <div class="upload-done-wrap" id="doneSectionWrap">
+                    <div class="done-icon"><i class="fa-solid fa-shield-check"></i></div>
+                    <div class="done-title" id="doneTitle">Files Queued for Threat Analysis!</div>
+                    <div class="done-sub" id="doneSub">All files have been uploaded and are being scanned.</div>
+                    <div class="done-actions">
+                        <button class="btn-reset" onclick="resetUploadPage()">
+                            <i class="fa-solid fa-plus"></i> Upload More Files
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn-primary" style="padding:10px 22px; font-size:0.85rem; border-radius:var(--radius-sm); display:inline-flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-gauge-high"></i> View Dashboard
+                        </a>
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -257,6 +322,7 @@ function closeSidebar() {
 }
 
 let currentMode = 'file';
+let selectedFiles = null;
 
 function setMode(mode) {
     currentMode = mode;
@@ -266,22 +332,25 @@ function setMode(mode) {
     const title = document.getElementById('dropzoneTitle');
     const icon = document.getElementById('dropzoneIcon');
 
-    // Reset input
     fileInput.value = '';
+    selectedFiles = null;
     document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('submitBtn').disabled = true;
 
     if (mode === 'folder') {
         btnFolder.classList.add('active');
         btnFile.classList.remove('active');
         fileInput.setAttribute('webkitdirectory', '');
         fileInput.setAttribute('directory', '');
-        title.textContent = 'Click to select a Folder to scan all files inside';
+        fileInput.removeAttribute('multiple');
+        title.textContent = 'Click to select a Folder — all files inside will be scanned';
         icon.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
     } else {
         btnFile.classList.add('active');
         btnFolder.classList.remove('active');
         fileInput.removeAttribute('webkitdirectory');
         fileInput.removeAttribute('directory');
+        fileInput.setAttribute('multiple', '');
         title.textContent = 'Drag & Drop file(s) here or click to browse';
         icon.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i>';
     }
@@ -289,15 +358,16 @@ function setMode(mode) {
 
 function handleFileSelect(files) {
     if (!files || files.length === 0) return;
+    selectedFiles = files;
+
     const preview = document.getElementById('filePreview');
     const nameEl = document.getElementById('fileName');
     const sizeEl = document.getElementById('fileSize');
     const pIcon = document.getElementById('previewIcon');
+    const btn = document.getElementById('submitBtn');
 
     let totalSize = 0;
-    for (let i = 0; i < files.length; i++) {
-        totalSize += files[i].size;
-    }
+    for (let i = 0; i < files.length; i++) totalSize += files[i].size;
 
     if (files.length === 1) {
         nameEl.textContent = files[0].name;
@@ -309,47 +379,40 @@ function handleFileSelect(files) {
         pIcon.className = 'fa-solid fa-folder-tree selected-file-icon';
     }
     preview.style.display = 'flex';
+    btn.disabled = false;
 }
 
-// Drag & drop handlers
-const dropzone = document.getElementById('dropzone');
-['dragenter', 'dragover'].forEach(eventName => {
-    dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        dropzone.classList.add('dragover');
-    }, false);
-});
-['dragleave', 'drop'].forEach(eventName => {
-    dropzone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('dragover');
-    }, false);
-});
-dropzone.addEventListener('drop', (e) => {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    document.getElementById('fileInput').files = files;
-    handleFileSelect(files);
-});
+async function startUpload() {
+    if (!selectedFiles || selectedFiles.length === 0) {
+        alert('Please select files or a folder first.');
+        return;
+    }
 
-document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = document.getElementById('fileInput');
-    const files = input.files;
-
-    if (!files || files.length === 0) return;
-
+    const files = selectedFiles;
+    const totalFiles = files.length;
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
+
+    // Hide upload section, show progress
+    document.getElementById('uploadSection').style.display = 'none';
+    document.getElementById('modeToggleGroup').style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'block';
 
     let queuedCount = 0;
+    let duplicateCount = 0;
+    let skippedCount = 0;
     let lastFileId = null;
-    const totalFiles = files.length;
+
+    const progressBar = document.getElementById('progressBar');
+    const progressLabel = document.getElementById('progressLabel');
+    const progressFileName = document.getElementById('progressFileName');
 
     for (let i = 0; i < totalFiles; i++) {
         const file = files[i];
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading ${i + 1} of ${totalFiles}: ${file.name.substring(0, 15)}...`;
+        const percent = Math.round(((i) / totalFiles) * 100);
+
+        progressBar.style.width = percent + '%';
+        progressLabel.textContent = 'Uploading ' + (i + 1) + ' of ' + totalFiles + ' files...';
+        progressFileName.textContent = file.name;
 
         const formData = new FormData();
         formData.append('file', file);
@@ -366,21 +429,83 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
                 if (data.success) {
                     queuedCount++;
                     lastFileId = data.file_id;
+                } else if (data.duplicate) {
+                    duplicateCount++;
+                } else if (data.skipped) {
+                    skippedCount++;
                 }
             }
         } catch (err) {
-            console.error('File upload error:', err);
+            console.error('Upload error for', file.name, err);
         }
     }
 
-    if (totalFiles === 1 && lastFileId) {
-        window.location.href = `/scan/${lastFileId}?auto_scan=true`;
-    } else {
-        window.location.href = '/dashboard';
-    }
+    // All done
+    progressBar.style.width = '100%';
+    progressLabel.textContent = 'Upload complete!';
+
+    // Hide progress, show done section
+    setTimeout(() => {
+        document.getElementById('progressWrap').style.display = 'none';
+        const doneWrap = document.getElementById('doneSectionWrap');
+        const doneTitle = document.getElementById('doneTitle');
+        const doneSub = document.getElementById('doneSub');
+
+        if (totalFiles === 1 && lastFileId) {
+            // Single file — redirect to scan page
+            window.location.href = '/scan/' + lastFileId + '?auto_scan=true';
+            return;
+        }
+
+        let title = queuedCount + ' file(s) queued for threat analysis!';
+        let sub = '';
+        if (duplicateCount > 0) sub += duplicateCount + ' duplicate(s) skipped. ';
+        if (skippedCount > 0) sub += skippedCount + ' unsupported file type(s) skipped. ';
+        if (queuedCount === 0) {
+            title = 'No new files were uploaded.';
+            sub = 'All selected files are already scanned or unsupported. ' + sub;
+        } else {
+            sub += 'Go to the Dashboard to view scan results.';
+        }
+
+        doneTitle.textContent = title;
+        doneSub.textContent = sub;
+        doneWrap.style.display = 'block';
+    }, 600);
+}
+
+function resetUploadPage() {
+    // Reset everything so user can upload more files
+    selectedFiles = null;
+
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('doneSectionWrap').style.display = 'none';
+    document.getElementById('progressWrap').style.display = 'none';
+    document.getElementById('uploadSection').style.display = 'block';
+    document.getElementById('modeToggleGroup').style.display = 'flex';
+
+    // Reset to file mode
+    setMode('file');
+}
+
+// Initialize: disable button until files selected
+document.getElementById('submitBtn').disabled = true;
+
+// Drag & drop
+const dropzone = document.getElementById('dropzone');
+['dragenter', 'dragover'].forEach(ev => {
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }, false);
+});
+['dragleave', 'drop'].forEach(ev => {
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); }, false);
+});
+dropzone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    document.getElementById('fileInput').files = files;
+    handleFileSelect(files);
 });
 </script>
-
-
 </body>
 </html>
