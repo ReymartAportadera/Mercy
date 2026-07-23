@@ -205,8 +205,13 @@
                             
                         {% elif scan_type == 'ai_analysis' %}
                             <div class="ai-result-text">
-                                <i class="fa-solid fa-quote-left"></i>
-                                <p>{{ scan_result }}</p>
+                                <i class="fa-solid fa-brain" style="color: #34d399; margin-right: 8px;"></i>
+                                {% if scan_result is mapping %}
+                                    <p style="margin-bottom: 8px;"><strong>Verdict:</strong> <span class="badge badge-info">{{ scan_result.get('verdict', 'Assessment Complete') }}</span> <strong>Confidence:</strong> {{ (scan_result.get('confidence', 0.9) * 100)|round(0) }}%</p>
+                                    <p style="line-height: 1.6; color: #e2e8f0; background: rgba(52,211,153,0.06); padding: 12px; border-radius: 8px; border: 1px solid rgba(52,211,153,0.2);">{{ scan_result.get('reason', scan_result.get('text', 'No reasoning text available.')) }}</p>
+                                {% else %}
+                                    <p style="line-height: 1.6; color: #e2e8f0; background: rgba(52,211,153,0.06); padding: 12px; border-radius: 8px; border: 1px solid rgba(52,211,153,0.2);">{{ scan_result }}</p>
+                                {% endif %}
                             </div>
                         {% endif %}
                     </div>

@@ -19,13 +19,12 @@ def analyze_file_ai(entropy, patterns, imports, risk_score):
     """
     if GEMINI_API_KEY:
         try:
-            # Clean inputs
             ent_val = float(entropy or 0)
             risk_val = int(risk_score or 0)
             pat_val = str(patterns or "")
             imp_val = str(imports or "")
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={GEMINI_API_KEY}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
             
             prompt = (
                 f"Analyze this file for potential malware threats based on static analysis metadata:\n\n"
@@ -35,25 +34,14 @@ def analyze_file_ai(entropy, patterns, imports, risk_score):
                 f"- Risky/Dangerous Imports: {imp_val}\n"
                 f"- Heuristic Risk Score: {risk_val}/100\n\n"
                 f"Please provide a concise 3-4 sentence security assessment. Specify the overall threat verdict "
-                f"(Clean, Low Risk, Medium Risk, High Risk, or Critical Risk), the risk score, key findings (e.g. suspicious behavior, "
-                f"obfuscated entropy, dangerous imports), likely malware family classification if suspicious, and a final recommendation "
-                f"(e.g. safe, run in sandbox, quarantine/delete). Keep the response compact, highly professional, and technical."
+                f"(Clean, Low Risk, Medium Risk, High Risk, or Critical Risk), key findings (e.g. suspicious behavior, "
+                f"obfuscated entropy, dangerous imports), likely malware family classification if suspicious, and a final recommendation. "
+                f"Keep the response compact, highly professional, and technical."
             )
 
             payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "text": prompt
-                            }
-                        ]
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": 0.2,
-                    "maxOutputTokens": 2048
-                }
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
             }
 
             headers = {"Content-Type": "application/json"}
@@ -61,14 +49,21 @@ def analyze_file_ai(entropy, patterns, imports, risk_score):
             
             if response.status_code == 200:
                 res_data = response.json()
-                # Extract text response from Gemini's JSON structure
                 candidates = res_data.get("candidates", [])
                 if candidates:
                     text_content = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     if text_content.strip():
-                        return text_content.strip()
+                        txt = text_content.strip()
+                        verdict = "Critical Risk" if risk_val >= 70 else "High Risk" if risk_val >= 50 else "Medium Risk" if risk_val >= 30 else "Low Risk" if risk_val >= 10 else "Clean"
+                        return {
+                            "verdict": verdict,
+                            "label": verdict,
+                            "confidence": round(min(0.65 + (risk_val / 300.0), 0.98), 2),
+                            "reason": txt,
+                            "explanation": txt,
+                            "text": txt
+                        }
         except Exception:
-            # Fall back to local analysis on error
             pass
 
     return analyze_file_ai_local(entropy, patterns, imports, risk_score)
@@ -234,14 +229,28 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
                 "if it came from an untrusted source."
             )
         else:
-            lines.append(
-                "Recommendation: file appears SAFE. No action required."
-            )
+            lines.append("Recommendation: file appears SAFE. No action required.")
 
-        return " ".join(lines)
+        summary_text = " ".join(lines)
+        return {
+            "verdict": risk_label,
+            "label": risk_label,
+            "confidence": round(min(0.60 + (risk_score / 250.0), 0.98), 2),
+            "reason": summary_text,
+            "explanation": summary_text,
+            "text": summary_text
+        }
 
     except Exception as exc:
-        return f"Local analysis engine encountered an error: {exc}"
+        err_msg = f"Local analysis engine encountered an error: {exc}"
+        return {
+            "verdict": "UNKNOWN",
+            "label": "UNKNOWN",
+            "confidence": 0.0,
+            "reason": err_msg,
+            "explanation": err_msg,
+            "text": err_msg
+        }
 
 
 def _classify_malware_family(threat_classes: list, risk_score: int, entropy: float) -> str:

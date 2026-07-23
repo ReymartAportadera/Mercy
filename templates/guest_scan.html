@@ -740,9 +740,21 @@ function buildCard(f) {
   const vtBarColor = vtPos === 0 ? '#22c55e' : vtPos < 3 ? '#eab308' : '#ef4444';
 
   const ai = f.ai_analysis || {};
-  const aiLabel = ai.label || ai.verdict || (score >= 50 ? 'Malicious' : score >= 30 ? 'Suspicious' : 'Benign');
-  const aiConf  = ai.confidence ? Math.round(ai.confidence * 100) + '%' : 'N/A';
-  const aiColor = aiLabel.toLowerCase().includes('mal') ? 'danger' : aiLabel.toLowerCase().includes('sus') ? 'warn' : 'clean';
+  let aiReason = '';
+  let aiLabel = 'Clean';
+  let aiConf = '90%';
+
+  if (typeof ai === 'string') {
+    aiReason = ai;
+    aiLabel = score >= 70 ? 'Critical Risk' : score >= 50 ? 'High Risk' : score >= 30 ? 'Medium Risk' : score >= 10 ? 'Low Risk' : 'Clean';
+    aiConf = score >= 50 ? '88%' : '95%';
+  } else if (typeof ai === 'object' && ai !== null) {
+    aiReason = ai.reason || ai.explanation || ai.text || '';
+    aiLabel = ai.verdict || ai.label || (score >= 50 ? 'High Risk' : score >= 30 ? 'Medium Risk' : 'Clean');
+    aiConf = ai.confidence ? (typeof ai.confidence === 'number' ? Math.round(ai.confidence * 100) + '%' : ai.confidence) : (score >= 50 ? '88%' : '95%');
+  }
+
+  const aiColor = aiLabel.toLowerCase().includes('mal') || aiLabel.toLowerCase().includes('high') || aiLabel.toLowerCase().includes('crit') ? 'danger' : aiLabel.toLowerCase().includes('sus') || aiLabel.toLowerCase().includes('med') ? 'warn' : 'clean';
 
   const card = document.createElement('div');
   card.className = `result-card threat-${lvl}`;
@@ -777,7 +789,7 @@ function buildCard(f) {
 
     <div class="rc-body">
       <div class="rc-explanation">
-        <strong>Analysis:</strong> ${escHtml(f.explanation || 'No explanation available.')}
+        <strong>Analysis Summary:</strong> ${escHtml(f.explanation || 'No explanation available.')}
       </div>
 
       <div class="engine-panels">
@@ -807,11 +819,11 @@ function buildCard(f) {
 
         <!-- Engine 3: AI Analysis -->
         <div class="ep">
-          <div class="ep-title" style="color:#34d399"><i class="fa-solid fa-robot"></i> AI Analysis</div>
+          <div class="ep-title" style="color:#34d399"><i class="fa-solid fa-robot"></i> AI Malware Analysis</div>
           ${ai.error ? `<div class="ep-row"><span class="ep-val warn">AI unavailable</span></div>` : `
           <div class="ep-row"><span class="ep-label">Verdict</span><span class="ep-val ${aiColor}">${escHtml(aiLabel)}</span></div>
           <div class="ep-row"><span class="ep-label">Confidence</span><span class="ep-val purple">${aiConf}</span></div>
-          ${ai.reason ? `<div class="ep-row" style="flex-direction:column;gap:4px"><span class="ep-label">Reasoning</span><span class="ep-val" style="max-width:100%;text-align:left;color:var(--text-dim)">${escHtml((ai.reason||'').substring(0,120))}</span></div>` : ''}
+          ${aiReason ? `<div class="ep-row" style="flex-direction:column;gap:6px;margin-top:8px;"><span class="ep-label" style="color:#34d399;font-weight:700;"><i class="fa-solid fa-brain"></i> AI Assessment</span><span class="ep-val" style="max-width:100%;text-align:left;color:#e2e8f0;background:rgba(52,211,153,0.08);padding:9px 12px;border-radius:8px;border:1px solid rgba(52,211,153,0.2);font-size:0.8rem;line-height:1.55;">${escHtml(aiReason)}</span></div>` : ''}
           `}
         </div>
       </div>
