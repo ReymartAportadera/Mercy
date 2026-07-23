@@ -1072,6 +1072,20 @@ def scan(file_id):
             scan_semaphore.release()
 
     if already_scanned:
+        ai_data = file_meta.get("ai_analysis")
+        if not ai_data or (isinstance(ai_data, dict) and not ai_data) or (isinstance(ai_data, str) and not ai_data.strip()):
+            ai_data = analyze_file_ai(
+                entropy=file_meta.get("entropy", 0),
+                patterns=file_meta.get("pattern_result", "None"),
+                imports=file_meta.get("risky_imports", "None"),
+                risk_score=file_meta.get("risk_score", 0)
+            )
+            file_meta["ai_analysis"] = ai_data
+            try:
+                fb.save_uploaded_file(file_meta)
+            except Exception as exc:
+                logger.warning("Could not update file_meta in Firebase: %s", exc)
+
         results = {
             "heuristic": {
                 "risk_score": file_meta.get("risk_score", 0),
@@ -1081,7 +1095,7 @@ def scan(file_id):
                 "risky_imports": [file_meta.get("risky_imports", "None")],
             },
             "virustotal": file_meta.get("virustotal", {}),
-            "ai_analysis": file_meta.get("ai_analysis", {})
+            "ai_analysis": ai_data
         }
         return render_template("scan.html", file=file_meta, result=True,
                                already_scanned=True, results=results, scan_mode='multiple')
@@ -1361,6 +1375,16 @@ def view_result(file_id):
         
         flash("File not found or access denied.")
         return redirect(url_for("dashboard"))
+    ai_data = file_meta.get("ai_analysis")
+    if not ai_data or (isinstance(ai_data, dict) and not ai_data) or (isinstance(ai_data, str) and not ai_data.strip()):
+        ai_data = analyze_file_ai(
+            entropy=file_meta.get("entropy", 0),
+            patterns=file_meta.get("pattern_result", "None"),
+            imports=file_meta.get("risky_imports", "None"),
+            risk_score=file_meta.get("risk_score", 0)
+        )
+        file_meta["ai_analysis"] = ai_data
+
     results = {
         "heuristic": {
             "risk_score": file_meta.get("risk_score", 0),
@@ -1370,7 +1394,7 @@ def view_result(file_id):
             "risky_imports": [file_meta.get("risky_imports", "None")],
         },
         "virustotal": file_meta.get("virustotal", {}),
-        "ai_analysis": file_meta.get("ai_analysis", {})
+        "ai_analysis": ai_data
     }
     return render_template("scan.html", file=file_meta, result=True, results=results, scan_mode='multiple')
 
