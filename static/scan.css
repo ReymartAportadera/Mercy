@@ -661,17 +661,55 @@ h2 span, .filename-display strong {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    body {
+        padding: 16px 10px 40px;
+    }
+    .scan-page {
+        max-width: 100%;
+    }
+    .scan-box {
+        padding: 20px 14px;
+        border-radius: 12px;
+    }
     .vt-stats {
         flex-direction: column;
+        gap: 8px;
     }
-    
+    .vt-stat-box {
+        padding: 10px;
+    }
+    .vt-stat-number {
+        font-size: 1.4rem;
+    }
     .detail-row {
         flex-direction: column;
-        gap: 5px;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 10px 0;
     }
-    
     .detail-value {
         text-align: left;
+        word-break: break-word;
+    }
+    .multi-results h3, .result-box h2 {
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    h2 {
+        font-size: 1.3rem;
+    }
+    .scan-result-card {
+        padding: 12px 10px;
+    }
+    .scan-result-card h4 {
+        font-size: 0.9rem;
+        flex-wrap: wrap;
+    }
+    .back-btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 /* ==============================
