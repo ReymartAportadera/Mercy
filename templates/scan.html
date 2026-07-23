@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>TrustFile | Scanning...</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='scan.css') + '?v=' + css_version + '?v=' + css_version + '?v=' + css_version }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='scan.css') + '?v=' + css_version + '?v=' + css_version + '?v=' + css_version + '?v=' + css_version }}">
 </head>
 
 <body>
@@ -172,114 +172,128 @@
                 <h3><i class="fa-solid fa-list-check"></i> 15 Audited Security Features Breakdown</h3>
                 <div class="feature-grid">
 
+                    <!-- 1. FILE TYPE -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-file-code"></i> 1. File Type</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-file-code" style="color: #60a5fa;"></i> 1. File Type</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ file.filename.split('.')[-1]|upper if '.' in file.filename else 'Binary' }}</span>
+                            <span class="highlight-val"><span class="badge badge-info"><i class="fa-solid fa-file"></i> {{ file.filename.split('.')[-1]|upper if '.' in file.filename else 'BINARY' }}</span></span>
                             <span class="desc-val">{{ file.filename }}</span>
                         </div>
                     </div>
 
+                    <!-- 2. THREAT SCORE -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-gauge-high"></i> 2. Threat Score</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-gauge-high" style="color: #ff6600;"></i> 2. Threat Score</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val {{ file.threat_level|lower }}">{{ file.risk_score }} / 100</span>
-                            <span class="desc-val">Combined risk rating</span>
+                            <span class="highlight-val {{ file.threat_level|lower }}"><span class="badge badge-{{ 'danger' if file.risk_score|int >= 50 else ('warning' if file.risk_score|int >= 25 else 'success') }}"><i class="fa-solid fa-chart-line"></i> {{ file.risk_score }}%</span></span>
+                            <span class="desc-val">Calculated threat rating</span>
                         </div>
                     </div>
 
+                    <!-- 3. SCAN RESULT -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-shield-halved"></i> 3. Scan Result</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-shield-halved" style="color: #00ff88;"></i> 3. Scan Result</div>
                         <div class="feature-card-body">
-                            <span class="status-badge {{ file.status|lower }}">{{ file.status }}</span>
-                            <span class="desc-val">Final security status</span>
+                            <span class="highlight-val"><span class="badge badge-{{ 'danger' if file.status|lower == 'malware' else ('warning' if file.status|lower == 'suspicious' else 'success') }}"><i class="fa-solid fa-shield-check"></i> {{ file.status }}</span></span>
+                            <span class="desc-val">Final security verdict</span>
                         </div>
                     </div>
 
+                    <!-- 4. FILE CLASSIFICATION -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-sitemap"></i> 4. File Classification</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-sitemap" style="color: #a855f7;"></i> 4. File Classification</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ file.detected_type or (file.filename.split('.')[-1]|upper + ' File') }}</span>
-                            <span class="desc-val">Header and format analysis</span>
+                            <span class="highlight-val"><span class="badge badge-info"><i class="fa-solid fa-tag"></i> {{ file.detected_type or (file.filename.split('.')[-1]|upper + ' Format') }}</span></span>
+                            <span class="desc-val">Binary & format classification</span>
                         </div>
                     </div>
 
+                    <!-- 5. ENTROPY ANALYSIS -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-wave-square"></i> 5. Entropy Analysis</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-wave-square" style="color: #facc15;"></i> 5. Entropy Analysis</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ file.entropy or '0.00' }} / 8.00</span>
+                            <span class="highlight-val"><span class="badge badge-{{ 'warning' if file.entropy and file.entropy|float > 6.8 else 'success' }}"><i class="fa-solid fa-bolt"></i> {{ file.entropy or '0.00' }} / 8.00</span></span>
                             <span class="desc-val">Shannon randomness index</span>
                         </div>
                     </div>
 
+                    <!-- 6. AV TEST SIGNATURE -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-fingerprint"></i> 6. AV Test Signature</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-fingerprint" style="color: #ec4899;"></i> 6. AV Test Signature</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ file.signature_status or 'Clean' }}</span>
+                            <span class="highlight-val"><span class="badge badge-{{ 'danger' if file.signature_status and 'detected' in file.signature_status|lower else 'success' }}"><i class="fa-solid fa-microscope"></i> {{ file.signature_status or 'Clean Signatures' }}</span></span>
                             <span class="desc-val">Behavioral signature rules</span>
                         </div>
                     </div>
 
+                    <!-- 7. WHITELIST CREDITS APPLIED -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-user-shield"></i> 7. Whitelist Credits Applied</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-award" style="color: #38bdf8;"></i> 7. Whitelist Credits Applied</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val text-safe"><i class="fa-solid fa-circle-check"></i> Applied</span>
+                            <span class="highlight-val"><span class="badge badge-success"><i class="fa-solid fa-circle-check"></i> Applied</span></span>
                             <span class="desc-val">System library reputation active</span>
                         </div>
                     </div>
 
+                    <!-- 8. DETECTION SUMMARY -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-rectangle-list"></i> 8. Detection Summary</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-list-check" style="color: #34d399;"></i> 8. Detection Summary</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ file.pattern_result or 'No malicious patterns' }}</span>
+                            <span class="highlight-val"><span class="badge badge-default"><i class="fa-solid fa-clipboard-check"></i> {{ file.pattern_result or 'No malicious patterns' }}</span></span>
                             <span class="desc-val">Summary of triggered rules</span>
                         </div>
                     </div>
 
+                    <!-- 9. SCORE BREAKDOWN -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-sliders"></i> 9. Score Breakdown</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-sliders" style="color: #fb923c;"></i> 9. Score Breakdown</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">Heuristics: {{ file.risk_score }}%</span>
-                            <span class="desc-val">Multi-component weight score</span>
+                            <span class="highlight-val"><span class="badge badge-info"><i class="fa-solid fa-calculator"></i> Score: {{ file.risk_score }}%</span></span>
+                            <span class="desc-val">Multi-component weight distribution</span>
                         </div>
                     </div>
 
+                    <!-- 10. DETECTION LOG -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-terminal"></i> 10. Detection Log</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-terminal" style="color: #4ade80;"></i> 10. Detection Log</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ file.pattern_result or 'Log clean' }}</span>
+                            <span class="highlight-val"><span class="badge badge-default"><i class="fa-solid fa-code-commit"></i> {{ file.pattern_result or 'Log Clean - Zero Alerts' }}</span></span>
                             <span class="desc-val">Execution pattern trace</span>
                         </div>
                     </div>
 
+                    <!-- 11. FALSE-POSITIVE REDUCTION -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-filter"></i> 11. False-Positive Reduction</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-filter" style="color: #22d3ee;"></i> 11. False-Positive Reduction</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val text-safe"><i class="fa-solid fa-shield-check"></i> Verified</span>
-                            <span class="desc-val">Noise filtering applied</span>
+                            <span class="highlight-val"><span class="badge badge-success"><i class="fa-solid fa-shield-heart"></i> Active</span></span>
+                            <span class="desc-val">Noise filtering & FP offset applied</span>
                         </div>
                     </div>
 
+                    <!-- 12. VIRUSTOTAL CHECK -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-cloud"></i> 12. VirusTotal Check</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-cloud-check" style="color: #818cf8;"></i> 12. VirusTotal Check</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val">{{ results.virustotal.get('positives', 0) if results and results.virustotal and results.virustotal.get else 0 }} Detections</span>
-                            <span class="desc-val">Global hash query</span>
+                            <span class="highlight-val"><span class="badge badge-{{ 'danger' if results and results.virustotal and results.virustotal.get('positives', 0)|int > 0 else 'success' }}"><i class="fa-solid fa-server"></i> {{ results.virustotal.get('positives', 0) if results and results.virustotal and results.virustotal.get else 0 }} Flags</span></span>
+                            <span class="desc-val">Global threat feed query</span>
                         </div>
                     </div>
 
+                    <!-- 13. ENGINE RESULTS -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-layer-group"></i> 13. Engine Results</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-cubes" style="color: #c084fc;"></i> 13. Engine Results</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val text-safe">3 / 3 Engines Active</span>
+                            <span class="highlight-val"><span class="badge badge-success"><i class="fa-solid fa-check-double"></i> 3 / 3 Active</span></span>
                             <span class="desc-val">Heuristic, Cloud & AI</span>
                         </div>
                     </div>
 
+                    <!-- 14. AI ANALYSIS VERDICT -->
                     <div class="feature-card">
-                        <div class="feature-card-head"><i class="fa-solid fa-brain"></i> 14. AI Analysis Verdict</div>
+                        <div class="feature-card-head"><i class="fa-solid fa-brain" style="color: #34d399;"></i> 14. AI Analysis Verdict</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val text-ai">{{ ai_verdict or 'Assessment Complete' }}</span>
+                            <span class="highlight-val"><span class="badge badge-success"><i class="fa-solid fa-robot"></i> {{ ai_verdict or 'Complete' }}</span></span>
                             <span class="desc-val">Confidence: {{ ai_confidence or 90 }}%</span>
                         </div>
                     </div>
