@@ -123,31 +123,184 @@ h2 span, .filename-display strong {
 }
 
 /* ==============================
-   Result Box Styling
+   Result Box & 15-Feature Audit Layout
    ============================== */
 .result-box {
     text-align: left;
 }
 
-.result-box h2 {
+.result-header {
     text-align: center;
-    border-bottom: 1px solid var(--glass-border);
-    padding-bottom: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
-.metrics p {
-    margin: 10px 0;
-    font-size: 0.95rem;
+.result-header h2 {
+    border-bottom: none;
+    margin-bottom: 4px;
+}
+
+.result-subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.summary-score-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.score-main {
     display: flex;
-    justify-content: space-between;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    padding-bottom: 5px;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
 }
 
-.metrics strong {
+.score-circle {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 3px solid #00ff88;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+}
+
+.score-circle.critical, .score-circle.high, .score-circle.malware {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 15px rgba(255, 30, 30, 0.3);
+}
+
+.score-circle.medium, .score-circle.suspicious {
+    border-color: #ffcc00;
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.2);
+}
+
+.score-val {
+    font-size: 1.4rem;
+    font-weight: 900;
+}
+
+.score-lbl {
+    font-size: 0.65rem;
+    text-transform: uppercase;
     color: var(--text-dim);
 }
+
+.verdict-meta {
+    flex: 1;
+}
+
+.threat-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.threat-level-badge.safe { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.3); }
+.threat-level-badge.low { background: rgba(0, 204, 255, 0.15); color: #00ccff; border: 1px solid rgba(0, 204, 255, 0.3); }
+.threat-level-badge.medium { background: rgba(255, 204, 0, 0.15); color: #ffcc00; border: 1px solid rgba(255, 204, 0, 0.3); }
+.threat-level-badge.high, .threat-level-badge.critical, .threat-level-badge.malware { background: rgba(255, 30, 30, 0.15); color: var(--accent-red); border: 1px solid rgba(255, 30, 30, 0.3); }
+
+.verdict-text {
+    font-size: 0.9rem;
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+.section-block {
+    margin-bottom: 28px;
+}
+
+.section-block h3 {
+    font-size: 1.05rem;
+    color: var(--text-main);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 14px;
+    transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+    border-color: rgba(255, 30, 30, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.feature-card-head {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.feature-card-head i {
+    color: var(--accent-red);
+}
+
+.feature-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.highlight-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+
+}
+
+.desc-val {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+}
+
+.text-safe { color: #00ff88 !important; }
+.text-ai { color: #34d399 !important; }
+
+@media (max-width: 768px) {
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+    .score-main {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
 
 /* Status Colors */
 .safe { color: #00ff88 !important; }
