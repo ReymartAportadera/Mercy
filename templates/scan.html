@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>TrustFile | Scanning...</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -249,49 +250,48 @@
 </div>
 
 <script>
-// Submit handler: show animation when manually submitting the scan form
-document.getElementById('scanForm').addEventListener('submit', function() {
-    document.getElementById('scanModeSelection').style.display = 'none';
-    document.getElementById('scanning-animation').style.display = 'block';
-    const scanText = document.getElementById('scanText');
-    if (scanText) {
-        const messages = [
-            'Analyzing file structure...',
-            'Checking for malware patterns...',
-            'Scanning for suspicious behavior...',
-            'Detecting threats...',
-            'Finalizing results...'
-        ];
-        let index = 0;
-        setInterval(() => {
-            if (index < messages.length) { scanText.textContent = messages[index++]; }
-        }, 1000);
-    }
-    return true;  // let the form submit normally
-});
-
 document.addEventListener('DOMContentLoaded', function() {
+    var scanForm       = document.getElementById('scanForm');
+    var scanModeSelection  = document.getElementById('scanModeSelection');
+    var scanningAnimation  = document.getElementById('scanning-animation');
+    var scanText           = document.getElementById('scanText');
+
+    var messages = [
+        'Analyzing file structure...',
+        'Checking for malware patterns...',
+        'Scanning for suspicious behavior...',
+        'Detecting threats...',
+        'Finalizing results...'
+    ];
+
+    // Submit handler: show animation when manually submitting the scan form
+    if (scanForm) {
+        scanForm.addEventListener('submit', function() {
+            if (scanModeSelection) scanModeSelection.style.display = 'none';
+            if (scanningAnimation) scanningAnimation.style.display = 'block';
+            if (scanText) {
+                var index = 0;
+                setInterval(function() {
+                    if (index < messages.length) { scanText.textContent = messages[index++]; }
+                }, 1000);
+            }
+            return true;
+        });
+    }
+
 {% if auto_scan == 'true' and not already_scanned %}
     // Auto-scan: hide the form UI, show animation, then submit
-    document.getElementById('scanModeSelection').style.display = 'none';
-    document.getElementById('scanning-animation').style.display = 'block';
-    const scanText = document.getElementById('scanText');
+    if (scanModeSelection) scanModeSelection.style.display = 'none';
+    if (scanningAnimation) scanningAnimation.style.display = 'block';
     if (scanText) {
-        const messages = [
-            'Analyzing file structure...',
-            'Checking for malware patterns...',
-            'Scanning for suspicious behavior...',
-            'Detecting threats...',
-            'Finalizing results...'
-        ];
-        let index = 0;
-        setInterval(() => {
-            if (index < messages.length) { scanText.textContent = messages[index++]; }
+        var idx = 0;
+        setInterval(function() {
+            if (idx < messages.length) { scanText.textContent = messages[idx++]; }
         }, 1000);
     }
     // Submit after a brief delay so the animation is visible
     setTimeout(function() {
-        document.getElementById('scanForm').submit();
+        if (scanForm) scanForm.submit();
     }, 600);
 {% endif %}
 });
