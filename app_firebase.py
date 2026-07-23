@@ -669,14 +669,11 @@ def upload_single_file_api():
         "user_email": getattr(current_user, "email", ""),
         "username": getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0]),
         "size": f"{round(len(file_bytes) / 1024, 2)} KB",
-        "pattern_result": ", ".join(scan_res.get("heuristics", [])) or "None",
-        "signature_status": ", ".join(scan_res.get("suspicious", [])) or "None",
-        "risky_imports": ", ".join(scan_res.get("risky_imports", [])) or "None",
-        "entropy": str(scan_res.get("entropy", 0)),
         "virustotal": vt_result,
         "ai_analysis": ai_result,
         "explanation": f"Full 3-engine scan completed. Risk score: {risk_score}%"
     }
+    _apply_scan_result_to_file(file_record, scan_res)
     fb.save_uploaded_file(file_record)
     _cache_bytes(file_id, file_bytes)
 
@@ -764,12 +761,11 @@ def guest_upload_api():
         "threat_level": threat_level,
         "hash": file_hash,
         "size": f"{round(len(file_bytes) / 1024, 2)} KB",
-        "pattern_result": ", ".join(scan_res.get("heuristics", [])) or "None",
-        "signature_status": ", ".join(scan_res.get("suspicious", [])) or "None",
-        "risky_imports": ", ".join(scan_res.get("risky_imports", [])) or "None",
-        "entropy": str(scan_res.get("entropy", 0)),
+        "virustotal": vt_result,
+        "ai_analysis": ai_result,
         "explanation": f"Guest Scan (Temporary Session). Risk score: {risk_score}%"
     }
+    _apply_scan_result_to_file(guest_record, scan_res)
 
     guest_id = session.get("guest_id")
     if not guest_id:
