@@ -615,6 +615,8 @@ let totalQueued = 0;
 let totalDone = 0;
 let totalDupes = 0;
 let totalSkipped = 0;
+let scannedFileIds = [];       // file_ids from successful scans
+let scannedFileNames = {};     // file_id -> filename map
 
 const scanMessages = [
     'Analyzing file structure...',
@@ -701,6 +703,7 @@ function startScanQueue() {
     // Build queue entries
     scanQueue = [];
     totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0;
+    scannedFileIds = []; scannedFileNames = {};
 
     for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
@@ -885,6 +888,11 @@ async function processNextInQueue() {
                 totalQueued++;
                 nextItem.status = 'done';
                 nextItem.file_id = data.file_id;
+                // Track for post-scan result display
+                if (data.file_id) {
+                    scannedFileIds.push(data.file_id);
+                    scannedFileNames[data.file_id] = nextItem.name;
+                }
 
                 // Trigger background scan for this file
                 fetch('/scan/' + data.file_id, {
@@ -932,16 +940,60 @@ function showScanDone() {
     document.getElementById('addMoreBtn').style.display = 'none';
     document.getElementById('standbyQueueSection').style.display = 'none';
 
+    // If exactly 1 file was scanned successfully, redirect to its result page
+    if (scannedFileIds.length === 1) {
+        window.location.href = '/scan/' + scannedFileIds[0];
+        return;
+    }
+
     let title = totalQueued > 0
-        ? totalQueued + ' file(s) successfully queued for threat analysis!'
+        ? totalQueued + ' file(s) scanned — view results below!'
         : 'Scan queue complete.';
     let sub = '';
     if (totalDupes > 0) sub += totalDupes + ' duplicate(s) skipped. ';
     if (totalSkipped > 0) sub += totalSkipped + ' unsupported file(s) skipped. ';
-    sub += totalQueued > 0 ? 'Check the Dashboard for live scan results.' : 'All selected files were already scanned or unsupported.';
+    if (totalQueued === 0) sub += 'All selected files were already scanned or unsupported.';
 
     document.getElementById('scanDoneTitle').textContent = title;
     document.getElementById('scanDoneSub').textContent = sub;
+
+    // Build inline result links for multiple scanned files
+    let resultsHtml = '';
+    if (scannedFileIds.length > 1) {
+        resultsHtml += '<div style="margin-top:18px; width:100%; max-width:480px;">';
+        resultsHtml += '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.08em;"><i class="fa-solid fa-list-check" style="margin-right:6px;"></i>Scanned Files</div>';
+        scannedFileIds.forEach(fid => {
+            const fname = scannedFileNames[fid] || fid;
+            resultsHtml += `
+                <a href="/scan/${fid}" style="
+                    display:flex; align-items:center; gap:10px;
+                    background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25);
+                    border-radius:8px; padding:10px 14px; margin-bottom:8px;
+                    text-decoration:none; color:var(--text-primary);
+                    transition:background 0.2s, border-color 0.2s;
+                    font-size:0.85rem;
+                " onmouseover="this.style.background='rgba(99,102,241,0.2)';this.style.borderColor='rgba(99,102,241,0.5)'"
+                   onmouseout="this.style.background='rgba(99,102,241,0.1)';this.style.borderColor='rgba(99,102,241,0.25)'">
+                    <i class="fa-solid fa-file-shield" style="color:#6366f1; font-size:1rem; flex-shrink:0;"></i>
+                    <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${fname}</span>
+                    <i class="fa-solid fa-arrow-right" style="color:var(--text-muted); font-size:0.75rem; flex-shrink:0;"></i>
+                </a>`;
+        });
+        resultsHtml += '</div>';
+    }
+
+    // Inject result links into done panel
+    const donePanel = document.getElementById('scanDonePanel');
+    let existingLinks = donePanel.querySelector('.scan-result-links');
+    if (existingLinks) existingLinks.remove();
+    if (resultsHtml) {
+        const div = document.createElement('div');
+        div.className = 'scan-result-links';
+        div.innerHTML = resultsHtml;
+        const doneActions = donePanel.querySelector('.done-actions');
+        donePanel.insertBefore(div, doneActions);
+    }
+
     document.getElementById('scanDonePanel').style.display = 'block';
 }
 

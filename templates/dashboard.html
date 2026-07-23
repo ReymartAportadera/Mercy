@@ -260,8 +260,10 @@
                                 <i class="fa-solid fa-folder-open" style="font-size:1.3rem; color:var(--accent);"></i>
                                 <div style="min-width:0;">
                                     <div style="font-weight:700; font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ grp.name }}</div>
-                                    <div style="font-size:0.73rem; color:var(--text-dim);">
-                                        {{ grp.files|length }} file(s) {% if grp.threat_count > 0 %}• <span style="color:#ff4d4d; font-weight:700;">{{ grp.threat_count }} Threat(s)</span>{% else %}• <span style="color:var(--safe); font-weight:700;">All Safe</span>{% endif %}
+                                    <div style="font-size:0.73rem; color:var(--text-dim); display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px;">
+                                        <span><i class="fa-solid fa-calendar-day" style="font-size:0.7rem;"></i> {{ grp.upload_time | format_dt if grp.upload_time else 'N/A' }}</span>
+                                        <span>• {{ grp.files|length }} file(s)</span>
+                                        {% if grp.threat_count > 0 %}<span>• <strong style="color:#ff4d4d;">{{ grp.threat_count }} Threat(s)</strong></span>{% else %}<span>• <strong style="color:var(--safe);">All Safe</strong></span>{% endif %}
                                     </div>
                                 </div>
                             </div>

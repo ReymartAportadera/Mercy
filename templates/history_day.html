@@ -332,7 +332,12 @@
         {% set tl = (file.threat_level or 'safe')|lower %}
         {% set risk = file.risk_score|default(0)|int %}
 
-        <div class="file-card card-{{ tl }}" data-filename="{{ file.filename }}" data-threat="{{ tl }}" data-ai="{{ (file.ai_analysis or '')|lower }}">
+        {% if file.ai_analysis is mapping %}
+            {% set _data_ai = (file.ai_analysis.get('reason') or file.ai_analysis.get('explanation') or file.ai_analysis.get('text') or '') %}
+        {% else %}
+            {% set _data_ai = (file.ai_analysis or '') | string %}
+        {% endif %}
+        <div class="file-card card-{{ tl }}" data-filename="{{ file.filename }}" data-threat="{{ tl }}" data-ai="{{ _data_ai | lower }}">
             <div class="file-card-icon">
                 {% if tl == 'critical' %}🔴
                 {% elif tl == 'high' %}🟠
@@ -372,7 +377,13 @@
                 {% if file.ai_analysis %}
                 <div class="ai-snippet">
                     <i class="fa-solid fa-robot"></i>
-                    <span>{{ file.ai_analysis[:160] }}{% if file.ai_analysis|length > 160 %}…{% endif %}</span>
+                    {% if file.ai_analysis is mapping %}
+                        {% set _ai_txt = file.ai_analysis.get('reason') or file.ai_analysis.get('explanation') or file.ai_analysis.get('text') or (file.ai_analysis.get('verdict') or '') %}
+                        <span>{{ _ai_txt[:160] }}{% if _ai_txt|length > 160 %}…{% endif %}</span>
+                    {% else %}
+                        {% set _ai_str = file.ai_analysis | string %}
+                        <span>{{ _ai_str[:160] }}{% if _ai_str|length > 160 %}…{% endif %}</span>
+                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -390,7 +401,12 @@
                     <i class="fa-solid fa-magnifying-glass"></i> View
                 </a>
                 {% if file.ai_analysis %}
-                <button class="action-btn btn-ai" onclick="showAIModal('{{ file.id }}', '{{ file.filename }}', `{{ file.ai_analysis|escape }}`)">
+                {% if file.ai_analysis is mapping %}
+                    {% set _modal_txt = file.ai_analysis.get('reason') or file.ai_analysis.get('explanation') or file.ai_analysis.get('text') or (file.ai_analysis.get('verdict') or 'Assessment complete') %}
+                {% else %}
+                    {% set _modal_txt = file.ai_analysis | string %}
+                {% endif %}
+                <button class="action-btn btn-ai" onclick="showAIModal('{{ file.id }}', '{{ file.filename|e }}', `{{ _modal_txt | replace('`', "'") | replace('\\', '\\\\') }}`)">
                     <i class="fa-solid fa-robot"></i> AI
                 </button>
                 {% endif %}

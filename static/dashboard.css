@@ -695,6 +695,7 @@ body {
 /* Tablets */
 @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .dashboard-split-grid { grid-template-columns: 1fr !important; }
 
     /* Collapse sidebar to icons only */
     .sidebar { width: 70px; padding: 24px 10px; }

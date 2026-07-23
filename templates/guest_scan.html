@@ -912,7 +912,12 @@ function escHtml(s) {
 }
 function formatTime(iso) {
   if (!iso) return '';
-  try { const d = new Date(iso); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); } catch { return ''; }
+  try {
+    const d = new Date(iso);
+    const dateStr = d.toLocaleDateString([], {year:'numeric', month:'short', day:'numeric'});
+    const timeStr = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    return `${dateStr}, ${timeStr}`;
+  } catch { return ''; }
 }
 function str(val) {
   return String(val || '');

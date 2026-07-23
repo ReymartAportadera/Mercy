@@ -33,22 +33,24 @@ body {
    ============================== */
 body::before {
     content: "";
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
     background-image: var(--cyber-image-url);
     background-size: cover;
     background-position: center;
     opacity: 0.15;
     filter: grayscale(100%) contrast(120%);
     z-index: -2;
+    pointer-events: none;
 }
 
 body::after {
     content: "";
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
     background: radial-gradient(circle at center, rgba(0,0,0,0) 0%, var(--bg-black) 90%);
     z-index: -1;
+    pointer-events: none;
 }
 /* ==============================
     Home

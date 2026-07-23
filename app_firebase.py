@@ -208,11 +208,33 @@ def _apply_scan_result_to_file(file_dict: dict, result: dict) -> None:
     )
     _persist_advanced_to_file(file_dict, result.get("advanced", {}))
 
+def _extract_ai_text(ai_data) -> str:
+    """Extract plain text from ai_analysis (dict or str). Always returns a string."""
+    if not ai_data:
+        return ""
+    if isinstance(ai_data, dict):
+        return (ai_data.get("reason") or ai_data.get("explanation") or
+                ai_data.get("text") or ai_data.get("verdict") or "")
+    return str(ai_data)
+
+def _extract_ai_verdict(ai_data) -> str:
+    """Extract verdict label from ai_analysis."""
+    if isinstance(ai_data, dict):
+        return ai_data.get("verdict") or ai_data.get("label") or "Assessment Complete"
+    return "Assessment Complete"
+
+def _extract_ai_confidence(ai_data) -> int:
+    """Extract confidence % (0-100) from ai_analysis."""
+    if isinstance(ai_data, dict):
+        return round(min(float(ai_data.get("confidence", 0.9)), 1.0) * 100)
+    return 90
+
 def _run_full_heuristic_scan(
     filename: str,
     file_bytes: bytes,
     file_hash: str,
 ) -> dict:
+
     ext        = os.path.splitext(filename)[1].lower()
     is_binary  = ext in BINARY_EXTENSIONS
     dangerous_exts = {".exe", ".bat", ".cmd", ".vbs", ".js", ".ps1", ".py"}
@@ -552,10 +574,13 @@ def dashboard():
                     "files": [],
                     "threat_count": 0,
                     "max_risk": 0,
-                    "threat_level": "Safe"
+                    "threat_level": "Safe",
+                    "upload_time": f.get("upload_time")
                 }
             grp = folder_groups_dict[fname]
             grp["files"].append(f)
+            if f.get("upload_time") and (not grp.get("upload_time") or f.get("upload_time") > grp["upload_time"]):
+                grp["upload_time"] = f.get("upload_time")
             if risk > 0:
                 grp["threat_count"] += 1
             if risk > grp["max_risk"]:
@@ -671,7 +696,7 @@ def upload_single_file_api():
         "size": f"{round(len(file_bytes) / 1024, 2)} KB",
         "virustotal": vt_result,
         "ai_analysis": ai_result,
-        "explanation": f"Full 3-engine scan completed. Risk score: {risk_score}%"
+        "explanation": _extract_ai_text(ai_result) or f"Scan completed. Risk score: {risk_score}%"
     }
     _apply_scan_result_to_file(file_record, scan_res)
     fb.save_uploaded_file(file_record)
@@ -763,7 +788,7 @@ def guest_upload_api():
         "size": f"{round(len(file_bytes) / 1024, 2)} KB",
         "virustotal": vt_result,
         "ai_analysis": ai_result,
-        "explanation": f"Guest Scan (Temporary Session). Risk score: {risk_score}%"
+        "explanation": _extract_ai_text(ai_result) or f"Guest Scan. Risk score: {risk_score}%"
     }
     _apply_scan_result_to_file(guest_record, scan_res)
 
@@ -1060,13 +1085,19 @@ def scan(file_id):
             # Always save the file record — manual delete from dashboard
             fb.save_uploaded_file(file_meta)
 
+            _ai = results.get("ai_analysis") or {}
             return render_template(
                 "scan.html",
                 file=file_meta,
                 result=True,
                 already_scanned=False,
                 results=results,
+                scan_mode='multiple',
+                ai_text=_extract_ai_text(_ai),
+                ai_verdict=_extract_ai_verdict(_ai),
+                ai_confidence=_extract_ai_confidence(_ai),
             )
+
 
         finally:
             scan_semaphore.release()
@@ -1098,7 +1129,11 @@ def scan(file_id):
             "ai_analysis": ai_data
         }
         return render_template("scan.html", file=file_meta, result=True,
-                               already_scanned=True, results=results, scan_mode='multiple')
+                               already_scanned=True, results=results, scan_mode='multiple',
+                               ai_text=_extract_ai_text(ai_data),
+                               ai_verdict=_extract_ai_verdict(ai_data),
+                               ai_confidence=_extract_ai_confidence(ai_data))
+
 
     return render_template("scan.html", file=file_meta, result=False,
                            auto_scan=auto_scan, already_scanned=already_scanned)
@@ -1304,8 +1339,8 @@ def _get_all_scanned_files():
                         time_str = entry.get("timestamp", "") or ""
                         file_hash = entry.get("hash", "")
 
-                        # Deduplicate if already present in database
-                        if path_str in seen_paths or (file_hash and file_hash in seen_hashes):
+                        # Skip if physical file no longer exists or deduplicate
+                        if (path_str and not os.path.exists(path_str)) or path_str in seen_paths or (file_hash and file_hash in seen_hashes):
                             continue
 
                         h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
@@ -1369,7 +1404,23 @@ def view_result(file_id):
                                         "ai_analysis": entry.get("ai_analysis", ""),
                                         "user_id": current_user.uid
                                     }
-                                    return render_template("scan.html", file=local_meta, result=True)
+                                    loc_ai = local_meta.get("ai_analysis")
+                                    loc_results = {
+                                        "heuristic": {
+                                            "risk_score": local_meta.get("risk_score", 0),
+                                            "entropy": local_meta.get("entropy", "0"),
+                                            "heuristics": [local_meta.get("pattern_result", "None")],
+                                            "suspicious_functions": [local_meta.get("signature_status", "None")],
+                                            "risky_imports": ["None"],
+                                        },
+                                        "virustotal": {},
+                                        "ai_analysis": loc_ai
+                                    }
+                                    return render_template("scan.html", file=local_meta, result=True,
+                                                           results=loc_results, scan_mode='multiple',
+                                                           ai_text=_extract_ai_text(loc_ai),
+                                                           ai_verdict=_extract_ai_verdict(loc_ai),
+                                                           ai_confidence=_extract_ai_confidence(loc_ai))
                 except Exception as e:
                     logger.error("Error reading TrustFile_Detections.json in view_result: %s", e)
         
@@ -1396,7 +1447,11 @@ def view_result(file_id):
         "virustotal": file_meta.get("virustotal", {}),
         "ai_analysis": ai_data
     }
-    return render_template("scan.html", file=file_meta, result=True, results=results, scan_mode='multiple')
+    return render_template("scan.html", file=file_meta, result=True, results=results, scan_mode='multiple',
+                           ai_text=_extract_ai_text(ai_data),
+                           ai_verdict=_extract_ai_verdict(ai_data),
+                           ai_confidence=_extract_ai_confidence(ai_data))
+
 
 
 # ── Helper: send file to recycle bin (falls back to permanent delete) ────────
@@ -1498,6 +1553,25 @@ def delete_folder(folder_name):
                 _trash_file(target_path)
             fb.delete_uploaded_file(f["id"])
             deleted_count += 1
+    # Also clean up local monitor detections matching this folder
+    detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
+    if os.path.exists(detections_file):
+        try:
+            with open(detections_file, "r", encoding="utf-8") as f:
+                detections = json.load(f)
+            updated = []
+            for entry in detections:
+                if isinstance(entry, dict):
+                    p = entry.get("file_path", "") or entry.get("filepath", "") or ""
+                    parts = p.replace("\\", "/").strip("/").split("/")
+                    entry_folder = parts[-2] if len(parts) >= 2 else ""
+                    if entry_folder != folder_name and entry.get("folder_name") != folder_name:
+                        updated.append(entry)
+            with open(detections_file, "w", encoding="utf-8") as f:
+                json.dump(updated, f, indent=4)
+        except Exception as e:
+            logger.error("Error cleaning local detections for folder %s: %s", folder_name, e)
+
     if deleted_count > 0:
         flash(f"Folder '{folder_name}' and {deleted_count} contained file record(s) moved to Recycle Bin.")
     else:
