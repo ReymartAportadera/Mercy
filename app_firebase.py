@@ -596,11 +596,6 @@ def upload_single_file_api():
 
     file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    existing_files = fb.list_user_files(current_user.uid)
-    for existing in existing_files:
-        if (existing.get("hash") and existing.get("hash") == file_hash) or existing.get("filename") == filename:
-            return jsonify({"duplicate": True, "filename": filename}), 200
-
     user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(current_user.uid))
     os.makedirs(user_folder, exist_ok=True)
 
@@ -609,17 +604,55 @@ def upload_single_file_api():
         filename = uuid.uuid4().hex + ext
         path = os.path.abspath(os.path.join(user_folder, filename))
 
+    # Duplicate check: exact hash AND path/folder
+    existing_files = fb.list_user_files(current_user.uid)
+    for existing in existing_files:
+        if existing.get("hash") == file_hash and (existing.get("folder_name") == folder_name or existing.get("filepath") == path):
+            return jsonify({"duplicate": True, "filename": filename, "file_id": existing.get("id")}), 200
+
     with open(path, "wb") as out:
         out.write(file_bytes)
 
     relative_path = os.path.join(str(current_user.uid), filename)
     file_id = str(uuid.uuid4())
 
-    # Run instant heuristic threat scan
+    # ── Engine 1: Full heuristic scan ──────────────
     scan_res = _run_full_heuristic_scan(filename, file_bytes, file_hash)
     risk_score = scan_res.get("risk_score", 0)
-    status = "Infected" if risk_score >= 50 else "Clean"
-    threat_level = "Critical" if risk_score >= 70 else "High" if risk_score >= 50 else "Medium" if risk_score >= 30 else "Low" if risk_score > 0 else "Safe"
+
+    # ── Engine 2: VirusTotal scan ────────────
+    vt_result = {}
+    try:
+        vt_raw = smart_virustotal_scan(path, file_hash)
+        if vt_raw and "scans" not in vt_raw:
+            vt_raw["scans"] = {}
+        vt_result = vt_raw or {}
+        vt_pos = vt_result.get("positives", 0)
+        vt_total = vt_result.get("engine_count", 0)
+        if vt_total and vt_pos:
+            risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
+    except Exception as exc:
+        logger.warning("Upload scan - VirusTotal error: %s", exc)
+        vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
+
+    # ── Engine 3: AI analysis ─────────────────────────────────────────────────
+    ai_result = {}
+    try:
+        ai_result = analyze_file_ai(
+            entropy=scan_res.get("entropy", 0),
+            patterns=scan_res.get("pattern_result", "None"),
+            imports=scan_res.get("risky_imports_str", "None"),
+            risk_score=risk_score,
+        )
+    except Exception as exc:
+        logger.warning("Upload scan - AI analysis error: %s", exc)
+        ai_result = {"error": str(exc)}
+
+    # ── Final threat classification ───────────────────────────────────────────
+    detection_details = (scan_res.get("suspicious_functions", []) + scan_res.get("heuristics", []))
+    if vt_result.get("positives", 0):
+        detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count',0)} engines")
+    threat_level, status = determine_threat_level(risk_score, detection_details)
 
     file_record = {
         "id": file_id,
@@ -640,12 +673,14 @@ def upload_single_file_api():
         "signature_status": ", ".join(scan_res.get("suspicious", [])) or "None",
         "risky_imports": ", ".join(scan_res.get("risky_imports", [])) or "None",
         "entropy": str(scan_res.get("entropy", 0)),
-        "explanation": f"Scanned upon upload. Risk score: {risk_score}%"
+        "virustotal": vt_result,
+        "ai_analysis": ai_result,
+        "explanation": f"Full 3-engine scan completed. Risk score: {risk_score}%"
     }
     fb.save_uploaded_file(file_record)
     _cache_bytes(file_id, file_bytes)
 
-    return jsonify({"success": True, "file_id": file_id, "filename": filename, "status": status, "risk_score": risk_score}), 200
+    return jsonify({"success": True, "file_id": file_id, "filename": filename, "status": status, "risk_score": risk_score, "threat_level": threat_level}), 200
 
 
 # ── Guest Quick Scan (No Login Required — Temporary Session Only) ───────────
@@ -1041,8 +1076,19 @@ def scan(file_id):
             scan_semaphore.release()
 
     if already_scanned:
+        results = {
+            "heuristic": {
+                "risk_score": file_meta.get("risk_score", 0),
+                "entropy": file_meta.get("entropy", "0"),
+                "heuristics": [file_meta.get("pattern_result", "None")],
+                "suspicious_functions": [file_meta.get("signature_status", "None")],
+                "risky_imports": [file_meta.get("risky_imports", "None")],
+            },
+            "virustotal": file_meta.get("virustotal", {}),
+            "ai_analysis": file_meta.get("ai_analysis", {})
+        }
         return render_template("scan.html", file=file_meta, result=True,
-                               already_scanned=True)
+                               already_scanned=True, results=results, scan_mode='multiple')
 
     return render_template("scan.html", file=file_meta, result=False,
                            auto_scan=auto_scan, already_scanned=already_scanned)
@@ -1319,7 +1365,18 @@ def view_result(file_id):
         
         flash("File not found or access denied.")
         return redirect(url_for("dashboard"))
-    return render_template("scan.html", file=file_meta, result=True)
+    results = {
+        "heuristic": {
+            "risk_score": file_meta.get("risk_score", 0),
+            "entropy": file_meta.get("entropy", "0"),
+            "heuristics": [file_meta.get("pattern_result", "None")],
+            "suspicious_functions": [file_meta.get("signature_status", "None")],
+            "risky_imports": [file_meta.get("risky_imports", "None")],
+        },
+        "virustotal": file_meta.get("virustotal", {}),
+        "ai_analysis": file_meta.get("ai_analysis", {})
+    }
+    return render_template("scan.html", file=file_meta, result=True, results=results, scan_mode='multiple')
 
 
 # ── Helper: send file to recycle bin (falls back to permanent delete) ────────
