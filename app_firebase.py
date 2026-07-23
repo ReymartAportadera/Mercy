@@ -374,6 +374,15 @@ def request_entity_too_large(error):
     return redirect(url_for("uploadfiles"))
 
 
+# ── CSS Cache Busting ─────────────────────────────────────────────────────────
+import time as _time
+_CSS_VERSION = str(int(_time.time()))
+
+@app.context_processor
+def inject_css_version():
+    return {"css_version": _CSS_VERSION}
+
+
 @app.after_request
 def add_header(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
