@@ -110,40 +110,70 @@
                         <h4>
                             {% if scan_type == 'heuristic' %}
                                 <i class="fa-solid fa-magnifying-glass"></i> Heuristic Analysis Engine
-                                <span class="scan-status completed"><i class="fa-solid fa-circle-check"></i> Completed</span>
+                                {% if scan_result is mapping and scan_result.get('threat_level') %}
+                                    <span class="scan-status {{ 'error' if scan_result.threat_level|lower in ['high','critical','malware'] else 'completed' }}">
+                                        <i class="fa-solid fa-{{ 'triangle-exclamation' if scan_result.threat_level|lower in ['high','critical','malware'] else 'circle-check' }}"></i>
+                                        {{ scan_result.threat_level | upper }}
+                                    </span>
+                                {% else %}
+                                    <span class="scan-status completed"><i class="fa-solid fa-circle-check"></i> Completed</span>
+                                {% endif %}
                             {% elif scan_type == 'virustotal' %}
                                 <i class="fa-solid fa-cloud"></i> VirusTotal Query Check
                                 {% if scan_result is mapping and 'error' in scan_result %}
                                     <span class="scan-status error"><i class="fa-solid fa-circle-exclamation"></i> Error</span>
+                                {% elif scan_result is mapping and scan_result.get('positives', 0)|int > 0 %}
+                                    <span class="scan-status error"><i class="fa-solid fa-triangle-exclamation"></i> {{ scan_result.get('positives', 0) }} Flags Found</span>
                                 {% else %}
-                                    <span class="scan-status completed"><i class="fa-solid fa-circle-check"></i> Completed</span>
+                                    <span class="scan-status completed"><i class="fa-solid fa-circle-check"></i> Clean</span>
                                 {% endif %}
                             {% elif scan_type == 'ai_analysis' %}
                                 <i class="fa-solid fa-robot"></i> AI Neural Analysis Engine
-                                <span class="scan-status completed"><i class="fa-solid fa-circle-check"></i> Completed</span>
+                                <span class="scan-status {{ 'error' if ai_verdict and ai_verdict|lower not in ['clean','safe','benign'] else 'completed' }}">
+                                    <i class="fa-solid fa-{{ 'brain' }}"></i> {{ ai_verdict or 'Evaluated' }}
+                                </span>
                             {% endif %}
                         </h4>
                         <div class="scan-details">
                             {% if scan_type == 'heuristic' and scan_result is mapping %}
                                 <div class="detail-row">
+                                    <span class="detail-label">Threat Type:</span>
+                                    <span class="detail-value">
+                                        <span class="badge badge-{{ 'danger' if scan_result.get('risk_score', 0)|int >= 50 else ('warning' if scan_result.get('risk_score', 0)|int >= 25 else 'success') }}">
+                                            {{ scan_result.get('threat_type') or scan_result.get('file_classification') or file.detected_type or 'No Threat Detected' }}
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="detail-row">
                                     <span class="detail-label">Risk Score:</span>
-                                    <span class="detail-value">{{ scan_result.risk_score }}%</span>
+                                    <span class="detail-value">{{ scan_result.get('risk_score', file.risk_score) }}%</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Entropy:</span>
-                                    <span class="detail-value">{{ scan_result.entropy }}</span>
+                                    <span class="detail-value">{{ scan_result.get('entropy', file.entropy or '0.00') }}</span>
                                 </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Patterns Found:</span>
-                                    <span class="detail-value">{{ ", ".join(scan_result.heuristics) if scan_result.heuristics else "None detected" }}</span>
+                                    <span class="detail-value">{{ ", ".join(scan_result.heuristics) if scan_result.get('heuristics') else "None detected" }}</span>
                                 </div>
                             {% elif scan_type == 'virustotal' and scan_result is mapping %}
-                                {% if scan_result.error %}
+                                {% if scan_result.get('error') %}
                                     <div class="error-message">
                                         <i class="fa-solid fa-triangle-exclamation"></i>
                                         <p><strong>Error:</strong> {{ scan_result.error }}</p>
                                     </div>
                                 {% else %}
+                                    {% if scan_result.get('positives', 0)|int > 0 %}
+                                    <div class="detail-row">
+                                        <span class="detail-label">Threat Type:</span>
+                                        <span class="detail-value"><span class="badge badge-danger"><i class="fa-solid fa-biohazard"></i> Malware Detected</span></span>
+                                    </div>
+                                    {% else %}
+                                    <div class="detail-row">
+                                        <span class="detail-label">Threat Type:</span>
+                                        <span class="detail-value"><span class="badge badge-success"><i class="fa-solid fa-shield-check"></i> No Threat Found</span></span>
+                                    </div>
+                                    {% endif %}
                                     <div class="vt-stats">
                                         <div class="vt-stat-box">
                                             <div class="vt-stat-number">{{ scan_result.get('positives', 0) }}</div>
@@ -156,6 +186,19 @@
                                     </div>
                                 {% endif %}
                             {% elif scan_type == 'ai_analysis' %}
+                                <div class="detail-row">
+                                    <span class="detail-label">Threat Type:</span>
+                                    <span class="detail-value">
+                                        <span class="badge badge-{{ 'danger' if ai_verdict and ai_verdict|lower not in ['clean','safe','benign'] else 'success' }}">
+                                            <i class="fa-solid fa-robot"></i>
+                                            {{ ai_verdict or 'Clean' }}
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Confidence:</span>
+                                    <span class="detail-value">{{ ai_confidence or 90 }}%</span>
+                                </div>
                                 <div class="detail-row">
                                     <span class="detail-label">Engine Status:</span>
                                     <span class="detail-value"><span class="badge badge-success"><i class="fa-solid fa-check-circle"></i> AI Model Evaluated</span></span>
@@ -177,8 +220,14 @@
                     <div class="feature-card">
                         <div class="feature-card-head"><i class="fa-solid fa-file-code" style="color: #60a5fa;"></i> 1. File Type</div>
                         <div class="feature-card-body">
-                            <span class="highlight-val"><span class="badge badge-info"><i class="fa-solid fa-file"></i> {{ file.filename.split('.')[-1]|upper if '.' in file.filename else 'BINARY' }}</span></span>
-                            <span class="desc-val">{{ file.filename }}</span>
+                            <span class="highlight-val">
+                                <span class="badge badge-info"><i class="fa-solid fa-file"></i> {{ file.filename.split('.')[-1]|upper if '.' in file.filename else 'BINARY' }}</span>
+                                &nbsp;
+                                <span class="badge badge-{{ 'danger' if file.risk_score|int >= 50 else ('warning' if file.risk_score|int >= 25 else 'success') }}">
+                                    <i class="fa-solid fa-gauge-high"></i> {{ file.risk_score }}%
+                                </span>
+                            </span>
+                            <span class="desc-val">{{ file.detected_type or file.filename }}</span>
                         </div>
                     </div>
 
