@@ -1,0 +1,16 @@
+# Secrets & Credentials
+.env
+serviceAccountKey.json
+
+# Cache & Temporary Files
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+scratch/
+
+# Uploaded User Data
+uploads/
+static/uploads/
+auto_scan_folder/
+TrustFile_Deploy.zip
