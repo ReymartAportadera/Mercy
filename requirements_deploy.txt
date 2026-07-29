@@ -1,0 +1,19 @@
+# Core Flask framework
+flask>=3.0
+flask-login>=0.6
+flask-wtf>=1.2
+flask-limiter>=3.5
+werkzeug>=3.0
+wtforms>=3.1
+
+# Firebase (replaces all MySQL/SQLAlchemy/psycopg2)
+firebase-admin>=6.0
+
+# HTTP requests (VirusTotal API)
+requests>=2.28
+
+# Environment variables
+python-dotenv>=1.0
+
+# Safe delete (works on Linux too)
+send2trash>=1.8

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrustFile | Login</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}?v={{ css_version  }}">
 </head>
 <body>
     <a href="/" class="home-btn" title="Back to Home">
@@ -24,6 +24,7 @@
             <p>Secure File Scanner</p>
 
             <form method="POST" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="email" name="email" placeholder="Email" required>
                 
                 <div class="password-wrapper">
@@ -34,7 +35,10 @@
                 <button type="submit" id="loginBtn">Login</button>
             </form>
 
-            <a href="{{ url_for('signup') }}" class="signup-link">Don't have an account? Sign up</a>
+            <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 15px;">
+                <a href="{{ url_for('forgot_password') }}" class="signup-link">Forgot Password?</a>
+                <a href="{{ url_for('signup') }}" class="signup-link">Sign up</a>
+            </div>
         </div>
     </div>
 

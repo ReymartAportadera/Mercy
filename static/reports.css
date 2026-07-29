@@ -405,29 +405,81 @@ h3 {
     }
 }
 
-/* Print Styles */
+/* Print Styles — preserve dark cyber theme */
 @media print {
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
     body {
-        background: white;
+        background: #050505 !important;
+        color: #f5f5f5 !important;
         padding: 0;
     }
-    
-    .dashboard, .container {
-        background: white;
-        box-shadow: none;
-        border: 1px solid #ddd;
+
+    .container, .dashboard {
+        background: rgba(15, 15, 15, 0.95) !important;
+        border: 1px solid rgba(255, 30, 30, 0.4) !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
     }
-    
-    .scan-btn {
-        display: none;
+
+    .card {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #f5f5f5 !important;
     }
-    
-    .progress-bar {
-        background: #ddd;
+
+    .card .label {
+        color: var(--accent-red) !important;
     }
-    
+
+    .card .value {
+        color: #f5f5f5 !important;
+    }
+
     .ai-box {
-        border: 1px solid #ddd;
-        background: #f5f5f5;
+        background: rgba(255, 30, 30, 0.1) !important;
+        border-left: 4px solid var(--accent-red) !important;
+        color: #f5f5f5 !important;
     }
-}
+
+    .timeline {
+        background: rgba(255, 255, 255, 0.03) !important;
+        color: #f5f5f5 !important;
+    }
+
+    .timeline-item {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #f5f5f5 !important;
+    }
+
+    .progress {
+        background: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    .progress-bar {
+        background: linear-gradient(90deg, var(--safe-green), var(--threat-red)) !important;
+        color: white !important;
+    }
+
+    .threat-badge.critical { background: rgba(255, 30, 30, 0.3) !important; color: var(--threat-red) !important; }
+    .threat-badge.high     { background: rgba(255, 102, 0, 0.3) !important; color: var(--high-orange) !important; }
+    .threat-badge.medium   { background: rgba(255, 204, 0, 0.3) !important; color: var(--medium-yellow) !important; }
+    .threat-badge.low      { background: rgba(0, 204, 255, 0.3) !important; color: var(--low-blue) !important; }
+    .threat-badge.safe     { background: rgba(0, 255, 136, 0.3) !important; color: var(--safe-green) !important; }
+
+    /* Hide navigation buttons when printing */
+    .scan-btn,
+    button[onclick="window.print()"],
+    a[href] {
+        display: none !important;
+    }
+
+    /* Show back link only as text */
+    a[class="scan-btn"] {
+        display: none !important;
+    }
+}

@@ -1,0 +1,14 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      ".indexOn": ["email"]
+    },
+
+    "uploaded_files": {
+      ".indexOn": ["user_id"]
+    }
+  }
+}
