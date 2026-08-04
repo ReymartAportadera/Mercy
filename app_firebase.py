@@ -149,8 +149,8 @@ def determine_threat_level(risk_score: int, detection_details: list) -> tuple[st
     elif risk_score > 0:
         level = "Low"
     else:
-        level = "Safe"
-    status = "Threat" if level in {"Critical", "High", "Medium"} else "Safe"
+        level = "Benign"
+    status = "Threat" if level in {"Critical", "High", "Medium"} else "Benign"
     return level, status
 
 def generate_explanation(file_dict: dict) -> str:
@@ -561,7 +561,7 @@ def dashboard():
             f["threat_level"] = "Low"
             counters["low_threat"] += 1
         else:
-            f["threat_level"] = "Safe"
+            f["threat_level"] = "Benign"
             counters["safe_files"] += 1
 
         try:
@@ -583,7 +583,7 @@ def dashboard():
                     "files": [],
                     "threat_count": 0,
                     "max_risk": 0,
-                    "threat_level": "Safe",
+                    "threat_level": "Benign",
                     "upload_time": f.get("upload_time")
                 }
             grp = folder_groups_dict[fname]
@@ -616,8 +616,9 @@ def upload_single_file_api():
     filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
     ext = os.path.splitext(filename)[1].lower()
 
-    # Extract folder name if provided or present in relative path
+    # Extract folder name & source location if provided or present in relative path
     folder_name = request.form.get("folder_name") or (f.filename.split("/")[0] if "/" in f.filename else None)
+    source_location = request.form.get("source_location") or request.form.get("relative_path") or (f"Documents / {folder_name}" if folder_name else "Documents / User Files")
 
     allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
 
@@ -692,6 +693,7 @@ def upload_single_file_api():
         "id": file_id,
         "filename": filename,
         "folder_name": folder_name,
+        "source_location": source_location,
         "filepath": path,
         "relative_path": relative_path,
         "upload_time": datetime.now(timezone.utc).isoformat(),

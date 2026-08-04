@@ -221,7 +221,7 @@
             <!-- Threat breakdown pills -->
             <div class="threat-pills">
                 {% if day.threat_counts.safe > 0 %}
-                <span class="pill pill-safe"><i class="fa-solid fa-check"></i> {{ day.threat_counts.safe }} Safe</span>
+                <span class="pill pill-safe"><i class="fa-solid fa-check"></i> {{ day.threat_counts.safe }} Benign</span>
                 {% endif %}
                 {% if day.threat_counts.low > 0 %}
                 <span class="pill pill-low"><i class="fa-solid fa-circle-info"></i> {{ day.threat_counts.low }} Low</span>

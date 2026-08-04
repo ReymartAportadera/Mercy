@@ -385,7 +385,7 @@
             </div>
             <select id="guestFileThreatFilter" onchange="filterGuestFiles()" style="padding:6px 10px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
               <option value="">All Levels</option>
-              <option value="safe">Safe</option>
+              <option value="safe">Benign</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -411,7 +411,7 @@
             </div>
             <select id="guestFolderThreatFilter" onchange="filterGuestFolders()" style="padding:6px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
               <option value="">All Levels</option>
-              <option value="safe">Safe</option>
+              <option value="safe">Benign</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -602,13 +602,13 @@ function renderAllGuestResults() {
           name: folder,
           files: [],
           threat_count: 0,
-          highest_threat: 'Safe',
+          highest_threat: 'Benign',
           highest_rank: 0
         };
       }
       const grp = folderGroupsDict[folder];
       grp.files.push(f);
-      const lvl = (f.threat_level || 'Safe');
+      const lvl = (f.threat_level || 'Benign');
       const rank = threatOrder[lvl.toLowerCase()] || 0;
       if (rank > 0) grp.threat_count++;
       if (rank > grp.highest_rank) {
@@ -673,7 +673,7 @@ function buildFolderCard(grp) {
         <div style="min-width:0;">
           <div style="font-weight:700; font-size:0.88rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escHtml(grp.name)}">${escHtml(grp.name)}</div>
           <div style="font-size:0.73rem; color:var(--text-dim);">
-            ${grp.files.length} file(s) ${grp.threat_count > 0 ? `&bull; <span style="color:#f87171; font-weight:700;">${grp.threat_count} Threat(s)</span>` : `&bull; <span style="color:#4ade80; font-weight:700;">All Safe</span>`}
+            ${grp.files.length} file(s) ${grp.threat_count > 0 ? `&bull; <span style="color:#f87171; font-weight:700;">${grp.threat_count} Threat(s)</span>` : `&bull; <span style="color:#4ade80; font-weight:700;">All Benign</span>`}
           </div>
         </div>
       </div>
@@ -772,7 +772,7 @@ function buildCard(f) {
           </svg>
           <div class="ring-label" style="color:${ringColor}">${score}%</div>
         </div>
-        <span class="threat-badge badge-${lvl}">${f.threat_level || 'Safe'}</span>
+        <span class="threat-badge badge-${lvl}">${f.threat_level || 'Benign'}</span>
         <button class="action-btn btn-delete" onclick="event.stopPropagation(); deleteGuestItem('${f.id}', null)" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); padding:4px 8px; border-radius:6px; font-size:0.75rem; cursor:pointer;" title="Delete File Record">
           <i class="fa-solid fa-trash"></i>
         </button>
@@ -887,7 +887,7 @@ function updateSummaryPills() {
   const el = document.getElementById('summaryPills');
   if (!el) return;
   el.innerHTML = '';
-  const labels = { critical:'Critical', high:'High', medium:'Medium', low:'Low', safe:'Safe' };
+  const labels = { critical:'Critical', high:'High', medium:'Medium', low:'Low', safe:'Benign' };
   for (const [k, label] of Object.entries(labels)) {
     if (resultCount[k] > 0) {
       const sp = document.createElement('span');

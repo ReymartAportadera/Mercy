@@ -354,7 +354,7 @@
                 </div>
 
                 <div class="file-card-meta">
-                    <span class="threat-tag tag-{{ tl }}">{{ file.threat_level or 'Safe' }}</span>
+                    <span class="threat-tag tag-{{ tl }}">{{ file.threat_level or 'Benign' }}</span>
                     {% if file.id.startswith("local_") %}
                     <span class="meta-chip" style="color: #ff9f43; font-weight: 600;"><i class="fa-solid fa-shield-halved"></i> Real-time Scan</span>
                     {% else %}

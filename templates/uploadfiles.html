@@ -873,6 +873,9 @@ async function processNextInQueue() {
         formData.append('folder_name', folderName);
     }
 
+    let sourceLocation = 'Documents / ' + (nextItem.file.webkitRelativePath || nextItem.name);
+    formData.append('source_location', sourceLocation);
+
 
 
     try {

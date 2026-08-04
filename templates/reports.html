@@ -349,7 +349,7 @@
             <!-- Safe Ratio Metric -->
             <div class="report-metric-card">
                 <div class="metric-header">
-                    <span class="metric-title">Safe Ratio</span>
+                    <span class="metric-title">Benign Ratio</span>
                     <div class="metric-icon" style="background: rgba(0, 232, 122, 0.12); color: #00e87a;">
                         <i class="fa-solid fa-shield-check"></i>
                     </div>
@@ -484,7 +484,7 @@
                             </td>
                             <td>
                                 <span class="tag-level level-{{ file.threat_level|lower if file.threat_level else 'safe' }}">
-                                    {{ file.threat_level if file.threat_level else 'Safe' }}
+                                    {{ file.threat_level if file.threat_level else 'Benign' }}
                                 </span>
                             </td>
                             <td>
@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
             labels: {{ days | tojson }},
             datasets: [
                 {
-                    label: 'Safe Files',
+                    label: 'Benign Files',
                     data: {{ safe_counts | tojson }},
                     borderColor: '#00e87a',
                     backgroundColor: 'rgba(0, 232, 122, 0.1)',
@@ -572,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     new Chart(ctx2, {
         type: 'doughnut',
         data: {
-            labels: ['Critical', 'High', 'Medium', 'Low', 'Safe'],
+            labels: ['Critical', 'High', 'Medium', 'Low', 'Benign'],
             datasets: [{
                 data: [{{ critical }}, {{ high }}, {{ medium }}, {{ low }}, {{ files|length - (critical + high + medium + low) }}],
                 backgroundColor: ['#ff1e1e', '#ff7200', '#ffc200', '#00c8ff', '#00e87a'],

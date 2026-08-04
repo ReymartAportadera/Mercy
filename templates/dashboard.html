@@ -103,7 +103,7 @@
                 <div class="stat-icon icon-green"><i class="fa-solid fa-shield-check"></i></div>
                 <div class="stat-info">
                     <div class="stat-num">{{ safe_files }}</div>
-                    <div class="stat-label">Safe Files</div>
+                    <div class="stat-label">Benign Files</div>
                 </div>
             </div>
             <div class="stat-card">
@@ -150,7 +150,7 @@
                         </div>
                         <select id="threatFilter" onchange="filterFiles()" class="filter-select">
                             <option value="">All Levels</option>
-                            <option value="safe">Safe</option>
+                            <option value="safe">Benign</option>
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
                             <option value="high">High</option>
@@ -191,10 +191,10 @@
                                     {% elif file.threat_level|lower == 'medium' %}<i class="fa-solid fa-triangle-exclamation"></i>
                                     {% elif file.threat_level|lower == 'low' %}<i class="fa-solid fa-bug-slash"></i>
                                     {% else %}<i class="fa-solid fa-shield-check"></i>{% endif %}
-                                    {{ file.threat_level if file.threat_level else 'Safe' }}
+                                    {{ file.threat_level if file.threat_level else 'Benign' }}
                                 </span>
                                 <span class="tag-risk">{{ file.risk_score if file.risk_score else 0 }}% Risk</span>
-                                <span class="tag-status status-{{ file.status|lower if file.status else 'safe' }}">{{ file.status if file.status else 'Safe' }}</span>
+                                <span class="tag-status status-{{ file.status|lower if file.status else 'benign' }}">{{ file.status if file.status else 'Benign' }}</span>
                             </div>
                         </div>
                         <div class="file-card-actions">
@@ -240,7 +240,7 @@
                         </div>
                         <select id="folderThreatFilter" onchange="filterFolders()" style="padding:6px 8px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:0.8rem;">
                             <option value="">All Levels</option>
-                            <option value="safe">Safe</option>
+                            <option value="safe">Benign</option>
                             <option value="low">Low</option>
                             <option value="medium">Medium</option>
                             <option value="high">High</option>
@@ -263,7 +263,7 @@
                                     <div style="font-size:0.73rem; color:var(--text-dim); display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px;">
                                         <span><i class="fa-solid fa-calendar-day" style="font-size:0.7rem;"></i> {{ grp.upload_time | format_dt if grp.upload_time else 'N/A' }}</span>
                                         <span>• {{ grp.files|length }} file(s)</span>
-                                        {% if grp.threat_count > 0 %}<span>• <strong style="color:#ff4d4d;">{{ grp.threat_count }} Threat(s)</strong></span>{% else %}<span>• <strong style="color:var(--safe);">All Safe</strong></span>{% endif %}
+                                        {% if grp.threat_count > 0 %}<span>• <strong style="color:#ff4d4d;">{{ grp.threat_count }} Threat(s)</strong></span>{% else %}<span>• <strong style="color:var(--safe);">All Benign</strong></span>{% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -293,7 +293,7 @@
                                         <div style="font-size:0.7rem; color:var(--text-dim);">Risk: {{ f.risk_score if f.risk_score else 0 }}%</div>
                                     </div>
                                     <span class="tag-level level-{{ f.threat_level|lower if f.threat_level else 'safe' }}" style="font-size:0.68rem; padding:2px 6px;">
-                                        {{ f.threat_level if f.threat_level else 'Safe' }}
+                                        {{ f.threat_level if f.threat_level else 'Benign' }}
                                     </span>
                                     <a href="{{ url_for('scan_page', file_id=f.id) }}" style="color:var(--accent); font-size:0.8rem; padding:3px 6px;" title="Inspect">
                                         <i class="fa-solid fa-arrow-right"></i>
