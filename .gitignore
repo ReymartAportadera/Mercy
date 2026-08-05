@@ -1,12 +1,13 @@
-<<<<<<< HEAD
 # Secrets & Credentials
 .env
 serviceAccountKey.json
+serviceAccountKey.json.json
 
 # Cache & Temporary Files
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .pytest_cache/
 scratch/
 
@@ -14,34 +15,16 @@ scratch/
 uploads/
 static/uploads/
 auto_scan_folder/
-=======
-# Local environment variables
-.env
-
-# Firebase service account credentials
-serviceAccountKey.json
-serviceAccountKey.json.json
 
 # Local databases (legacy)
 trustfile.db
 capstone1.sql
 *.sql
 
-# User uploads and scans
-uploads/
-static/uploads/
-
-# PDF documents committed accidentally
+# PDF documents (except capstone documents)
 *.pdf
-
-# Auto-scan test files
-auto_scan_folder/
-
-# Python cache and byte-compiled files
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+!TRUSTFILE-Documents/*.pdf
+!TRUSTFILE174.pdf
 
 # Virtual environments
 .venv/
@@ -49,13 +32,9 @@ venv/
 ENV/
 env/
 
-# Nested duplicate project copies
-Flask website/
-
 # OS artifacts
 Thumbs.db
 .DS_Store
 
 # Deploy archives
->>>>>>> 7cca46d1012c7843f9a817bc5d2c1e5a5df19da9
 TrustFile_Deploy.zip
