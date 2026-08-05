@@ -139,7 +139,7 @@ SCRIPT_EXTENSIONS: set[str] = {
 # Media types whose high entropy is structurally expected (RULE 4 whitelist)
 INHERENTLY_COMPRESSED_EXTENSIONS: set[str] = {
     ".docx", ".xlsx", ".pptx", ".dotx", ".xltx", ".potx",
-    ".odt", ".ods", ".odp", ".jar", ".apk",
+    ".odt", ".ods", ".odp", ".jar", ".apk", ".pdf",
     ".zip", ".gz", ".bz2", ".7z", ".rar", ".xz",
     ".png", ".jpg", ".jpeg", ".gif", ".mp3", ".mp4",
     ".avi", ".mkv", ".aac", ".ogg", ".flac",

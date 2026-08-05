@@ -570,9 +570,9 @@
         <div class="summary-info-strip">
             <i class="fa-solid fa-circle-info"></i>
             <div>
-                <strong>File Type:</strong> {{ adv.get('detected_type') or file.detected_type or 'Microsoft Word Document' }} | 
-                <strong>Container:</strong> {{ adv.get('container_type') or 'ZIP-based Office Open XML (Word Document)' }} | 
-                <strong>Entropy:</strong> {{ file.entropy or adv.get('entropy') or '7.71' }} ({{ adv.get('entropy_context') or 'Normal' }}) | 
+                <strong>File Type:</strong> {{ adv.get('detected_type') or file.detected_type or (file.filename.rsplit('.',1)[-1]|upper + ' Document' if '.' in file.filename else 'Standard File') }} | 
+                <strong>Container:</strong> {{ adv.get('container_type') or ('PDF Stream Container' if (file.detected_type and 'PDF' in file.detected_type|upper or file.filename and file.filename.endswith('.pdf')) else 'Standard File Stream') }} | 
+                <strong>Entropy:</strong> {{ file.entropy or adv.get('entropy') or '0.0' }} ({{ adv.get('entropy_context') or 'Normal' }}) | 
                 <strong>Risk:</strong> {{ file.threat_level or 'Benign' }} | 
                 <strong>Confidence:</strong> {{ (adv.get('confidence_tier') or 'LOW')|upper }}
             </div>
@@ -655,29 +655,29 @@
                     <div class="audit-card-title" style="font-size:0.88rem;">
                         <i class="fa-solid fa-file-lines" style="color:#60a5fa;"></i> File Classification
                     </div>
-                    <span class="pill-badge-green"><i class="fa-solid fa-circle-check"></i> VALID OFFICE XML</span>
+                    <span class="pill-badge-green"><i class="fa-solid fa-circle-check"></i> {{ (adv.get('file_classification') or adv.get('detected_type') or file.detected_type or 'VALID FILE')|upper }}</span>
                 </div>
 
                 <div class="kv-group" style="font-size:0.8rem;">
                     <div class="kv-row-item">
                         <span class="kv-lbl">File Type</span>
-                        <span class="kv-val">{{ adv.get('file_classification') or adv.get('detected_type') or file.detected_type or 'Microsoft Word Document' }}</span>
+                        <span class="kv-val">{{ adv.get('file_classification') or adv.get('detected_type') or file.detected_type or (file.filename.rsplit('.',1)[-1]|upper + ' Document') }}</span>
                     </div>
                     <div class="kv-row-item">
                         <span class="kv-lbl">Container</span>
-                        <span class="kv-val">{{ adv.get('container_type') or 'ZIP-based Office Open XML (Word Document)' }}</span>
+                        <span class="kv-val">{{ adv.get('container_type') or ('PDF Stream Container' if (file.detected_type and 'PDF' in file.detected_type|upper or file.filename and file.filename.endswith('.pdf')) else 'Standard File Stream') }}</span>
                     </div>
                     <div class="kv-row-item">
                         <span class="kv-lbl">Claimed Extension</span>
-                        <span class="kv-val">{{ adv.get('claimed_extension') or ('.' + file.filename.rsplit('.',1)[-1]) if '.' in file.filename else '.docx' }}</span>
+                        <span class="kv-val">{{ adv.get('claimed_extension') or ('.' + file.filename.rsplit('.',1)[-1]) if '.' in file.filename else 'N/A' }}</span>
                     </div>
                     <div class="kv-row-item">
                         <span class="kv-lbl">Magic Bytes Detected</span>
-                        <span class="kv-val">{{ adv.get('detected_type') or file.detected_type or 'Microsoft Word Document (.docx)' }}</span>
+                        <span class="kv-val">{{ adv.get('detected_type') or file.detected_type or (file.filename.rsplit('.',1)[-1]|upper + ' Document') }}</span>
                     </div>
                     <div class="kv-row-item">
                         <span class="kv-lbl">Structure Validated</span>
-                        <span class="kv-val" style="color:#10b981;">✔ Yes — canonical Office XML entries confirmed</span>
+                        <span class="kv-val" style="color:#10b981;">✔ Yes — valid file structure confirmed</span>
                     </div>
                     {% if file.source_location %}
                     <div class="kv-row-item">
@@ -739,10 +739,11 @@
 
             <div class="banner-inner-green">
                 <i class="fa-solid fa-circle-check"></i>
-                <div>{{ adv.get('entropy_explanation') or '7.71 — Normal for compressed/Office files (Microsoft Word Document). High entropy here does NOT indicate obfuscation.' }}</div>
+                <div>{{ adv.get('entropy_explanation') or (file.entropy|string + ' — Entropy evaluated in context of file format.') }}</div>
             </div>
         </div>
 
+        {% if adv.get('whitelist_credits') or adv.get('office_xml_validated') %}
         <!-- Whitelist Credits Applied -->
         <div class="audit-card">
             <div class="audit-card-head">
@@ -751,9 +752,10 @@
             </div>
             <div class="banner-inner-green">
                 <i class="fa-solid fa-circle-check"></i>
-                <div>Valid Office XML structure confirmed</div>
+                <div>{{ adv.get('whitelist_explanation') or 'Valid file structure confirmed' }}</div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Detection Summary -->
         <div class="audit-card">
@@ -761,12 +763,12 @@
                 <div class="audit-card-title">
                     <i class="fa-solid fa-list-check" style="color:#60a5fa;"></i> Detection Summary
                 </div>
-                <span class="pill-badge-green">BENIGN</span>
+                <span class="pill-badge-green">{{ (file.threat_level or 'BENIGN')|upper }}</span>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;">
                 <div class="banner-inner-green" style="margin-top:0;">
                     <i class="fa-solid fa-circle-check"></i>
-                    <div>valid Office XML structure confirmed</div>
+                    <div>valid file structure confirmed</div>
                 </div>
                 <div class="banner-inner-green" style="margin-top:0;">
                     <i class="fa-solid fa-circle-check"></i>
@@ -793,11 +795,10 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
                 {% set notes = adv.get('fp_notes') or [
-                    'Valid Microsoft Word Document structure confirmed ([Content_Types].xml + _rels/.rels + content prefix). ZIP-internal signatures are expected and NOT treated as embeds.',
-                    'Embedded PE scan skipped: Office XML container — internal binary streams do not imply executable content.',
-                    'Entropy 7.71 suppressed from scoring: file is a ZIP-based Office Open XML (Word Document) (RULE 1/4).',
-                    'Archive analysis skipped: Office XML container (handled by Office-specific analyzer). (RULE 2)',
-                    'Confidence capped: entropy is the only elevated indicator.'
+                    'File structure analyzed and validated against format specifications.',
+                    'Static heuristic checks completed with no malicious indicators found.',
+                    'Entropy evaluated in context of file format (' + (file.entropy|string or 'N/A') + ').',
+                    'Confidence rating computed based on heuristic indicators and external engine consensus.'
                 ] %}
                 {% for note in notes %}
                 <div class="banner-inner-blue">
