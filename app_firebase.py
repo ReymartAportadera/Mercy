@@ -273,14 +273,16 @@ def _run_full_heuristic_scan(
     threshold  = get_file_type_entropy_threshold("x" + ext)
     risk_score = 0
 
-    if entropy > threshold + 1.5:
-        risk_score += 30
-        heuristics.append(f"Very high entropy ({entropy}) for this file type")
-    elif entropy > threshold + 0.8:
-        risk_score += 20
-        heuristics.append(f"High entropy ({entropy}) — possible obfuscation")
-    elif entropy > threshold:
-        risk_score += 10
+    inherently_compressed = {".pdf", ".docx", ".xlsx", ".pptx", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".jar", ".apk"}
+    if ext.lower() not in inherently_compressed:
+        if entropy > threshold + 1.5:
+            risk_score += 30
+            heuristics.append(f"Very high entropy ({entropy}) for this file type")
+        elif entropy > threshold + 0.8:
+            risk_score += 20
+            heuristics.append(f"High entropy ({entropy}) — possible obfuscation")
+        elif entropy > threshold:
+            risk_score += 10
 
     HEURISTIC_SCORES = {"Exfiltration": 25, "Reverse Shell": 30,
                         "Persistence": 20,  "Obfuscated":    15}

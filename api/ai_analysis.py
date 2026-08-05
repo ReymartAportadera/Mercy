@@ -101,21 +101,22 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
             risk_label  = "CLEAN"
 
         # ── Entropy analysis ──────────────────────────────────────────────────
-        if entropy >= 7.5:
-            findings.append(
-                f"very high entropy ({entropy:.2f}/8.0) strongly indicates packed, "
-                "encrypted, or obfuscated content — a hallmark of advanced malware"
-            )
-        elif entropy >= 7.0:
-            findings.append(
-                f"elevated entropy ({entropy:.2f}/8.0) suggests obfuscation or "
-                "compression commonly used to evade static analysis"
-            )
-        elif entropy >= 6.0:
-            findings.append(
-                f"moderately elevated entropy ({entropy:.2f}/8.0) may indicate "
-                "partial encoding or embedded encrypted data"
-            )
+        if risk_score >= 30:
+            if entropy >= 7.5:
+                findings.append(
+                    f"very high entropy ({entropy:.2f}/8.0) strongly indicates packed, "
+                    "encrypted, or obfuscated content — a hallmark of advanced malware"
+                )
+            elif entropy >= 7.0:
+                findings.append(
+                    f"elevated entropy ({entropy:.2f}/8.0) suggests obfuscation or "
+                    "compression commonly used to evade static analysis"
+                )
+            elif entropy >= 6.0:
+                findings.append(
+                    f"moderately elevated entropy ({entropy:.2f}/8.0) may indicate "
+                    "partial encoding or embedded encrypted data"
+                )
 
         # ── Pattern-based detections ──────────────────────────────────────────
         if "code execution" in patterns or "eval" in patterns or "exec" in patterns:
