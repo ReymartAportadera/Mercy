@@ -13,7 +13,7 @@
 | **Pre-Access Scanning** | Files are scanned and analyzed before user access |
 | **Heuristic Analysis** | Detects suspicious patterns, code execution, and malware behaviors |
 | **VirusTotal Integration** | Uses 70+ antivirus engines for accurate known malware detection |
-| **AI-Powered Analysis** | NVIDIA NIM (Llama 3.1) provides intelligent threat explanations |
+| **AI-Powered Analysis** | Gemini AI(Gemini flash2.0) provides intelligent threat explanations |
 | **Malware Classification** | Identifies ransomware, trojans, keyloggers, worms, and spyware |
 | **Risk Scoring** | 0-100% threat level assessment |
 | **Auto-Quarantine & Recycle Bin** | Automatically moves malicious files to the Recycle Bin |
@@ -28,7 +28,7 @@
 |-------|------------|
 | **Backend** | Python 3.8+, Flask |
 | **Database** | Firebase Realtime Database (Google Cloud) |
-| **Security APIs** | VirusTotal API, NVIDIA NIM AI |
+| **Security APIs** | VirusTotal API, Gemini AI |
 | **Frontend** | HTML5, CSS3, JavaScript, Chart.js |
 
 ---
