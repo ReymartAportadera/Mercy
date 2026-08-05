@@ -182,6 +182,7 @@
         }
         .threat-meter-lbl { font-size: 0.85rem; font-weight: 700; color: #f3f4f6; }
         .threat-meter-score { font-size: 1.15rem; font-weight: 900; color: #10b981; }
+        .threat-meter-score.warning { color: #f59e0b; }
         .threat-meter-score.danger { color: #ef4444; }
         .confidence-badge-pill {
             background: rgba(255, 255, 255, 0.05);
@@ -197,9 +198,41 @@
         .threat-spectrum-track {
             height: 8px;
             border-radius: 4px;
-            background: linear-gradient(90deg, #10b981 0%, #3b82f6 25%, #f59e0b 50%, #ef4444 75%, #991b1b 100%);
+            background: rgba(255, 255, 255, 0.08);
             position: relative;
             margin-bottom: 6px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+            overflow: visible;
+        }
+        .threat-spectrum-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #10b981 0%, #3b82f6 30%, #f59e0b 65%, #ef4444 85%, #dc2626 100%);
+            background-size: 1000% 100%;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+            transition: width 0.4s ease;
+        }
+        .threat-spectrum-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #10b981;
+            box-shadow: 0 0 10px #10b981, 0 0 16px rgba(16, 185, 129, 0.6);
+            pointer-events: none;
+            transition: left 0.4s ease;
+            z-index: 2;
+        }
+        .threat-spectrum-thumb.warning {
+            border-color: #f59e0b;
+            box-shadow: 0 0 10px #f59e0b, 0 0 16px rgba(245, 158, 11, 0.6);
+        }
+        .threat-spectrum-thumb.danger {
+            border-color: #ef4444;
+            box-shadow: 0 0 10px #ef4444, 0 0 16px rgba(239, 68, 68, 0.6);
         }
         .threat-spectrum-labels {
             display: flex;
@@ -546,13 +579,18 @@
         </div>
 
         <!-- Threat Score & Spectrum Meter Card -->
+        {% set risk_score_val = (file.risk_score or 0)|int %}
+        {% set fill_pct = [risk_score_val, 100]|min %}
         <div class="threat-meter-card">
             <div class="threat-meter-top">
                 <span class="threat-meter-lbl">Threat Score</span>
-                <span class="threat-meter-score {{ 'danger' if is_danger else '' }}">{{ file.risk_score or 0 }}/100</span>
+                <span class="threat-meter-score {{ 'danger' if is_danger else ('warning' if is_warn else '') }}">{{ risk_score_val }}/100</span>
                 <span class="confidence-badge-pill"><i class="fa-solid fa-circle-question"></i> {{ (adv.get('confidence_tier') or 'LOW')|upper }} CONFIDENCE</span>
             </div>
-            <div class="threat-spectrum-track"></div>
+            <div class="threat-spectrum-track">
+                <div class="threat-spectrum-fill" style="width: {{ fill_pct }}%;"></div>
+                <div class="threat-spectrum-thumb {{ 'danger' if is_danger else ('warning' if is_warn else '') }}" style="left: {{ fill_pct }}%;"></div>
+            </div>
             <div class="threat-spectrum-labels">
                 <span>Benign</span>
                 <span>Low Risk</span>
@@ -681,8 +719,13 @@
                 <span class="pill-badge-green">NORMAL FOR FORMAT</span>
             </div>
 
+            {% set entropy_val = (file.entropy or adv.get('entropy') or 0)|float %}
+            {% set entropy_pct = [((entropy_val / 8.0) * 100)|int, 100]|min %}
             <div style="margin-bottom:12px;">
-                <div class="threat-spectrum-track" style="background:linear-gradient(90deg, #3b82f6 0%, #10b981 80%, #ef4444 100%);"></div>
+                <div class="threat-spectrum-track">
+                    <div class="threat-spectrum-fill" style="width:{{ entropy_pct }}%;background:linear-gradient(90deg, #3b82f6 0%, #10b981 70%, #ef4444 100%);"></div>
+                    <div class="threat-spectrum-thumb {{ 'danger' if entropy_val >= 7.2 else ('warning' if entropy_val >= 6.0 else '') }}" style="left:{{ entropy_pct }}%;"></div>
+                </div>
                 <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:#6b7280;margin-top:4px;">
                     <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span>
                 </div>
