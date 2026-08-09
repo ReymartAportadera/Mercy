@@ -133,7 +133,7 @@ OFFICE_XML_CONTENT_PREFIXES: tuple[str, ...] = (
 
 SCRIPT_EXTENSIONS: set[str] = {
     ".js", ".vbs", ".bat", ".cmd", ".ps1", ".py", ".sh",
-    ".hta", ".wsf", ".jse", ".vbe",
+    ".hta", ".wsf", ".jse", ".vbe", ".php", ".phtml", ".phps",
 }
 
 # Media types whose high entropy is structurally expected (RULE 4 whitelist)
@@ -295,6 +295,15 @@ DANGEROUS_SCRIPT_PATTERNS: dict[str, re.Pattern] = {
     ),
     "Fileless Execution":  re.compile(
         r"Invoke-Shellcode|Invoke-ReflectivePEInjection|shellcode", re.I
+    ),
+    "PHP Eval Obfuscation": re.compile(
+        r"eval\s*\(\s*(base64_decode|gzinflate|gzuncompress|str_rot13|\$_(POST|GET|REQUEST|COOKIE))", re.I
+    ),
+    "PHP Shell Execution": re.compile(
+        r"\b(system|shell_exec|passthru|proc_open|popen|exec)\s*\(\s*\$_(POST|GET|REQUEST|COOKIE|HEADER)", re.I
+    ),
+    "PHP Dynamic Callback": re.compile(
+        r"assert\s*\(\s*(base64_decode|\$_)|create_function\s*\(|preg_replace\s*\(\s*['\"].*\/e['\"]", re.I
     ),
 }
 
