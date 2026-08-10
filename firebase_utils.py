@@ -10,36 +10,44 @@ logger = logging.getLogger(__name__)
 # Load .env file if present
 load_dotenv()
 
-# ── Initialize Firebase Admin SDK ─────────────────────────────────────────────
-_cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-_db_url    = os.getenv("FIREBASE_DB_URL")
+import json
 
-# Fallback: if not set, check for 'serviceAccountKey.json' in the same folder as this script
-if not _cred_path:
+# ── Initialize Firebase Admin SDK ─────────────────────────────────────────────
+_cred_env = os.getenv("FIREBASE_SERVICE_ACCOUNT") or os.getenv("FIREBASE_CREDENTIALS_JSON")
+_db_url   = os.getenv("FIREBASE_DB_URL")
+
+_cred_obj = None
+
+if _cred_env:
+    if _cred_env.strip().startswith("{"):
+        try:
+            _cred_dict = json.loads(_cred_env)
+            _cred_obj  = credentials.Certificate(_cred_dict)
+        except Exception as exc:
+            logger.warning("Could not parse FIREBASE_SERVICE_ACCOUNT JSON string: %s", exc)
+    elif os.path.exists(_cred_env):
+        _cred_obj = credentials.Certificate(_cred_env)
+    elif not os.path.isabs(_cred_env):
+        resolved_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), _cred_env)
+        if os.path.exists(resolved_path):
+            _cred_obj = credentials.Certificate(resolved_path)
+
+if not _cred_obj:
     default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "serviceAccountKey.json")
     if os.path.exists(default_path):
-        _cred_path = default_path
+        _cred_obj = credentials.Certificate(default_path)
 
-# If a relative path is provided, resolve it relative to the script directory
-elif not os.path.isabs(_cred_path):
-    resolved_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), _cred_path)
-    if os.path.exists(resolved_path):
-        _cred_path = resolved_path
-
-if not _cred_path:
+if not _cred_obj:
     raise RuntimeError(
         "FIREBASE_SERVICE_ACCOUNT env var is not set and default 'serviceAccountKey.json' was not found. "
-        "Please download your service-account JSON from the Firebase console "
-        "(Project Settings → Service accounts → Generate new private key) "
-        "and place it in the project root as 'serviceAccountKey.json'."
+        "Please set FIREBASE_SERVICE_ACCOUNT in your environment or Vercel dashboard."
     )
 
 if not _db_url:
     raise RuntimeError("FIREBASE_DB_URL env var is not set.")
 
 if not firebase_admin._apps:          # avoid re-initialising on reload
-    _cred = credentials.Certificate(_cred_path)
-    firebase_admin.initialize_app(_cred, {"databaseURL": _db_url})
+    firebase_admin.initialize_app(_cred_obj, {"databaseURL": _db_url})
 
 # ── Uploaded-File Helpers ──────────────────────────────────────────────────────
 

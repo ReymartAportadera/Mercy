@@ -366,7 +366,9 @@ app.config["SECRET_KEY"] = _secret
 # Unlimited upload size at Flask level (no application file/folder size cap)
 app.config["MAX_CONTENT_LENGTH"] = None
 
-_upload_base = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
+_is_vercel = "VERCEL" in os.environ or os.environ.get("SERVER_SOFTWARE", "").startswith("Vercel")
+_default_upload_dir = "/tmp/uploads" if _is_vercel else os.path.join(os.path.dirname(__file__), "uploads")
+_upload_base = os.environ.get("UPLOAD_FOLDER", _default_upload_dir)
 app.config["UPLOAD_FOLDER"] = _upload_base
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
