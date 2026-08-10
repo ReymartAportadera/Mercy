@@ -878,6 +878,20 @@ async function processNextInQueue() {
 
 
 
+    // Check file size against Vercel's 4.5 MB limit
+    const MAX_SIZE = 4.5 * 1024 * 1024;
+    if (nextItem.file.size > MAX_SIZE) {
+        console.warn('File exceeds Vercel 4.5MB limit:', nextItem.name, nextItem.file.size);
+        totalSkipped++;
+        nextItem.status = 'done';
+        alert(`⚠️ "${nextItem.name}" is ${(nextItem.file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or compress the video.`);
+        await new Promise(r => setTimeout(r, 800));
+        totalDone++;
+        renderQueue();
+        processNextInQueue();
+        return;
+    }
+
     try {
         const resp = await fetch('/api/upload_single_file', {
             method: 'POST',
