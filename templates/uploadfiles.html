@@ -887,29 +887,16 @@ async function processNextInQueue() {
 
         if (resp.ok) {
             const data = await resp.json();
-            if (data.success) {
+            const fid = data.file_id || data.id;
+            if (data.success || (data.duplicate && fid)) {
                 totalQueued++;
                 nextItem.status = 'done';
-                nextItem.file_id = data.file_id;
-                // Track for post-scan result display
-                if (data.file_id) {
-                    scannedFileIds.push(data.file_id);
-                    scannedFileNames[data.file_id] = nextItem.name;
+                nextItem.file_id = fid;
+                if (fid) {
+                    scannedFileIds.push(fid);
+                    scannedFileNames[fid] = nextItem.name;
                 }
-
-                // Trigger background scan for this file
-                fetch('/scan/' + data.file_id, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': CSRF_TOKEN,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body: 'csrf_token=' + encodeURIComponent(CSRF_TOKEN)
-                }).catch(() => {}); // Fire-and-forget scan
-
-            } else if (data.duplicate) {
-                totalDupes++;
-                nextItem.status = 'done';
+                if (data.duplicate) totalDupes++;
             } else if (data.skipped) {
                 totalSkipped++;
                 nextItem.status = 'done';
@@ -917,6 +904,10 @@ async function processNextInQueue() {
                 nextItem.status = 'done';
             }
         } else {
+            const errData = await resp.json().catch(() => ({}));
+            const msg = errData.error || errData.reason || ('HTTP ' + resp.status + ' upload error');
+            console.error('Upload failed:', nextItem.name, msg);
+            totalSkipped++;
             nextItem.status = 'done';
         }
     } catch (err) {
