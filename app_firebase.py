@@ -610,6 +610,7 @@ def dashboard():
 
 # ── API: Single File Upload Stream (Instant Multi-Engine Threat Scan) ────────
 @app.route("/api/upload_single_file", methods=["POST"])
+@csrf.exempt
 @login_required
 def upload_single_file_api():
     f = request.files.get("file")
@@ -732,6 +733,7 @@ def guest_scan_page():
 
 
 @app.route("/api/guest_upload", methods=["POST"])
+@csrf.exempt
 def guest_upload_api():
     f = request.files.get("file")
     if not f or not f.filename:
@@ -822,6 +824,7 @@ def guest_upload_api():
     return jsonify({"success": True, "file": guest_record}), 200
 
 @app.route("/api/clear_guest_history", methods=["POST"])
+@csrf.exempt
 def clear_guest_history():
     guest_id = session.get("guest_id")
     if guest_id and guest_id in GUEST_SESSIONS:
