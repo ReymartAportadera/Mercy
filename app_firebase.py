@@ -366,10 +366,11 @@ app.config["SECRET_KEY"] = _secret
 # Unlimited upload size at Flask level (no application file/folder size cap)
 app.config["MAX_CONTENT_LENGTH"] = None
 
-_is_vercel = "VERCEL" in os.environ or os.environ.get("SERVER_SOFTWARE", "").startswith("Vercel")
-_default_upload_dir = "/tmp/uploads" if _is_vercel else os.path.join(os.path.dirname(__file__), "uploads")
-_upload_base = os.environ.get("UPLOAD_FOLDER", _default_upload_dir)
-app.config["UPLOAD_FOLDER"] = _upload_base
+_is_vercel = "VERCEL" in os.environ or "VERCEL_ENV" in os.environ or os.environ.get("SERVER_SOFTWARE", "").startswith("Vercel") or os.path.exists("/var/task")
+if _is_vercel:
+    app.config["UPLOAD_FOLDER"] = "/tmp/uploads"
+else:
+    app.config["UPLOAD_FOLDER"] = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 @app.errorhandler(413)
@@ -650,8 +651,15 @@ def upload_single_file_api():
         if existing.get("hash") == file_hash and (existing.get("folder_name") == folder_name or existing.get("filepath") == path):
             return jsonify({"duplicate": True, "filename": filename, "file_id": existing.get("id")}), 200
 
-    with open(path, "wb") as out:
-        out.write(file_bytes)
+    try:
+        with open(path, "wb") as out:
+            out.write(file_bytes)
+    except OSError:
+        fallback_dir = os.path.join("/tmp/uploads", str(current_user.uid))
+        os.makedirs(fallback_dir, exist_ok=True)
+        path = os.path.join(fallback_dir, filename)
+        with open(path, "wb") as out:
+            out.write(file_bytes)
 
     relative_path = os.path.join(str(current_user.uid), filename)
     file_id = str(uuid.uuid4())
@@ -881,8 +889,15 @@ def uploadfiles():
                 filename = uuid.uuid4().hex + ext
                 path = os.path.abspath(os.path.join(user_folder, filename))
 
-            with open(path, "wb") as out:
-                out.write(file_bytes)
+            try:
+                with open(path, "wb") as out:
+                    out.write(file_bytes)
+            except OSError:
+                fallback_dir = os.path.join("/tmp/uploads", str(current_user.uid))
+                os.makedirs(fallback_dir, exist_ok=True)
+                path = os.path.join(fallback_dir, filename)
+                with open(path, "wb") as out:
+                    out.write(file_bytes)
 
             relative_path = os.path.join(str(current_user.uid), filename)
             file_id = str(uuid.uuid4())
