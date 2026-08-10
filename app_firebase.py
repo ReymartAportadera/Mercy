@@ -36,8 +36,8 @@ from api.ai_analysis import analyze_file_ai
 from api.advanced_heuristics import run_advanced_heuristics
 
 MEDIA_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".ico",
-    ".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".webm", ".3gp", ".m4v",
+    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".ico", ".heic", ".heif", ".raw", ".cr2", ".nef",
+    ".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".webm", ".3gp", ".m4v", ".mpg", ".mpeg",
     ".mp3", ".wav", ".ogg", ".flac", ".aac", ".m4a"
 }
 BINARY_EXTENSIONS = {
