@@ -3,6 +3,10 @@
 serviceAccountKey.json
 serviceAccountKey.json.json
 
+# Vercel local env (auto-generated)
+.env.local
+.vercel
+
 # Cache & Temporary Files
 __pycache__/
 *.pyc
