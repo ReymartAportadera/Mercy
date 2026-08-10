@@ -136,3 +136,25 @@ def get_user_settings(uid: str) -> dict | None:
 
 def delete_user_settings(uid: str) -> None:
     pass
+
+def save_guest_scan(guest_id: str, scan_record: dict) -> None:
+    if not _db_url or not firebase_admin._apps:
+        return
+    try:
+        ref = db.reference(f"guest_sessions/{guest_id}/{scan_record['id']}")
+        ref.set(scan_record)
+    except Exception as exc:
+        logger.warning("Failed to save guest scan to Firebase: %s", exc)
+
+def get_guest_scans(guest_id: str) -> list:
+    if not _db_url or not firebase_admin._apps:
+        return []
+    try:
+        ref = db.reference(f"guest_sessions/{guest_id}")
+        data = ref.get()
+        if isinstance(data, dict):
+            return list(data.values())
+        return []
+    except Exception as exc:
+        logger.warning("Failed to get guest scans from Firebase: %s", exc)
+        return []

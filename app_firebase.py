@@ -727,7 +727,7 @@ def guest_scan_page():
     if not guest_id:
         guest_id = str(uuid.uuid4())
         session["guest_id"] = guest_id
-    guest_scans = GUEST_SESSIONS.get(guest_id, [])
+    guest_scans = fb.get_guest_scans(guest_id) or GUEST_SESSIONS.get(guest_id, [])
     return render_template("guest_scan.html", files=guest_scans)
 
 
@@ -815,6 +815,7 @@ def guest_upload_api():
     if guest_id not in GUEST_SESSIONS:
         GUEST_SESSIONS[guest_id] = []
     GUEST_SESSIONS[guest_id].append(guest_record)
+    fb.save_guest_scan(guest_id, guest_record)
 
     session.modified = True
 
