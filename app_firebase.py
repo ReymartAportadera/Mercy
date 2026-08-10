@@ -1044,6 +1044,11 @@ def scan(file_id):
                 offline_cache = _run_full_heuristic_scan(
                     file_meta.get("filename"), file_bytes, file_hash
                 )
+            elif file_meta.get("status") and file_meta.get("status") != "Pending":
+                logger.info("scan: file %s already scanned during upload (status: %s), preserving scan result", file_meta.get("filename"), file_meta.get("status"))
+                if request.method == "POST":
+                    return jsonify({"success": True, "file": file_meta, "already_scanned": True}), 200
+                return render_template("scan.html", file=file_meta, css_version=int(time.time()))
             else:
                 offline_cache = {
                     "hash": file_hash, "entropy": file_meta.get("entropy", 0.0),
