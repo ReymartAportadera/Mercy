@@ -37,17 +37,14 @@ if not _cred_obj:
     if os.path.exists(default_path):
         _cred_obj = credentials.Certificate(default_path)
 
-if not _cred_obj:
-    raise RuntimeError(
-        "FIREBASE_SERVICE_ACCOUNT env var is not set and default 'serviceAccountKey.json' was not found. "
-        "Please set FIREBASE_SERVICE_ACCOUNT in your environment or Vercel dashboard."
+if _cred_obj and _db_url:
+    if not firebase_admin._apps:          # avoid re-initialising on reload
+        firebase_admin.initialize_app(_cred_obj, {"databaseURL": _db_url})
+else:
+    logger.warning(
+        "FIREBASE_SERVICE_ACCOUNT or FIREBASE_DB_URL is missing. "
+        "Please add them to your environment variables or Vercel dashboard."
     )
-
-if not _db_url:
-    raise RuntimeError("FIREBASE_DB_URL env var is not set.")
-
-if not firebase_admin._apps:          # avoid re-initialising on reload
-    firebase_admin.initialize_app(_cred_obj, {"databaseURL": _db_url})
 
 # ── Uploaded-File Helpers ──────────────────────────────────────────────────────
 

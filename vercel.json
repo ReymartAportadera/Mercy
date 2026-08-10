@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "app_firebase.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     }
   ],
@@ -13,7 +13,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "app_firebase.py"
+      "dest": "api/index.py"
     }
   ]
 }
