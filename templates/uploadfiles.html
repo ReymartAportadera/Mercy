@@ -884,8 +884,10 @@ async function processNextInQueue() {
         console.warn('File exceeds Vercel 4.5MB limit:', nextItem.name, nextItem.file.size);
         totalSkipped++;
         nextItem.status = 'done';
-        alert(`⚠️ "${nextItem.name}" is ${(nextItem.file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or compress the video.`);
-        await new Promise(r => setTimeout(r, 800));
+        if (scanQueue.length === 1) {
+            alert(`⚠️ "${nextItem.name}" is ${(nextItem.file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or compress the video.`);
+        }
+        await new Promise(r => setTimeout(r, 600));
         totalDone++;
         renderQueue();
         processNextInQueue();
@@ -959,8 +961,8 @@ function showScanDone() {
         : 'Scan queue complete.';
     let sub = '';
     if (totalDupes > 0) sub += totalDupes + ' duplicate(s) skipped. ';
-    if (totalSkipped > 0) sub += totalSkipped + ' unsupported file(s) skipped. ';
-    if (totalQueued === 0) sub += 'All selected files were already scanned or unsupported.';
+    if (totalSkipped > 0) sub += totalSkipped + ' file(s) skipped (exceeded Vercel 4.5 MB payload limit). ';
+    if (totalQueued === 0) sub += 'All selected files were already scanned or exceeded file size limits.';
 
     document.getElementById('scanDoneTitle').textContent = title;
     document.getElementById('scanDoneSub').textContent = sub;

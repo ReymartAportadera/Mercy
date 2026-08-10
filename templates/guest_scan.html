@@ -525,7 +525,9 @@ async function startScan() {
     setProgress(done, total, file.name);
 
     if (file.size > 4.5 * 1024 * 1024) {
-      alert(`⚠️ "${file.name}" is ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or compress the video.`);
+      if (total === 1) {
+        alert(`⚠️ "${file.name}" is ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or compress the video.`);
+      }
       done++;
       setProgress(done, total, '');
       continue;
