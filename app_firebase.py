@@ -369,6 +369,13 @@ app.config["MAX_CONTENT_LENGTH"] = None
 _is_vercel = "VERCEL" in os.environ or "VERCEL_ENV" in os.environ or os.environ.get("SERVER_SOFTWARE", "").startswith("Vercel") or os.path.exists("/var/task")
 if _is_vercel:
     app.config["UPLOAD_FOLDER"] = "/tmp/uploads"
+    # On Vercel (HTTPS), session cookies must be Secure + SameSite=Lax
+    # so they persist across serverless container redirects.
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["REMEMBER_COOKIE_SECURE"] = True
+    app.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
 else:
     app.config["UPLOAD_FOLDER"] = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(__file__), "uploads"))
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
