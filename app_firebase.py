@@ -124,25 +124,25 @@ def get_file_type_entropy_threshold(file_path: str) -> float:
 
 def _in_memory_heuristics(text: str) -> list:
     findings = []
-    if re.search(r"requests\.(post|get).*?(webhook|pastebin|ngrok|token|password|cookie)", text, re.I):
+    # Strip comment lines to prevent signature definitions/comments from triggering false alarms
+    clean_lines = [line for line in text.splitlines() if not line.strip().startswith("#") and not line.strip().startswith("//")]
+    clean_text = "\n".join(clean_lines)
+
+    if re.search(r"requests\.(post|get).*?(webhook|pastebin|ngrok|token|password|cookie)", clean_text, re.I):
         findings.append("Data Exfiltration")
-    if re.search(r"base64.*(decode|b64decode).*eval\s*\(", text, re.I):
+    if re.search(r"base64.*(decode|b64decode).*eval\s*\(", clean_text, re.I):
         findings.append("Obfuscated Execution")
-    if re.search(r"socket\.socket.*connect.*subprocess", text, re.I):
+    if re.search(r"socket\.socket.*?connect.*?subprocess\.(Popen|call|run)", clean_text, re.I | re.DOTALL):
         findings.append("Reverse Shell")
-    if re.search(r"(winreg|HKEY_|schtasks|Startup)", text, re.I):
+    if re.search(r"schtasks.*?/create|HKEY_LOCAL_MACHINE\\.*?\\Run", clean_text, re.I):
         findings.append("Persistence Mechanism")
     return findings
 
 def determine_threat_level(risk_score: int, detection_details: list) -> tuple[str, str]:
     joined = " ".join(detection_details).lower()
-    if "reverse shell" in joined:
+    if risk_score >= 70 or "reverse shell" in joined:
         level = "Critical"
-    elif "data exfiltration" in joined:
-        level = "High"
-    elif risk_score >= 70:
-        level = "Critical"
-    elif risk_score >= 50:
+    elif risk_score >= 50 or "data exfiltration" in joined:
         level = "High"
     elif risk_score >= 30:
         level = "Medium"
