@@ -83,17 +83,26 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
         findings       = []
         threat_classes = []
 
-        # ── Risk level ────────────────────────────────────────────────────────
-        if risk_score >= 70:
+        has_real_indicators = (
+            any(k in patterns for k in ["code execution", "eval", "exec", "system command", "process spawn",
+                                         "network", "exfiltration", "reverse shell", "persistence", "obfuscat",
+                                         "base64", "batch abuse", "taskkill"])
+            or any(k in imports for k in ["subprocess", "socket", "ctypes", "winreg"])
+        )
+
+        # Cap risk label to LOW/MEDIUM if no real behavioral indicators found
+        effective_risk = risk_score if has_real_indicators else min(risk_score, 29)
+
+        if effective_risk >= 70:
             verdict     = "highly malicious"
             risk_label  = "CRITICAL RISK"
-        elif risk_score >= 50:
+        elif effective_risk >= 50:
             verdict     = "likely malicious"
             risk_label  = "HIGH RISK"
-        elif risk_score >= 30:
+        elif effective_risk >= 30:
             verdict     = "suspicious"
             risk_label  = "MEDIUM RISK"
-        elif risk_score >= 10:
+        elif effective_risk >= 10:
             verdict     = "potentially unwanted"
             risk_label  = "LOW RISK"
         else:

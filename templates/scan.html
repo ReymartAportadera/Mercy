@@ -819,8 +819,9 @@
         <!-- SCREENSHOT 3: VIRUSTOTAL CHECK                             -->
         <!-- ═══════════════════════════════════════════════════════════ -->
         {% set pos = vt.get('positives', 0)|int %}
-        {% set total_engines = vt.get('engine_count', 74)|int %}
-        {% set clean_engines = total_engines - pos %}
+        {% set scans_dict = vt.get('scans') or {} %}
+        {% set total_engines = scans_dict|length if scans_dict|length > 0 else vt.get('engine_count', 0)|int %}
+        {% set clean_engines = [total_engines - pos, 0]|max %}
 
         <div class="audit-card">
             <div class="audit-card-head">
@@ -858,10 +859,17 @@
                 </div>
             </div>
 
+            {% if pos == 0 %}
             <div class="banner-inner-green" style="margin-bottom:16px;">
                 <i class="fa-solid fa-shield-check"></i>
                 <div>All Clear — No engines flagged this file.</div>
             </div>
+            {% else %}
+            <div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;color:#ef4444;font-size:0.84rem;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div>{{ pos }} engine(s) flagged this file as malicious out of {{ total_engines }} engines checked.</div>
+            </div>
+            {% endif %}
 
             <div class="audit-card-head" style="margin-bottom:10px;">
                 <div style="font-size:0.8rem;font-weight:700;color:#9ca3af;display:flex;align-items:center;gap:6px;">
