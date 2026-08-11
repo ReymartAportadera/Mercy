@@ -493,7 +493,7 @@
                     </div>
 
                     <div class="dropzone-box" id="dropzone">
-                        <input type="file" id="fileInput" class="file-input-hidden" multiple onchange="handleFileSelect(this.files)">
+                        <input type="file" id="fileInput" class="file-input-hidden" multiple onchange="onFileInputChange(this)">
                         <div class="dropzone-icon" id="dropzoneIcon">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                         </div>
@@ -667,6 +667,33 @@ function setMode(mode) {
 }
 
 // ============================================================
+//  FILE INPUT CHANGE WRAPPER (captures folder name for Windows system folders)
+// ============================================================
+function onFileInputChange(inputEl) {
+    const files = inputEl.files;
+    if (!files || files.length === 0) return;
+
+    // Detect folder name from webkitRelativePath (standard browsers)
+    if (currentMode === 'folder') {
+        if (files[0].webkitRelativePath && files[0].webkitRelativePath.includes('/')) {
+            window._selectedFolderName = files[0].webkitRelativePath.split('/')[0];
+        } else {
+            // Windows Folder Picker: no webkitRelativePath provided
+            // Extract from the input value hint (browser hides real path as C:\fakepath\...)
+            // Use a timestamp-based folder label as fallback
+            const now = new Date();
+            const ts = now.toISOString().slice(0,10); // e.g. "2026-08-11"
+            window._selectedFolderName = 'FolderScan_' + ts;
+        }
+        console.log('[TrustFile] Detected folder name:', window._selectedFolderName);
+    } else {
+        window._selectedFolderName = null;
+    }
+
+    handleFileSelect(files);
+}
+
+// ============================================================
 //  FILE SELECTION
 // ============================================================
 function handleFileSelect(files) {
@@ -700,11 +727,19 @@ function startScanQueue() {
     let folderName = null;
     if (currentMode === 'folder') {
         if (selectedFiles[0].webkitRelativePath && selectedFiles[0].webkitRelativePath.includes('/')) {
+            // Standard browser folder picker — has relative path prefix
             folderName = selectedFiles[0].webkitRelativePath.split('/')[0];
         } else {
-            folderName = 'Scanned_Folder';
+            // Windows Folder Picker (Downloads, Desktop, Documents) — no relative path prefix
+            // Try to get folder name from the file input element's value
+            const inputEl = document.getElementById('fileInput');
+            const inputVal = inputEl && inputEl.value ? inputEl.value : '';
+            // inputEl.value gives the last selected filename e.g. 'C:\fakepath\file.exe'
+            // Use a stored folderLabel we set when user selected the folder
+            folderName = window._selectedFolderName || 'Downloads_Scan';
         }
     }
+    console.log('[TrustFile] Folder mode:', currentMode, '| Folder name:', folderName, '| Files:', selectedFiles.length);
 
     // Build queue entries
     scanQueue = [];
@@ -911,6 +946,7 @@ async function processNextInQueue() {
         if (resp.ok) {
             const data = await resp.json();
             const fid = data.file_id || data.id;
+            console.log('[TrustFile] Upload response for', nextItem.name, ':', data);
             if (data.success || (data.duplicate && fid)) {
                 totalQueued++;
                 nextItem.status = 'done';
@@ -923,13 +959,15 @@ async function processNextInQueue() {
             } else if (data.skipped) {
                 totalSkipped++;
                 nextItem.status = 'done';
+                console.warn('[TrustFile] Skipped:', nextItem.name, data.reason);
             } else {
                 nextItem.status = 'done';
+                console.warn('[TrustFile] Unexpected response:', data);
             }
         } else {
             const errData = await resp.json().catch(() => ({}));
             const msg = errData.error || errData.reason || ('HTTP ' + resp.status + ' upload error');
-            console.error('Upload failed:', nextItem.name, msg);
+            console.error('[TrustFile] Upload failed:', nextItem.name, msg);
             totalSkipped++;
             nextItem.status = 'done';
         }
