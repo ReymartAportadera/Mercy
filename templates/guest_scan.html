@@ -524,9 +524,10 @@ async function startScan() {
     const file = queue[i];
     setProgress(done, total, file.name);
 
-    if (file.size > 4.5 * 1024 * 1024) {
+    const isVercelHost = window.location.hostname.includes('vercel.app');
+    if (isVercelHost && file.size > 4.5 * 1024 * 1024) {
       if (total === 1) {
-        alert(`⚠️ "${file.name}" is ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or compress the video.`);
+        alert(`⚠️ "${file.name}" is ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or run locally in VS Code for unlimited size.`);
       }
       done++;
       setProgress(done, total, '');
