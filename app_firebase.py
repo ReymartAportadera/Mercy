@@ -1161,6 +1161,34 @@ def delete_detection_record_api():
 
     return jsonify({"status": "deleted", "message": "File deleted successfully"})
 
+# ── Re-scan route — clears old cached result and forces a fresh scan ──────────
+@app.route("/rescan/<file_id>", methods=["POST"], endpoint="rescan_page")
+@login_required
+def rescan(file_id):
+    """Reset a previously scanned file back to Pending so it gets re-scanned
+    with the latest detection engine logic."""
+    file_meta = fb.get_uploaded_file(str(file_id))
+    if not file_meta or file_meta.get("user_id") != current_user.uid:
+        flash("File not found.", "danger")
+        return redirect(url_for("dashboard"))
+
+    # Clear all old scan fields and reset to Pending
+    fields_to_clear = [
+        "status", "threat_level", "risk_score", "pattern_result",
+        "signature_status", "risky_imports", "entropy", "hash",
+        "ai_analysis", "virustotal", "advanced_heuristics",
+        "detected_type", "confidence", "iocs", "explanation",
+    ]
+    for field in fields_to_clear:
+        file_meta.pop(field, None)
+
+    file_meta["status"] = "Pending"
+    fb.save_uploaded_file(file_meta)
+
+    flash("File reset — running a fresh scan now.", "info")
+    return redirect(url_for("scan_page", file_id=file_id, auto_scan="true"))
+
+
 # ── Scan page ─────────────────────────────────────────────────────────────────
 @app.route("/scan/<file_id>", methods=["GET", "POST"], endpoint="scan_page")
 @login_required
