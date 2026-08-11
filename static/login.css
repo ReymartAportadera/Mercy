@@ -167,6 +167,7 @@ input:focus {
 #togglePassword,
 #togglePassword1,
 #togglePassword2,
+#toggleConfirm,
 .toggle-password-icon {
     position: absolute;
     right: 15px;

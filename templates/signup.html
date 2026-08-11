@@ -82,12 +82,34 @@
             color: #ef4444;
         }
 
+        /* ── Page Layout Adjustments ── */
+        body {
+            overflow-y: auto !important;
+            padding: 20px 0;
+        }
+        .login-box {
+            padding: 32px 30px !important;
+            max-width: 440px !important;
+        }
+        .login-box h2 {
+            font-size: 2rem !important;
+            margin-bottom: 2px !important;
+        }
+        .login-box p {
+            margin-bottom: 20px !important;
+            font-size: 0.7rem !important;
+        }
+        form {
+            gap: 12px !important;
+        }
+
         /* ── Confirm match indicator ── */
         .match-note {
             font-size: 0.72rem;
-            margin-top: 5px;
-            margin-bottom: 4px;
+            margin-top: 2px;
+            margin-bottom: 2px;
             min-height: 16px;
+            text-align: left;
             transition: color 0.25s;
         }
     </style>
