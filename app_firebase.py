@@ -511,6 +511,9 @@ def login():
             user = User(uid=user_rec["uid"], username=user_rec["username"], email=user_rec["email"], password_hash=user_rec["password"])
             login_user(user)
             return redirect(url_for("dashboard"))
+        else:
+            flash("Incorrect email or password. Please try again.")
+            return redirect(url_for("login"))
     return render_template("login.html")
 
 @app.route("/forgot_password", methods=["GET", "POST"])

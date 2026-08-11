@@ -23,6 +23,26 @@
             <h2>TRUST<span>FILE</span></h2>
             <p>Secure File Scanner</p>
 
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                {% for msg in messages %}
+                  <div style="
+                    background: rgba(255,30,30,0.12);
+                    border: 1px solid rgba(255,30,30,0.4);
+                    color: #ff6b6b;
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                    margin-bottom: 14px;
+                    font-size: 0.82rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    text-align: left;
+                  "><i class="fa-solid fa-triangle-exclamation"></i> {{ msg }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
             <form method="POST" id="loginForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="email" name="email" placeholder="Email" required>
