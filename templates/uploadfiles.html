@@ -641,6 +641,8 @@ function setMode(mode) {
     document.getElementById('filePreview').style.display = 'none';
     document.getElementById('submitBtn').disabled = true;
 
+    const sub = document.querySelector('.dropzone-sub');
+
     if (mode === 'folder') {
         document.getElementById('btnFolderMode').classList.add('active');
         document.getElementById('btnFileMode').classList.remove('active');
@@ -649,6 +651,7 @@ function setMode(mode) {
         fileInput.setAttribute('mozdirectory', '');
         fileInput.setAttribute('multiple', '');
         title.textContent = 'Click to select a Folder — all files inside will be scanned';
+        if (sub) sub.textContent = '💡 Windows Folder Picker: To scan your Downloads folder, simply click the "Upload" button at the bottom of the window!';
         icon.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
     } else {
         document.getElementById('btnFileMode').classList.add('active');
@@ -658,6 +661,7 @@ function setMode(mode) {
         fileInput.removeAttribute('mozdirectory');
         fileInput.setAttribute('multiple', '');
         title.textContent = 'Drag & Drop file(s) here or click to browse';
+        if (sub) sub.textContent = 'Supports Executables, Documents, Archives, Scripts, Images, Videos & Audio';
         icon.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i>';
     }
 }
