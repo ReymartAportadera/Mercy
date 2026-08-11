@@ -13,6 +13,10 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+def analyze_file_ai(entropy, patterns, imports, risk_score):
+    """
+    Analyze a file using Google Gemini API. Falls back to local rules if not set or offline.
+    """
     pat_str = str(patterns or "").lower()
     if "eicar" in pat_str or "av test signature" in pat_str:
         txt = (
