@@ -273,8 +273,12 @@ def _run_full_heuristic_scan(
     threshold  = get_file_type_entropy_threshold("x" + ext)
     risk_score = 0
 
+    norm_ext = ext.lower().strip()
+    if not norm_ext.startswith("."):
+        norm_ext = "." + norm_ext
+
     inherently_compressed = {".pdf", ".docx", ".xlsx", ".pptx", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".jar", ".apk"}
-    if ext.lower() not in inherently_compressed:
+    if norm_ext not in inherently_compressed:
         if entropy > threshold + 1.5:
             risk_score += 30
             heuristics.append(f"Very high entropy ({entropy}) for this file type")

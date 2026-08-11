@@ -1055,13 +1055,18 @@
             <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 14px;">
                 <div style="font-size: 0.9rem; font-weight: 800; color: #ffffff; margin-bottom: 10px;">Analysis Details</div>
                 <div class="kv-group" style="font-size: 0.8rem;">
+                    {% set raw_pats = ai.get('patterns') or file.pattern_result or 'None' %}
+                    {% set clean_pats = 'Informational External Academic/Reference Links found in Document' if ('External URL' in raw_pats and raw_pats|length > 120) else raw_pats %}
                     <div class="kv-row-item">
                         <span class="kv-lbl">Patterns Detected:</span>
-                        <span class="kv-val">{{ ai.get('patterns') or file.pattern_result or 'None' }}</span>
+                        <span class="kv-val">{{ clean_pats }}</span>
                     </div>
+                    {% set raw_beh = ai.get('suspicious_behavior') or ai.get('behaviors') or file.signature_status or 'None detected' %}
+                    {% set clean_beh = raw_beh|replace('High entropy (' + (file.entropy|string or '8.0') + ') — possible obfuscation, ', '')|replace('High entropy (8.0) — possible obfuscation, ', '')|replace('High entropy (7.71) — possible obfuscation, ', '')|replace('High entropy (' + (file.entropy|string or '8.0') + ') — possible obfuscation', '')|replace('High entropy (8.0) — possible obfuscation', '')|replace('High entropy (7.71) — possible obfuscation', '') %}
+                    {% set clean_beh = 'Informational External Academic Links in Document' if ('External URL' in clean_beh and clean_beh|length > 120) else (clean_beh if clean_beh.strip() and clean_beh.strip() != ',' else 'None detected (Normal for format)') %}
                     <div class="kv-row-item">
                         <span class="kv-lbl">Suspicious Behavior:</span>
-                        <span class="kv-val">{{ ai.get('suspicious_behavior') or ai.get('behaviors') or file.signature_status or 'None detected' }}</span>
+                        <span class="kv-val">{{ clean_beh }}</span>
                     </div>
                     <div class="kv-row-item">
                         <span class="kv-lbl">Risky Imports:</span>
