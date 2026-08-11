@@ -270,6 +270,19 @@ def _run_full_heuristic_scan(
             if re.search(rf"\bimport {imp}\b|\bfrom {imp} import", text):
                 risky_imports.append(imp)
 
+    norm_ext = ext.lower().strip()
+    if not norm_ext.startswith("."):
+        norm_ext = "." + norm_ext
+
+    # Layer 2 Context Shield: For passive markup/data formats, suppress false-positive patterns.
+    # HTML/CSS naturally contain: open/write DOM ops, http:// CDN links, base64 data-URIs.
+    PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
+    is_passive_markup = norm_ext in PASSIVE_MARKUP_EXTS
+    if is_passive_markup:
+        for fp_label in ["File Access", "Network", "Encoding", "Script Engine"]:
+            if fp_label in suspicious:
+                suspicious.remove(fp_label)
+
     threshold  = get_file_type_entropy_threshold("x" + ext)
     risk_score = 0
 
@@ -309,10 +322,14 @@ def _run_full_heuristic_scan(
     total = len(heuristics) + len(suspicious) + len(risky_imports)
     risk_score += 15 if total >= 5 else (8 if total >= 3 else (3 if total >= 1 else 0))
     risk_score  = min(risk_score, 100)
-    if suspicious and risk_score < 30:
-        risk_score = 30
-    if risky_imports and risk_score < 20:
-        risk_score = 20
+    # Only apply minimum-floor rules for non-markup files.
+    # Passive markup (HTML/CSS/TXT/JSON/XML) should NOT be artificially elevated
+    # by low-confidence false-positive patterns like Network/Encoding/File Access.
+    if not is_passive_markup:
+        if suspicious and risk_score < 30:
+            risk_score = 30
+        if risky_imports and risk_score < 20:
+            risk_score = 20
 
     # ── Advanced heuristics (always, on bytes) ────────────────────────────────
     adv: dict = {}

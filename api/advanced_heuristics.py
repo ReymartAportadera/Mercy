@@ -528,6 +528,16 @@ TRUSTED_DOMAINS: tuple[str, ...] = (
     "mozilla.org", "apple.com", "adobe.com", "nvidia.com",
     "doi.org", "nih.gov", "ieee.org", "acm.org", "arxiv.org",
     "jstor.org", "scholar.google.com", "pubmed.ncbi.nlm.nih.gov",
+    # Major CDN / web delivery networks (commonly found in HTML <link>/<script> tags)
+    "jsdelivr.net", "cdnjs.cloudflare.com", "cloudflare.com",
+    "unpkg.com", "bootstrapcdn.com", "fontawesome.com",
+    "fonts.googleapis.com", "fonts.gstatic.com", "ajax.googleapis.com",
+    "code.jquery.com", "maxcdn.bootstrapcdn.com", "stackpath.bootstrapcdn.com",
+    "use.fontawesome.com", "kit.fontawesome.com",
+    "cdn.jsdelivr.net", "static.cloudflareinsights.com",
+    "w3.org", "schema.org", "openxmlformats.org",
+    "jquery.com", "angularjs.org", "vuejs.org", "reactjs.org",
+    "gravatar.com", "shields.io", "badge.fury.io",
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1781,22 +1791,29 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
         if "Known AV test signature detected (EICAR or equivalent)" not in result.detections:
             result.detections.append("Known AV test signature detected (EICAR or equivalent)")
 
-    # Req. 4 — URL scoring: only add points when NOT all-trusted-domain
+    # Passive markup formats (HTML/CSS/TXT/JSON/XML/SVG) treat URLs as structural content,
+    # not as IOCs. Suppressing URL/IP scoring for these file types prevents false positives
+    # on files that legitimately link to CDN resources, stylesheets, or documentation.
+    _PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
+    _is_passive_markup = result.claimed_extension in _PASSIVE_MARKUP_EXTS
+
+    # Req. 4 — URL scoring: only add points when NOT all-trusted-domain AND not passive markup
     # Trusted-domain credit is applied via whitelist_credits below.
     urls = iocs.get("URLs", [])
     untrusted_urls = [u for u in urls
                       if not any(td in u.lower() for td in TRUSTED_DOMAINS)]
-    if untrusted_urls:
+    if untrusted_urls and not _is_passive_markup:
         # Cap at 3 hits, each worth suspicious_url weight
         score += add("suspicious_url", min(len(untrusted_urls), 3))
     elif urls:
-        # All URLs are trusted — informational, no score
+        # All URLs are trusted (or file is passive markup) — informational, no score
         result.fp_notes.append(
-            f"{len(urls)} URL(s) detected but all resolve to trusted domains — "
-            "not scored."
+            f"{len(urls)} URL(s) detected but scored 0 — "
+            + ("passive markup file type" if _is_passive_markup else "all resolve to trusted domains")
+            + " (not scored)."
         )
 
-    if "IP Addresses" in iocs:
+    if "IP Addresses" in iocs and not _is_passive_markup:
         score += add("suspicious_ip", min(len(iocs["IP Addresses"]), 3))
 
     # ── PE / APIs ─────────────────────────────────────────────────────────────
