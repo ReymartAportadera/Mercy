@@ -1711,17 +1711,23 @@ def delete_file(file_id):
 @app.route("/delete_folder/<path:folder_name>", methods=["POST"], endpoint="delete_folder")
 @login_required
 def delete_folder(folder_name):
+    from urllib.parse import unquote
+    decoded_folder = unquote(folder_name).strip()
     user_files = fb.list_user_files(current_user.uid)
     deleted_count = 0
     for f in user_files:
         eff_folder = _get_effective_folder_name(f)
         raw_folder = f.get("folder_name")
-        if eff_folder == folder_name or raw_folder == folder_name:
+        eff_dec = unquote(eff_folder or "").strip()
+        raw_dec = unquote(raw_folder or "").strip()
+
+        if decoded_folder in {eff_folder, raw_folder, eff_dec, raw_dec}:
             target_path = f.get("filepath")
             if target_path:
                 _trash_file(target_path)
             fb.delete_uploaded_file(f["id"])
             deleted_count += 1
+
     # Also clean up local monitor detections matching this folder
     detections_file = os.path.join(os.path.expanduser("~"), "Desktop", "TrustFile_Detections.json")
     if os.path.exists(detections_file):
@@ -1734,17 +1740,18 @@ def delete_folder(folder_name):
                     p = entry.get("file_path", "") or entry.get("filepath", "") or ""
                     parts = p.replace("\\", "/").strip("/").split("/")
                     entry_folder = parts[-2] if len(parts) >= 2 else ""
-                    if entry_folder != folder_name and entry.get("folder_name") != folder_name:
+                    raw_ent = entry.get("folder_name") or ""
+                    if decoded_folder not in {entry_folder, raw_ent, unquote(entry_folder), unquote(raw_ent)}:
                         updated.append(entry)
             with open(detections_file, "w", encoding="utf-8") as f:
                 json.dump(updated, f, indent=4)
         except Exception as e:
-            logger.error("Error cleaning local detections for folder %s: %s", folder_name, e)
+            logger.error("Error cleaning local detections for folder %s: %s", decoded_folder, e)
 
     if deleted_count > 0:
-        flash(f"Folder '{folder_name}' and {deleted_count} contained file record(s) moved to Recycle Bin.")
+        flash(f"Folder '{decoded_folder}' and {deleted_count} contained file record(s) moved to Recycle Bin.")
     else:
-        flash(f"No records found for folder '{folder_name}'.")
+        flash(f"No records found for folder '{decoded_folder}'.")
     return redirect(request.referrer or url_for("dashboard"))
 
 
