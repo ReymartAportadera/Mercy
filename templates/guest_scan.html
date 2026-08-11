@@ -532,8 +532,33 @@ async function startScan() {
 
     const isVercelHost = window.location.hostname.includes('vercel.app');
     if (isVercelHost && file.size > 4.5 * 1024 * 1024) {
-      if (total === 1) {
-        alert(`⚠️ "${file.name}" is ${(file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or run locally in VS Code for unlimited size.`);
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        const hashBuf = await crypto.subtle.digest('SHA-256', arrayBuf);
+        const hashArray = Array.from(new Uint8Array(hashBuf));
+        const sha256Hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const folderName = file.webkitRelativePath ? file.webkitRelativePath.split('/')[0] : null;
+
+        const hashResp = await fetch('/api/scan_hash', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+          body: JSON.stringify({
+            hash: sha256Hex,
+            filename: file.name,
+            folder_name: folderName,
+            size: (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+          })
+        });
+
+        if (hashResp.ok) {
+          const data = await hashResp.json();
+          if (data && data.file_id) {
+            allScanRecords.push(data);
+          }
+        }
+      } catch (err) {
+        console.error('Guest hash scan failed for', file.name, err);
       }
       done++;
       setProgress(done, total, '');

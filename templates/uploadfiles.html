@@ -919,15 +919,50 @@ async function processNextInQueue() {
 
 
 
-    // Check file size against Vercel's 4.5 MB limit ONLY when hosted on Vercel
+    // For large files on Vercel (> 4.5 MB), use instant Client-Side SHA-256 Hash Scanning
     const isVercel = window.location.hostname.includes('vercel.app');
     const MAX_SIZE = 4.5 * 1024 * 1024;
     if (isVercel && nextItem.file.size > MAX_SIZE) {
-        console.warn('File exceeds Vercel 4.5MB limit:', nextItem.name, nextItem.file.size);
-        totalSkipped++;
-        nextItem.status = 'done';
-        if (scanQueue.length === 1) {
-            alert(`⚠️ "${nextItem.name}" is ${(nextItem.file.size / (1024*1024)).toFixed(1)} MB.\n\nVercel serverless hosting limits upload size to 4.5 MB per file.\nPlease select a file under 4.5 MB or run locally in VS Code for unlimited size.`);
+        console.log('[TrustFile] Large file detected on Vercel:', nextItem.name, nextItem.file.size, '-> running instant Client-Side SHA-256 hash scan');
+        try {
+            // Compute SHA-256 hash locally in browser using Web Crypto API
+            const arrayBuf = await nextItem.file.arrayBuffer();
+            const hashBuf = await crypto.subtle.digest('SHA-256', arrayBuf);
+            const hashArray = Array.from(new Uint8Array(hashBuf));
+            const sha256Hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            
+            const hashResp = await fetch('/api/scan_hash', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN 
+                },
+                body: JSON.stringify({
+                    hash: sha256Hex,
+                    filename: nextItem.name,
+                    folder_name: folderName,
+                    size: (nextItem.file.size / (1024 * 1024)).toFixed(1) + ' MB'
+                })
+            });
+
+            if (hashResp.ok) {
+                const data = await hashResp.json();
+                const fid = data.file_id || data.id;
+                totalQueued++;
+                nextItem.status = 'done';
+                nextItem.file_id = fid;
+                if (fid) {
+                    scannedFileIds.push(fid);
+                    scannedFileNames[fid] = nextItem.name;
+                }
+            } else {
+                totalSkipped++;
+                nextItem.status = 'done';
+            }
+        } catch (err) {
+            console.error('Hash scan failed for', nextItem.name, err);
+            totalSkipped++;
+            nextItem.status = 'done';
         }
         await new Promise(r => setTimeout(r, 600));
         totalDone++;

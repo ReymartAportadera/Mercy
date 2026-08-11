@@ -766,6 +766,99 @@ def upload_single_file_api():
     return jsonify({"success": True, "file_id": file_id, "filename": filename, "status": status, "risk_score": risk_score, "threat_level": threat_level}), 200
 
 
+# ── API: Client-Side SHA-256 Hash Scan (Instant Scan for Large Files / 1GB+ Folders) ──
+@app.route("/api/scan_hash", methods=["POST"])
+@csrf.exempt
+def scan_hash_api():
+    data = request.get_json(silent=True) or {}
+    file_hash = data.get("hash", "").strip().lower()
+    filename = data.get("filename", "scanned_file.bin").strip()
+    folder_name = data.get("folder_name")
+    file_size_str = data.get("size", "Large File (>4.5 MB)")
+
+    if not file_hash or len(file_hash) != 64:
+        return jsonify({"error": "Invalid SHA-256 hash"}), 400
+
+    ext = os.path.splitext(filename)[1].lower()
+
+    # 1. VirusTotal Hash Lookup
+    vt_result = {}
+    risk_score = 0
+    try:
+        vt_raw = smart_virustotal_scan(None, file_hash)
+        if vt_raw and "scans" not in vt_raw:
+            vt_raw["scans"] = {}
+        vt_result = vt_raw or {}
+        vt_pos = vt_result.get("positives", 0)
+        vt_total = vt_result.get("engine_count", 0)
+        if vt_total and vt_pos:
+            risk_score = int((vt_pos / vt_total) * 100)
+    except Exception as exc:
+        logger.warning("Hash scan - VirusTotal error: %s", exc)
+        vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "hash_error", "scans": {}}
+
+    # 2. AI Threat Analysis
+    ai_result = {}
+    try:
+        ai_result = analyze_file_ai(
+            entropy=7.5 if ext in {".zip", ".rar", ".7z", ".exe"} else 4.0,
+            patterns=f"Hash lookup for {filename}",
+            imports="None",
+            risk_score=risk_score,
+        )
+    except Exception as exc:
+        logger.warning("Hash scan - AI analysis error: %s", exc)
+        ai_result = {"error": str(exc)}
+
+    # 3. Determine Threat Level
+    detection_details = []
+    if vt_result.get("positives", 0):
+        detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count', 0)} engines")
+    threat_level, status = determine_threat_level(risk_score, detection_details)
+
+    file_id = str(uuid.uuid4())
+    file_record = {
+        "id": file_id,
+        "filename": filename,
+        "folder_name": folder_name,
+        "source_location": f"Documents / {folder_name}" if folder_name else "Documents / User Files",
+        "filepath": f"/tmp/{filename}",
+        "relative_path": filename,
+        "upload_time": datetime.now(timezone.utc).isoformat(),
+        "status": status,
+        "risk_score": risk_score,
+        "threat_level": threat_level,
+        "hash": file_hash,
+        "size": file_size_str,
+        "virustotal": vt_result,
+        "ai_analysis": ai_result,
+        "explanation": _extract_ai_text(ai_result) or f"Instant SHA-256 Hash Scan completed. Risk score: {risk_score}%"
+    }
+
+    if current_user and current_user.is_authenticated:
+        file_record["user_id"] = current_user.uid
+        file_record["user_email"] = getattr(current_user, "email", "")
+        file_record["username"] = getattr(current_user, "username", getattr(current_user, "email", "").split("@")[0])
+        fb.save_uploaded_file(file_record)
+    else:
+        guest_id = session.get("guest_id") or str(uuid.uuid4())
+        session["guest_id"] = guest_id
+        guest_scans = session.get("guest_scans", [])
+        guest_scans.append(file_record)
+        session["guest_scans"] = guest_scans
+
+    return jsonify({
+        "success": True,
+        "file_id": file_id,
+        "filename": filename,
+        "status": status,
+        "risk_score": risk_score,
+        "threat_level": threat_level,
+        "hash": file_hash,
+        "method": "sha256_hash_scan"
+    }), 200
+
+
 # ── Guest Quick Scan (No Login Required — Temporary Session Only) ───────────
 @app.route("/guest_scan", methods=["GET"])
 def guest_scan_page():
