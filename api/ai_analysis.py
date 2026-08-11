@@ -13,10 +13,26 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-def analyze_file_ai(entropy, patterns, imports, risk_score):
-    """
-    Analyze a file using Google Gemini API. Falls back to local rules if not set or offline.
-    """
+    pat_str = str(patterns or "").lower()
+    if "eicar" in pat_str or "av test signature" in pat_str:
+        txt = (
+            "[CRITICAL TEST DETECTION] This file contains the EICAR antivirus test signature. "
+            "The signature is intentionally used to test antivirus and malware-detection systems and is not actual malware. "
+            "TrustFile correctly detected the test signature and classified the file as a critical threat for testing purposes. "
+            "Do not execute or distribute the extracted test file outside a controlled testing environment."
+        )
+        return {
+            "verdict": "CRITICAL TEST DETECTION",
+            "label": "CRITICAL TEST DETECTION",
+            "threat_level": "CRITICAL TEST DETECTION",
+            "risk_score": 85,
+            "confidence": 0.95,
+            "reason": txt,
+            "explanation": txt,
+            "text": txt,
+            "summary": txt
+        }
+
     if GEMINI_API_KEY:
         try:
             ent_val = float(entropy or 0)

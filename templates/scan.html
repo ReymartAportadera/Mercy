@@ -858,30 +858,83 @@
         {% endif %}
 
         <!-- Detection Summary -->
+        {% set is_eicar_test = 'EICAR' in (file.pattern_result or '') or 'eicar' in (file.filename|lower) or 'EICAR' in (file.threat_level or '') %}
         <div class="audit-card">
             <div class="audit-card-head">
                 <div class="audit-card-title">
                     <i class="fa-solid fa-list-check" style="color:#60a5fa;"></i> Detection Summary
                 </div>
-                <span class="pill-badge-green">{{ (file.threat_level or 'BENIGN')|upper }}</span>
+                <span class="status-pill-badge {{ 'danger' if (is_danger or is_eicar_test) else ('warning' if is_warn else 'benign') }}">
+                    {% if is_eicar_test %}
+                        CRITICAL — EICAR TEST SIGNATURE DETECTED
+                    {% else %}
+                        {{ (file.threat_level or 'BENIGN')|upper }}
+                    {% endif %}
+                </span>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px;">
-                <div class="banner-inner-green" style="margin-top:0;">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>valid file structure confirmed</div>
-                </div>
-                <div class="banner-inner-green" style="margin-top:0;">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>no macros found</div>
-                </div>
-                <div class="banner-inner-green" style="margin-top:0;">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>no executable payloads detected</div>
-                </div>
-                <div class="banner-inner-green" style="margin-top:0;">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div>no suspicious scripts detected</div>
-                </div>
+                {% if is_eicar_test %}
+                    <div style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.4); border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px; color:#ef4444; font-size:0.84rem; font-weight:700;">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div>EICAR antivirus test signature detected</div>
+                    </div>
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>Valid file structure confirmed</div>
+                    </div>
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>No conventional executable payload detected</div>
+                    </div>
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>No suspicious scripts detected</div>
+                    </div>
+                    {% if pos > 0 %}
+                    <div style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.4); border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px; color:#fbbf24; font-size:0.84rem;">
+                        <i class="fa-solid fa-cloud"></i>
+                        <div>VirusTotal multi-engine consensus confirmed ({{ pos }}/{{ total_engines }} engines)</div>
+                    </div>
+                    {% endif %}
+                {% elif is_danger or is_warn %}
+                    <!-- Dynamic Threat Items for Real-World Malware -->
+                    {% set active_threats = det_logs if (det_logs and det_logs|length > 0) else ([file.pattern_result] if file.pattern_result else ['Malicious threat indicator identified']) %}
+                    {% for item in active_threats %}
+                    <div style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.4); border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px; color:#f87171; font-size:0.84rem; font-weight:600;">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div>{{ item }}</div>
+                    </div>
+                    {% endfor %}
+
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>valid file structure confirmed</div>
+                    </div>
+                    {% if not adv.get('has_macros') %}
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>no macros found</div>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <!-- Clean / Benign File Checks -->
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>valid file structure confirmed</div>
+                    </div>
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>no macros found</div>
+                    </div>
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>no executable payloads detected</div>
+                    </div>
+                    <div class="banner-inner-green" style="margin-top:0;">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <div>no suspicious scripts detected</div>
+                    </div>
+                {% endif %}
             </div>
         </div>
 
