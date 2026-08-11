@@ -57,6 +57,12 @@ def _cache_bytes(file_id, data):
     while len(_BYTE_CACHE) > _BYTE_CACHE_MAX:
         _BYTE_CACHE.popitem(last=False)  # evict oldest
 
+def _get_bytes(file_id):
+    if file_id in _BYTE_CACHE:
+        _BYTE_CACHE.move_to_end(file_id)
+        return _BYTE_CACHE[file_id]
+    return None
+
 def _pop_bytes(file_id):
     return _BYTE_CACHE.pop(file_id, None)
 
@@ -1214,7 +1220,7 @@ def scan(file_id):
 
         try:
             file_exists   = os.path.isfile(file_meta.get("filepath", ""))
-            cached_bytes  = _pop_bytes(file_meta["id"])
+            cached_bytes  = _get_bytes(file_meta["id"])
             file_hash     = file_meta.get("hash", "")
             file_bytes    = None
 
@@ -1251,12 +1257,15 @@ def scan(file_id):
             else:
                 offline_cache = {
                     "hash": file_hash, "entropy": file_meta.get("entropy", 0.0),
-                    "heuristics": ["File bytes unavailable for deep scan"],
-                    "suspicious_functions": [], "risky_imports": [],
-                    "risk_score": max(file_meta.get("risk_score", 0), 85),
-                    "pattern_result": "Bytes unavailable",
-                    "signature_status": "File deleted by antivirus",
-                    "risky_imports_str": "N/A", "all_detections": [], "advanced": {},
+                    "heuristics": file_meta.get("heuristics") or ["File payload expired from temporary server cache"],
+                    "suspicious_functions": file_meta.get("suspicious_functions") or [],
+                    "risky_imports": file_meta.get("risky_imports_list") or [],
+                    "risk_score": file_meta.get("risk_score", 0),
+                    "pattern_result": file_meta.get("pattern_result", "No suspicious patterns"),
+                    "signature_status": file_meta.get("signature_status", "No signatures detected"),
+                    "risky_imports_str": file_meta.get("risky_imports", "None"),
+                    "all_detections": file_meta.get("all_detections", []),
+                    "advanced": file_meta.get("advanced_heuristics", {}),
                 }
             _apply_scan_result_to_file(file_meta, offline_cache)
             results["heuristic"] = offline_cache
@@ -1382,7 +1391,7 @@ def multiple_scan(file_id):
         scan_types_param = request.args.get("scans", ",".join(ALL_SCAN_TYPES))
         file_exists      = os.path.isfile(file_meta.get("filepath", ""))
 
-        cached_bytes: bytes | None = _pop_bytes(file_meta["id"])
+        cached_bytes: bytes | None = _get_bytes(file_meta["id"])
 
         if request.method == "POST":
             raw = request.form.getlist("scan_types")
@@ -1429,19 +1438,17 @@ def multiple_scan(file_id):
                         offline_cache = {
                             "hash":                 file_hash,
                             "entropy":              file_meta.get("entropy", 0.0),
-                            "heuristics":           [
-                                "File deleted by antivirus — bytes unavailable for deep scan"
+                            "heuristics":           file_meta.get("heuristics") or [
+                                "File payload expired from temporary server cache"
                             ],
-                            "suspicious_functions": [],
-                            "risky_imports":        [],
-                            "risk_score":           max(file_meta.get("risk_score", 0), 85),
-                            "pattern_result":       "AV-deleted — no bytes available",
-                            "signature_status":     "File deleted by antivirus",
-                            "risky_imports_str":    "N/A",
-                            "all_detections":       [
-                                "File deleted by antivirus — bytes unavailable"
-                            ],
-                            "advanced":             {},
+                            "suspicious_functions": file_meta.get("suspicious_functions") or [],
+                            "risky_imports":        file_meta.get("risky_imports_list") or [],
+                            "risk_score":           file_meta.get("risk_score", 0),
+                            "pattern_result":       file_meta.get("pattern_result", "No suspicious patterns"),
+                            "signature_status":     file_meta.get("signature_status", "No signatures detected"),
+                            "risky_imports_str":    file_meta.get("risky_imports", "None"),
+                            "all_detections":       file_meta.get("all_detections", []),
+                            "advanced":             file_meta.get("advanced_heuristics", {}),
                         }
                     _apply_scan_result_to_file(file_meta, offline_cache)
                     results["heuristic"] = offline_cache
