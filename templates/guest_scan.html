@@ -455,10 +455,16 @@ function setMode(mode) {
   document.getElementById('tabFile').classList.toggle('active', mode === 'file');
   document.getElementById('tabFolder').classList.toggle('active', mode === 'folder');
   if (mode === 'folder') {
-    inp.setAttribute('webkitdirectory', ''); inp.setAttribute('directory', '');
+    inp.setAttribute('webkitdirectory', '');
+    inp.setAttribute('directory', '');
+    inp.setAttribute('mozdirectory', '');
+    inp.setAttribute('multiple', '');
     document.getElementById('dzTitle').textContent = 'Click to choose a Folder — all files inside will be scanned';
   } else {
-    inp.removeAttribute('webkitdirectory'); inp.removeAttribute('directory');
+    inp.removeAttribute('webkitdirectory');
+    inp.removeAttribute('directory');
+    inp.removeAttribute('mozdirectory');
+    inp.setAttribute('multiple', '');
     document.getElementById('dzTitle').textContent = 'Drag & Drop files here, or click to browse';
   }
 }

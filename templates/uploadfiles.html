@@ -646,7 +646,8 @@ function setMode(mode) {
         document.getElementById('btnFileMode').classList.remove('active');
         fileInput.setAttribute('webkitdirectory', '');
         fileInput.setAttribute('directory', '');
-        fileInput.removeAttribute('multiple');
+        fileInput.setAttribute('mozdirectory', '');
+        fileInput.setAttribute('multiple', '');
         title.textContent = 'Click to select a Folder — all files inside will be scanned';
         icon.innerHTML = '<i class="fa-solid fa-folder-open"></i>';
     } else {
@@ -654,6 +655,7 @@ function setMode(mode) {
         document.getElementById('btnFolderMode').classList.remove('active');
         fileInput.removeAttribute('webkitdirectory');
         fileInput.removeAttribute('directory');
+        fileInput.removeAttribute('mozdirectory');
         fileInput.setAttribute('multiple', '');
         title.textContent = 'Drag & Drop file(s) here or click to browse';
         icon.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i>';
