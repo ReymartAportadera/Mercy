@@ -1110,7 +1110,7 @@ def delete_detection_record_api():
 
                     with open(detections_file, "w", encoding="utf-8") as f:
                         json.dump(updated_detections, f, indent=2)
-                    return jsonify({"status": "deleted", "message": "File moved to Recycle Bin"})
+                    return jsonify({"status": "deleted", "message": "File deleted successfully"})
             except Exception as e:
                 logger.error("Error deleting local detection: %s", e)
                 return jsonify({"error": str(e)}), 500
@@ -1133,7 +1133,7 @@ def delete_detection_record_api():
             if same_hash or same_path or f.get("id") == detection_id:
                 fb.delete_uploaded_file(f["id"])
 
-    return jsonify({"status": "deleted", "message": "File moved to Recycle Bin"})
+    return jsonify({"status": "deleted", "message": "File deleted successfully"})
 
 # ── Scan page ─────────────────────────────────────────────────────────────────
 @app.route("/scan/<file_id>", methods=["GET", "POST"], endpoint="scan_page")
@@ -1670,7 +1670,7 @@ def delete_file(file_id):
                     updated = [e for e in detections if (e.get("file_path") or e.get("filepath") or "") != target_filepath]
                     with open(detections_file, "w", encoding="utf-8") as f:
                         json.dump(updated, f, indent=4)
-                    flash("Local file moved to Recycle Bin and record deleted.")
+                    flash("File and scan record deleted successfully.")
                 else:
                     flash("Local file record not found.")
             except Exception as e:
@@ -1685,7 +1685,7 @@ def delete_file(file_id):
         target_hash = record.get("hash")
         target_path = record.get("filepath")
 
-        # Move the physical file to the Recycle Bin
+        # Delete the physical file from the server
         _trash_file(target_path)
 
         # Remove all duplicate records from Firebase database
@@ -1699,9 +1699,9 @@ def delete_file(file_id):
                 deleted_count += 1
 
         if deleted_count > 1:
-            flash(f"Moved file to Recycle Bin and deleted {deleted_count} duplicate records.")
+            flash(f"File and {deleted_count} duplicate record(s) deleted successfully.")
         else:
-            flash("File moved to Recycle Bin and record deleted.")
+            flash("File and scan record deleted successfully.")
     else:
         flash("File not found or access denied.")
     return redirect(request.referrer or url_for("dashboard"))
@@ -1749,7 +1749,7 @@ def delete_folder(folder_name):
             logger.error("Error cleaning local detections for folder %s: %s", decoded_folder, e)
 
     if deleted_count > 0:
-        flash(f"Folder '{decoded_folder}' and {deleted_count} contained file record(s) moved to Recycle Bin.")
+        flash(f"Folder '{decoded_folder}' and {deleted_count} file record(s) deleted successfully.")
     else:
         flash(f"No records found for folder '{decoded_folder}'.")
     return redirect(request.referrer or url_for("dashboard"))
