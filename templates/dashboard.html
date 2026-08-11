@@ -203,7 +203,7 @@
                                 <span>Results</span>
                             </a>
                             <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}"
-                                  onsubmit="return confirm('Move this file to the Recycle Bin?');">
+                                  onsubmit="return confirm('Are you sure you want to remove this file?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="action-btn btn-delete" title="Delete File">
                                     <i class="fa-solid fa-trash"></i>
@@ -272,7 +272,7 @@
                                 <span class="tag-level level-{{ grp.threat_level|lower }}" style="font-size:0.7rem; padding:3px 8px;">
                                     {{ grp.threat_level }}
                                 </span>
-                                <form method="POST" action="{{ url_for('delete_folder', folder_name=grp.name) }}" onsubmit="event.stopPropagation(); return confirm('Move folder \'{{ grp.name }}\' and all contained file records to Recycle Bin?');" style="margin:0;">
+                                <form method="POST" action="{{ url_for('delete_folder', folder_name=grp.name) }}" onsubmit="event.stopPropagation(); return confirm('Are you sure you want to remove folder \'{{ grp.name }}\' and all its files?');" style="margin:0;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="action-btn btn-delete" style="padding:4px 8px; font-size:0.75rem;" title="Delete Folder" onclick="event.stopPropagation();">
                                         <i class="fa-solid fa-trash"></i>

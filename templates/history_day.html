@@ -410,7 +410,7 @@
                     <i class="fa-solid fa-robot"></i> AI
                 </button>
                 {% endif %}
-                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;" onsubmit="return confirm('Move this file to the Recycle Bin?');">
+                <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to remove this file?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="action-btn btn-delete">
                         <i class="fa-solid fa-trash"></i>
