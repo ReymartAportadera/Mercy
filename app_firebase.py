@@ -462,9 +462,36 @@ def signup():
         username = request.form.get("username", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
         if not (username and email and password):
             flash("Please fill out all fields.")
             return redirect(url_for("signup"))
+
+        # ── Server-side password strength enforcement ──────────────────────
+        import re as _re
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long.")
+            return redirect(url_for("signup"))
+        if not _re.search(r"[A-Z]", password):
+            flash("Password must contain at least one uppercase letter.")
+            return redirect(url_for("signup"))
+        if not _re.search(r"[a-z]", password):
+            flash("Password must contain at least one lowercase letter.")
+            return redirect(url_for("signup"))
+        if not _re.search(r"[0-9]", password):
+            flash("Password must contain at least one number.")
+            return redirect(url_for("signup"))
+        if not _re.search(r"[^A-Za-z0-9]", password):
+            flash("Password must contain at least one special character (e.g. @, !, #).")
+            return redirect(url_for("signup"))
+        if " " in password:
+            flash("Password must not contain spaces.")
+            return redirect(url_for("signup"))
+        if confirm_password and password != confirm_password:
+            flash("Passwords do not match.")
+            return redirect(url_for("signup"))
+        # ──────────────────────────────────────────────────────────────────
         if fb.get_user_by_email(email):
             flash("Email already in use.")
             return redirect(url_for("signup"))
