@@ -914,7 +914,9 @@ async function processNextInQueue() {
         formData.append('folder_name', folderName);
     }
 
-    let sourceLocation = 'Documents / ' + (nextItem.file.webkitRelativePath || nextItem.name);
+    let sourceLocation = folderName 
+        ? ('Scanned Folder / ' + folderName + ' / ' + nextItem.name) 
+        : ('Uploaded File / ' + nextItem.name);
     formData.append('source_location', sourceLocation);
 
 

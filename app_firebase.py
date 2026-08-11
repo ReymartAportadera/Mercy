@@ -661,7 +661,13 @@ def upload_single_file_api():
 
     # Extract folder name & source location if provided or present in relative path
     folder_name = request.form.get("folder_name") or (f.filename.split("/")[0] if "/" in f.filename else None)
-    source_location = request.form.get("source_location") or request.form.get("relative_path") or (f"Documents / {folder_name}" if folder_name else "Documents / User Files")
+    req_source = request.form.get("source_location")
+    if req_source and not req_source.startswith("Documents / "):
+        source_location = req_source
+    elif folder_name:
+        source_location = f"Scanned Folder / {folder_name} / {raw_filename}"
+    else:
+        source_location = f"Uploaded File / {raw_filename}"
 
     allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
 
@@ -821,7 +827,7 @@ def scan_hash_api():
         "id": file_id,
         "filename": filename,
         "folder_name": folder_name,
-        "source_location": f"Documents / {folder_name}" if folder_name else "Documents / User Files",
+        "source_location": f"Scanned Folder / {folder_name} / {filename}" if folder_name else f"Uploaded File / {filename}",
         "filepath": f"/tmp/{filename}",
         "relative_path": filename,
         "upload_time": datetime.now(timezone.utc).isoformat(),
