@@ -25,7 +25,6 @@
 
             {% with messages = get_flashed_messages() %}
               {% if messages %}
-                {% for msg in messages %}
                   <div style="
                     background: rgba(255,30,30,0.12);
                     border: 1px solid rgba(255,30,30,0.4);
@@ -38,8 +37,7 @@
                     align-items: center;
                     gap: 8px;
                     text-align: left;
-                  "><i class="fa-solid fa-triangle-exclamation"></i> {{ msg }}</div>
-                {% endfor %}
+                  "><i class="fa-solid fa-triangle-exclamation"></i> {{ messages[-1] }}</div>
               {% endif %}
             {% endwith %}
 
