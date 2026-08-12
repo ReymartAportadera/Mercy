@@ -734,34 +734,65 @@ def upload_single_file_api():
     relative_path = os.path.join(str(current_user.uid), filename)
     file_id = str(uuid.uuid4())
 
-    # ── Engine 1: Full heuristic scan ──────────────
+    # ── Engine 1: Full heuristic scan (fast, local — no network) ──────────────
     scan_res = _run_full_heuristic_scan(filename, file_bytes, file_hash)
     risk_score = scan_res.get("risk_score", 0)
 
-    # ── Engine 2: VirusTotal scan ────────────
+    # ── Engine 2: VirusTotal scan (network — cap at 8 s on Vercel) ────────────
     vt_result = {}
     try:
-        vt_raw = smart_virustotal_scan(path, file_hash)
-        if vt_raw and "scans" not in vt_raw:
-            vt_raw["scans"] = {}
-        vt_result = vt_raw or {}
-        vt_pos = vt_result.get("positives", 0)
-        vt_total = vt_result.get("engine_count", 0)
-        if vt_total and vt_pos:
-            risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
+        import signal as _signal
+        def _vt_timeout(signum, frame):
+            raise TimeoutError("VirusTotal timeout")
+        try:
+            _signal.signal(_signal.SIGALRM, _vt_timeout)
+            _signal.alarm(8)
+        except (AttributeError, OSError):
+            pass  # SIGALRM unavailable on Windows (local dev only)
+        try:
+            vt_raw = smart_virustotal_scan(path, file_hash)
+            if vt_raw and "scans" not in vt_raw:
+                vt_raw["scans"] = {}
+            vt_result = vt_raw or {}
+            vt_pos = vt_result.get("positives", 0)
+            vt_total = vt_result.get("engine_count", 0)
+            if vt_total and vt_pos:
+                risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
+        finally:
+            try:
+                _signal.alarm(0)
+            except (AttributeError, OSError):
+                pass
+    except TimeoutError:
+        logger.warning("Upload scan - VirusTotal timed out after 8 s")
+        vt_result = {"error": "timeout", "positives": 0, "engine_count": 0, "method": "timeout", "scans": {}}
     except Exception as exc:
         logger.warning("Upload scan - VirusTotal error: %s", exc)
         vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
 
-    # ── Engine 3: AI analysis ─────────────────────────────────────────────────
+    # ── Engine 3: AI analysis (network — cap at 8 s on Vercel) ───────────────
     ai_result = {}
     try:
-        ai_result = analyze_file_ai(
-            entropy=scan_res.get("entropy", 0),
-            patterns=scan_res.get("pattern_result", "None"),
-            imports=scan_res.get("risky_imports_str", "None"),
-            risk_score=risk_score,
-        )
+        try:
+            _signal.signal(_signal.SIGALRM, lambda s, f: (_ for _ in ()).throw(TimeoutError("AI timeout")))
+            _signal.alarm(8)
+        except (AttributeError, OSError, NameError):
+            pass
+        try:
+            ai_result = analyze_file_ai(
+                entropy=scan_res.get("entropy", 0),
+                patterns=scan_res.get("pattern_result", "None"),
+                imports=scan_res.get("risky_imports_str", "None"),
+                risk_score=risk_score,
+            )
+        finally:
+            try:
+                _signal.alarm(0)
+            except (AttributeError, OSError, NameError):
+                pass
+    except TimeoutError:
+        logger.warning("Upload scan - AI analysis timed out after 8 s")
+        ai_result = {"error": "timeout", "verdict": "UNKNOWN"}
     except Exception as exc:
         logger.warning("Upload scan - AI analysis error: %s", exc)
         ai_result = {"error": str(exc)}
@@ -797,6 +828,7 @@ def upload_single_file_api():
     _cache_bytes(file_id, file_bytes)
 
     return jsonify({"success": True, "file_id": file_id, "filename": filename, "status": status, "risk_score": risk_score, "threat_level": threat_level}), 200
+
 
 
 # ── API: Client-Side SHA-256 Hash Scan (Instant Scan for Large Files / 1GB+ Folders) ──
