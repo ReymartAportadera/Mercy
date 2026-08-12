@@ -758,8 +758,11 @@
         </div>
 
         <!-- Embedded Content Card (if present or detected) -->
-        {% set embedded_items = adv.get('embedded_archives') or adv.get('archive_findings') or adv.get('embedded_executables') or (adv.get('detection_summary', {}).get('executable_payload') if adv.get('detection_summary') else None) %}
-        {% set is_eicar_test = 'EICAR' in (file.pattern_result or '') or 'eicar' in (file.filename|lower) or 'EICAR' in (file.threat_level or '') or 'EICAR' in (file.signature_status or '') or 'EICAR' in (file.explanation or '') %}
+        {%- set _ea = adv.get('embedded_archives') %}
+        {%- set _af = adv.get('archive_findings') %}
+        {%- set _ex = adv.get('embedded_executables') %}
+        {%- set embedded_items = (_ea if (_ea and _ea is not string) else None) or (_af if (_af and _af is not string) else None) or (_ex if (_ex and _ex is not string) else None) %}
+        {% set is_eicar_test = 'EICAR' in (file.pattern_result or '') or 'eicar' in (file.filename|lower) or 'EICAR' in (file.threat_level or '') or 'EICAR' in (file.signature_status or '') or 'EICAR' in (file.explanation or '') or 'EICAR' in (adv.get('pattern_result') or '') or 'EICAR' in (adv.get('signature_status') or '') %}
 
         {% if embedded_items %}
         <div class="audit-card" style="border-color: rgba(239, 68, 68, 0.3);">
