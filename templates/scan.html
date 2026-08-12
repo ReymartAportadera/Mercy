@@ -758,10 +758,10 @@
         </div>
 
         <!-- Embedded Content Card (if present or detected) -->
-        {%- set _ea = adv.get('embedded_archives') %}
-        {%- set _af = adv.get('archive_findings') %}
-        {%- set _ex = adv.get('embedded_executables') %}
-        {%- set embedded_items = (_ea if (_ea and _ea is not string) else None) or (_af if (_af and _af is not string) else None) or (_ex if (_ex and _ex is not string) else None) %}
+        {%- set _ea_list = adv.get('embedded_archives') if (adv.get('embedded_archives') is sequence and adv.get('embedded_archives') is not string) else [] %}
+        {%- set _af_list = adv.get('archive_findings') if (adv.get('archive_findings') is sequence and adv.get('archive_findings') is not string) else [] %}
+        {%- set _ex_list = adv.get('embedded_executables') if (adv.get('embedded_executables') is sequence and adv.get('embedded_executables') is not string) else [] %}
+        {%- set embedded_items = (_ea_list|length > 0) or (_af_list|length > 0) or (_ex_list|length > 0) %}
         {% set is_eicar_test = 'EICAR' in (file.pattern_result or '') or 'eicar' in (file.filename|lower) or 'EICAR' in (file.threat_level or '') or 'EICAR' in (file.signature_status or '') or 'EICAR' in (file.explanation or '') or 'EICAR' in (adv.get('pattern_result') or '') or 'EICAR' in (adv.get('signature_status') or '') %}
 
         {% if embedded_items %}
