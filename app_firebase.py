@@ -1239,8 +1239,8 @@ def scan(file_id):
     already_scanned = file_meta.get("status") != "Pending"
     auto_scan = request.args.get("auto_scan", "false")
 
-    if request.method == "POST":
-        if already_scanned:
+    if request.method == "POST" or (auto_scan.lower() == "true" and not already_scanned):
+        if already_scanned and request.method == "POST":
             flash("This file has already been scanned.", "warning")
             return redirect(url_for("dashboard"))
 

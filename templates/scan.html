@@ -1299,6 +1299,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Scanning...';
             }
         });
+        {% if auto_scan == 'true' and not result and not already_scanned %}
+        scanForm.submit();
+        {% endif %}
     }
 });
 </script>
