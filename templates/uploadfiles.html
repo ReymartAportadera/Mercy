@@ -935,6 +935,7 @@ async function processNextInQueue() {
             
             const hashResp = await fetch('/api/scan_hash', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 
                     'Content-Type': 'application/json',
                     'X-CSRFToken': CSRF_TOKEN 
@@ -976,6 +977,7 @@ async function processNextInQueue() {
     try {
         const resp = await fetch('/api/upload_single_file', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'X-CSRFToken': CSRF_TOKEN },
             body: formData
         });
