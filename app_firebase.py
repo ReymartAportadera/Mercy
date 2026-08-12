@@ -285,9 +285,8 @@ def _run_full_heuristic_scan(
     PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
     is_passive_markup = norm_ext in PASSIVE_MARKUP_EXTS
     if is_passive_markup:
-        for fp_label in ["File Access", "Network", "Encoding", "Script Engine"]:
-            if fp_label in suspicious:
-                suspicious.remove(fp_label)
+        suppress_labels = {"file access", "network", "encoding", "script engine", "code execution", "system command", "process spawn", "batch abuse"}
+        suspicious = [s for s in suspicious if not any(lbl in s.lower() for lbl in suppress_labels)]
 
     threshold  = get_file_type_entropy_threshold("x" + ext)
     risk_score = 0
@@ -758,6 +757,8 @@ def upload_single_file_api():
             vt_total = vt_result.get("engine_count", 0)
             if vt_total and vt_pos:
                 risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
+            elif vt_total >= 30 and vt_pos == 0:
+                risk_score = max(0, risk_score - 15)
         finally:
             try:
                 _signal.alarm(0)
@@ -1332,8 +1333,10 @@ def scan(file_id):
             if isinstance(vt, dict) and "error" not in vt:
                 total = vt.get("engine_count", 0)
                 pos   = vt.get("positives", 0)
-                if total:
+                if total and pos:
                     final_risk = max(final_risk, int((pos / total) * 100))
+                elif total >= 30 and pos == 0:
+                    final_risk = max(0, final_risk - 15)
                 if pos:
                     detection_details.append(
                         f"VirusTotal: {pos}/{total} engines detected threat"
