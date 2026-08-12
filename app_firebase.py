@@ -1002,7 +1002,6 @@ def clear_guest_history():
     return jsonify({"status": "cleared"})
 
 @app.route("/upload", methods=["GET", "POST"])
-
 @login_required
 def uploadfiles():
     if request.method == "POST":

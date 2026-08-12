@@ -1139,6 +1139,16 @@ function escHtml(str) {
 //  DRAG & DROP
 // ============================================================
 const dropzone = document.getElementById('dropzone');
+const fileInputEl = document.getElementById('fileInput');
+
+// Clicking anywhere on the dropzone opens the file picker
+dropzone.addEventListener('click', (e) => {
+    // Don't double-trigger if click came from the input itself
+    if (e.target !== fileInputEl) {
+        fileInputEl.click();
+    }
+});
+
 ['dragenter', 'dragover'].forEach(ev => {
     dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('dragover'); }, false);
 });
