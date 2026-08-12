@@ -618,6 +618,13 @@ class AdvancedHeuristicResult:
     detections:           list  = field(default_factory=list)
     fp_notes:             list  = field(default_factory=list)
 
+    # Depth Control & Grounding
+    encoding_layers:        int   = 0
+    decoded_size:           int   = 0
+    decoded_detections:     int   = 0
+    intent_classification:  str   = ""
+    indicator_grounding:    list  = field(default_factory=list)
+
     # Internal
     _hc_indicators:       list  = field(default_factory=list)
     _co_indicators:       list  = field(default_factory=list)  # non-entropy signals
@@ -916,6 +923,57 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         matches = list(set(pattern.findall(text)))
         if matches:
             iocs[category] = matches[:20]
+
+    # ── Multi-Layer Controlled Decoding & Depth Control ─────────────────────
+    import base64
+    layers = 0
+    curr_bytes = file_bytes
+    decoded_buffers = []
+    while layers < 2:
+        b64_matches = re.findall(rb"[A-Za-z0-9+/]{40,}={0,2}", curr_bytes)
+        if not b64_matches:
+            break
+        try:
+            dec = base64.b64decode(b64_matches[0])
+            if 10 < len(dec) < 50000 and dec != curr_bytes:
+                layers += 1
+                curr_bytes = dec
+                try:
+                    decoded_buffers.append(dec.decode("utf-8", errors="ignore"))
+                except Exception:
+                    pass
+            else:
+                break
+        except Exception:
+            break
+
+    result.encoding_layers = layers
+    result.decoded_size = len(curr_bytes) if layers > 0 else 0
+
+    decoded_text_combined = "\n".join(decoded_buffers)
+
+    # ── Indicator Grounding for eval / exec ───────────────────────────────────
+    raw_eval = bool(re.search(r"\b(eval|exec)\s*\(", text, re.I))
+    dec_eval = bool(re.search(r"\b(eval|exec)\s*\(", decoded_text_combined, re.I)) if decoded_text_combined else False
+
+    if raw_eval:
+        result.indicator_grounding.append("eval/exec keyword found in plaintext script")
+    elif dec_eval:
+        result.indicator_grounding.append("eval-like keyword found only inside decoded string (unvalidated as executable body)")
+        result.fp_notes.append("eval/exec token detected only inside decoded string — not validated as executable code structure.")
+
+    if layers > 0:
+        result.fp_notes.append(f"Decode Depth Control: Layer {layers} decoded ({result.decoded_size} bytes). No executable payload structure found.")
+
+    # ── Text vs Executable Intent Classification ─────────────────────────────
+    PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
+    if result.claimed_extension in PASSIVE_MARKUP_EXTS:
+        code_syntax = re.findall(r"\b(def|function|import|var|const|let|powershell|cmd\.exe|curl|wget|subprocess|os\.system)\b", text, re.I)
+        if not code_syntax:
+            result.intent_classification = "Text / Documentation Artifact (non-executable intent)"
+            result.fp_notes.append("Intent Classifier: Document/text file contains no executable code structure or shell execution commands (RULE 11).")
+        else:
+            result.intent_classification = "Script / Loader Artifact"
 
     # RULE 3 — Contextual PowerShell download (3-part gate)
     result.ps_download_contextual = _is_contextual_ps_download(text)
@@ -2252,4 +2310,11 @@ def run_advanced_heuristics(file_path: str, file_bytes: bytes) -> dict:
 
         # Req. 8 — structured detection summary
         "detection_summary":      result.detection_summary,
+
+        # Depth control & grounding
+        "encoding_layers":        result.encoding_layers,
+        "decoded_size":           result.decoded_size,
+        "decoded_detections":     result.decoded_detections,
+        "intent_classification":  result.intent_classification,
+        "indicator_grounding":    result.indicator_grounding,
     }

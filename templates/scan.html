@@ -1053,15 +1053,31 @@
             </div>
         </div>
 
-        <!-- False-Positive Reduction Notes -->
+        <!-- False-Positive Reduction & Grounding Notes -->
         <div class="audit-card" style="border-color: rgba(59, 130, 246, 0.2);">
             <div class="audit-card-head">
                 <div class="audit-card-title" style="color:#60a5fa;">
-                    <i class="fa-solid fa-magnifying-glass" style="color:#3b82f6;"></i> False-Positive Reduction Notes
+                    <i class="fa-solid fa-magnifying-glass" style="color:#3b82f6;"></i> False-Positive Reduction & Grounding Notes
                 </div>
                 <i class="fa-solid fa-bolt" style="color:#3b82f6;"></i>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
+                {% if adv.get('intent_classification') %}
+                <div class="banner-inner-blue" style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.4); font-weight:700;">
+                    <i class="fa-solid fa-file-code" style="color:#60a5fa;"></i>
+                    <div>Intent Classification: {{ adv.get('intent_classification') }}</div>
+                </div>
+                {% endif %}
+
+                {% if adv.get('indicator_grounding') %}
+                {% for ground in adv.get('indicator_grounding') %}
+                <div class="banner-inner-blue" style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); color:#fbbf24;">
+                    <i class="fa-solid fa-puzzle-piece"></i>
+                    <div>Indicator Grounding: {{ ground }}</div>
+                </div>
+                {% endfor %}
+                {% endif %}
+
                 {% set notes = adv.get('fp_notes') or [
                     'File structure analyzed and validated against format specifications.',
                     'Static heuristic checks completed with no malicious indicators found.',

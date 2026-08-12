@@ -123,7 +123,7 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
             verdict     = "suspicious"
             risk_label  = "MEDIUM RISK"
         elif effective_risk >= 10:
-            verdict     = "potentially unwanted"
+            verdict     = "low risk (benign with minor flags)" if risk_score < 30 else "potentially unwanted"
             risk_label  = "LOW RISK"
         else:
             verdict     = "likely safe"
