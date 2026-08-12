@@ -778,6 +778,9 @@
         </div>
         {% endif %}
 
+        {% set raw_iocs = adv.get('iocs') or file.get('iocs') or adv.get('ioc_extraction') %}
+        {% set pattern_iocs = (file.suspicious_functions if file.suspicious_functions is sequence else []) + (file.heuristics if file.heuristics is sequence else []) %}
+
         {% if is_eicar_test %}
         <!-- IOC Extraction Card (EICAR Specific) -->
         <div class="audit-card">
@@ -798,16 +801,16 @@
                 </ul>
             </div>
         </div>
-        {% elif adv.get('iocs') and (adv.get('iocs') is mapping) %}
-        <!-- IOC Extraction Card (Dynamic Real IOCs) -->
+        {% elif raw_iocs and (raw_iocs is mapping) %}
+        <!-- IOC Extraction Card (Dictionary of Categories) -->
         <div class="audit-card">
             <div class="audit-card-head">
                 <div class="audit-card-title">
                     <i class="fa-solid fa-crosshairs" style="color:#60a5fa;"></i> IOC Extraction
                 </div>
-                <span class="pill-badge-yellow">{{ adv.get('iocs')|length }} CATEGORIES</span>
+                <span class="pill-badge-yellow">{{ raw_iocs|length }} CATEGORIES</span>
             </div>
-            {% for cat, items in adv.get('iocs').items() %}
+            {% for cat, items in raw_iocs.items() %}
             {% if items %}
             <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); margin-bottom:8px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -822,6 +825,48 @@
             </div>
             {% endif %}
             {% endfor %}
+        </div>
+        {% elif raw_iocs and (raw_iocs is sequence and raw_iocs|length > 0) %}
+        <!-- IOC Extraction Card (List of IOC Strings) -->
+        <div class="audit-card">
+            <div class="audit-card-head">
+                <div class="audit-card-title">
+                    <i class="fa-solid fa-crosshairs" style="color:#60a5fa;"></i> IOC Extraction
+                </div>
+                <span class="pill-badge-yellow">1 CATEGORIES</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">EXTRACTED INDICATORS</span>
+                    <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ raw_iocs|length }}</span>
+                </div>
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                    {% for item in raw_iocs[:10] %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% elif pattern_iocs and pattern_iocs|length > 0 and (is_danger or is_warn) %}
+        <!-- IOC Extraction Card (Pattern Findings Fallback) -->
+        <div class="audit-card">
+            <div class="audit-card-head">
+                <div class="audit-card-title">
+                    <i class="fa-solid fa-crosshairs" style="color:#60a5fa;"></i> IOC Extraction
+                </div>
+                <span class="pill-badge-yellow">1 CATEGORIES</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">SUSPICIOUS INDICATORS</span>
+                    <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ pattern_iocs|length }}</span>
+                </div>
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                    {% for item in pattern_iocs[:10] %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
         {% endif %}
 
