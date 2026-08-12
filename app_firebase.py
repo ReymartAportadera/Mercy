@@ -1285,7 +1285,39 @@ def scan(file_id):
                 logger.info("scan: file %s already scanned during upload (status: %s), preserving scan result", file_meta.get("filename"), file_meta.get("status"))
                 if request.method == "POST":
                     return jsonify({"success": True, "file": file_meta, "already_scanned": True}), 200
-                return render_template("scan.html", file=file_meta, css_version=int(time.time()))
+                # Build AI analysis if missing
+                _ai_data = file_meta.get("ai_analysis")
+                if not _ai_data:
+                    _ai_data = analyze_file_ai(
+                        entropy=file_meta.get("entropy", 0),
+                        patterns=file_meta.get("pattern_result", "None"),
+                        imports=file_meta.get("risky_imports", "None"),
+                        risk_score=file_meta.get("risk_score", 0),
+                    )
+                    file_meta["ai_analysis"] = _ai_data
+                _results = {
+                    "heuristic": {
+                        "risk_score": file_meta.get("risk_score", 0),
+                        "entropy": file_meta.get("entropy", "0"),
+                        "heuristics": [file_meta.get("pattern_result", "None")],
+                        "suspicious_functions": [file_meta.get("signature_status", "None")],
+                        "risky_imports": [file_meta.get("risky_imports", "None")],
+                    },
+                    "virustotal": file_meta.get("virustotal", {}),
+                    "ai_analysis": _ai_data,
+                }
+                return render_template(
+                    "scan.html",
+                    file=file_meta,
+                    result=True,
+                    already_scanned=True,
+                    results=_results,
+                    scan_mode='multiple',
+                    ai_text=_extract_ai_text(_ai_data),
+                    ai_verdict=_extract_ai_verdict(_ai_data),
+                    ai_confidence=_extract_ai_confidence(_ai_data),
+                    css_version=int(time.time()),
+                )
             else:
                 offline_cache = {
                     "hash": file_hash, "entropy": file_meta.get("entropy", 0.0),

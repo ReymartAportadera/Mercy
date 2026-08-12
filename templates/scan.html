@@ -779,7 +779,9 @@
         {% endif %}
 
         {% set raw_iocs = adv.get('iocs') or file.get('iocs') or adv.get('ioc_extraction') %}
-        {% set pattern_iocs = (file.suspicious_functions if file.suspicious_functions is sequence else []) + (file.heuristics if file.heuristics is sequence else []) %}
+        {% set _sf = file.get('suspicious_functions') if file.get('suspicious_functions') is sequence else [] %}
+        {% set _hr = file.get('heuristics') if file.get('heuristics') is sequence else [] %}
+        {% set pattern_iocs = _sf + _hr %}
 
         {% if is_eicar_test %}
         <!-- IOC Extraction Card (EICAR Specific) -->
