@@ -825,10 +825,12 @@ def analyze_embedded_content(
     file_bytes: bytes, result: AdvancedHeuristicResult
 ) -> None:
 
+    PASSIVE_TEXT_EXTS = {".txt", ".md", ".json", ".html", ".css", ".xml", ".svg", ".rst"}
+    is_passive_text = result.claimed_extension in PASSIVE_TEXT_EXTS
+
     # ── Embedded PE (validated) ──────────────────────────────────────────────
-    # RULE 8: Skip raw byte scan inside Office XML containers — compressed
-    # XML and image streams routinely contain MZ-like byte sequences.
-    if not result.is_office_container:
+    # RULE 8: Skip raw byte scan inside Office XML containers & passive text formats.
+    if not result.is_office_container and not is_passive_text:
         mz_sig = b"\x4d\x5a"
         offset = 2
         while True:
@@ -859,8 +861,8 @@ def analyze_embedded_content(
             "internal binary streams do not imply executable content."
         )
 
-    # ── Embedded ZIP archives (skip Office containers) ───────────────────────
-    if not result.is_office_container:
+    # ── Embedded ZIP archives (skip Office containers & passive text) ────────
+    if not result.is_office_container and not is_passive_text:
         pk_sig = b"\x50\x4b\x03\x04"
         offset = 4
         while True:
