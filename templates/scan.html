@@ -782,9 +782,13 @@
         {% endif %}
 
         {% set raw_iocs = adv.get('iocs') or file.get('iocs') or adv.get('ioc_extraction') %}
-        {% set _sf = file.get('suspicious_functions') if file.get('suspicious_functions') is sequence else [] %}
-        {% set _hr = file.get('heuristics') if file.get('heuristics') is sequence else [] %}
-        {% set pattern_iocs = _sf + _hr %}
+        {%- set _sf = file.get('suspicious_functions') if file.get('suspicious_functions') is sequence else [] %}
+        {%- set _hr = file.get('heuristics') if file.get('heuristics') is sequence else [] %}
+        {%- set pattern_iocs = _sf + _hr %}
+
+        {#-- parse pattern_result string into list items if no other IOC source --#}
+        {%- set _pr = file.get('pattern_result') or '' %}
+        {%- set _pr_items = _pr.split(', ') if (_pr and _pr not in ['No suspicious patterns', 'None', '']) else [] %}
 
         {% if is_eicar_test %}
         <!-- IOC Extraction Card (EICAR Specific) -->
@@ -852,7 +856,7 @@
                 </ul>
             </div>
         </div>
-        {% elif pattern_iocs and pattern_iocs|length > 0 and (is_danger or is_warn) %}
+        {% elif pattern_iocs and pattern_iocs|length > 0 %}
         <!-- IOC Extraction Card (Pattern Findings Fallback) -->
         <div class="audit-card">
             <div class="audit-card-head">
@@ -868,6 +872,27 @@
                 </div>
                 <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
                     {% for item in pattern_iocs[:10] %}
+                    <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% elif _pr_items|length > 0 %}
+        <!-- IOC Extraction Card (Pattern Result String Fallback for legacy records) -->
+        <div class="audit-card">
+            <div class="audit-card-head">
+                <div class="audit-card-title">
+                    <i class="fa-solid fa-crosshairs" style="color:#60a5fa;"></i> IOC Extraction
+                </div>
+                <span class="pill-badge-yellow">{{ _pr_items|length }} INDICATORS</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">SUSPICIOUS PATTERNS</span>
+                    <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ _pr_items|length }}</span>
+                </div>
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                    {% for item in _pr_items[:10] %}
                     <li>{{ item }}</li>
                     {% endfor %}
                 </ul>
