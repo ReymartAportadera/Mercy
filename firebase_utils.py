@@ -144,3 +144,21 @@ def save_guest_scan(guest_id: str, scan_record: dict) -> None:
 def get_guest_scans(guest_id: str) -> list:
     """Disabled: Guest scans exist 100% in-memory/session only."""
     return []
+
+# ── Password Reset OTP Helpers ─────────────────────────────────────────────────
+
+def save_password_reset(token: str, record: dict) -> None:
+    """Persist a password-reset OTP record under password_resets/{token}."""
+    db.reference(f"password_resets/{token}").set(record)
+    logger.info("Saved password reset token %s", token)
+
+
+def get_password_reset(token: str) -> dict | None:
+    """Retrieve a password-reset OTP record by token."""
+    return db.reference(f"password_resets/{token}").get()
+
+
+def delete_password_reset(token: str) -> None:
+    """Delete a password-reset OTP record by token."""
+    db.reference(f"password_resets/{token}").delete()
+    logger.info("Deleted password reset token %s", token)

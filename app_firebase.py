@@ -12,7 +12,11 @@ import math
 import re
 import uuid
 from collections import OrderedDict
-from datetime import datetime, timezone
+import smtplib
+import secrets
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timezone, timedelta
 from threading import Semaphore
 
 from dotenv import load_dotenv
@@ -542,35 +546,149 @@ def login():
             return redirect(url_for("login"))
     return render_template("login.html")
 
+def _send_otp_email(to_email: str, otp: str) -> bool:
+    """Send a 6-digit OTP to the given email via Gmail SMTP.
+    Falls back to logging the OTP if MAIL_USER/MAIL_PASS are not set."""
+    mail_user = os.getenv("MAIL_USER")
+    mail_pass = os.getenv("MAIL_PASS")
+    if not mail_user or not mail_pass:
+        app.logger.warning("[OTP FALLBACK — no MAIL_USER/MAIL_PASS] OTP for %s: %s", to_email, otp)
+        return True  # treat as sent so dev flow is not blocked
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "TrustFile — Password Reset Code"
+        msg["From"]    = mail_user
+        msg["To"]      = to_email
+        html_body = f"""
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;
+                    padding:32px;background:#0f1117;border-radius:12px;">
+            <h2 style="color:#ff1e1e;margin:0 0 4px;letter-spacing:2px;">TRUST<span style='color:#fff'>FILE</span></h2>
+            <p style="color:#888;margin:0 0 28px;font-size:12px;letter-spacing:3px;">SECURE FILE SCANNER</p>
+            <p style="color:#e0e0e0;margin:0 0 16px;font-size:15px;">Your password reset code is:</p>
+            <div style="background:#1a1d26;border:1px solid rgba(255,30,30,0.35);
+                        border-radius:10px;padding:28px;text-align:center;margin:0 0 24px;">
+                <span style="font-size:40px;font-weight:800;letter-spacing:14px;
+                             color:#ff1e1e;font-family:monospace;">{otp}</span>
+            </div>
+            <p style="color:#666;font-size:12px;">
+                This code expires in <strong style='color:#aaa'>10 minutes</strong>.<br>
+                If you did not request a password reset, you can safely ignore this email.
+            </p>
+        </div>
+        """
+        msg.attach(MIMEText(html_body, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(mail_user, mail_pass)
+            server.sendmail(mail_user, to_email, msg.as_string())
+        return True
+    except Exception as exc:
+        app.logger.error("Failed to send OTP email to %s: %s", to_email, exc)
+        return False
+
+
 @app.route("/forgot_password", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("10 per minute")
 def forgot_password():
+    step  = request.args.get("step", "1")
+    token = request.args.get("token", "")
+
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        new_password = request.form.get("new_password", "").strip()
-        confirm_password = request.form.get("confirm_password", "").strip()
+        form_step = request.form.get("step", "1")
 
-        if not email or not new_password or not confirm_password:
-            flash("Please fill in all required fields.")
-            return redirect(url_for("forgot_password"))
+        # ── STEP 1: Check email exists → send OTP ───────────────────────────
+        if form_step == "1":
+            email = request.form.get("email", "").strip().lower()
+            if not email:
+                flash("Please enter your email address.")
+                return redirect(url_for("forgot_password"))
 
-        if new_password != confirm_password:
-            flash("Passwords do not match.")
-            return redirect(url_for("forgot_password"))
+            user_rec = fb.get_user_by_email(email)
+            # Always show the same message (no user enumeration)
+            if not user_rec:
+                flash("If that email is registered, a reset code will be sent shortly.")
+                return redirect(url_for("forgot_password", step="2", token="invalid"))
 
-        user_rec = fb.get_user_by_email(email)
-        if not user_rec:
-            flash("No account registered with that email address.")
-            return redirect(url_for("forgot_password"))
+            otp         = str(secrets.randbelow(900000) + 100000)   # 6-digit
+            reset_token = secrets.token_urlsafe(32)
+            expires_at  = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
 
-        password_hash = generate_password_hash(new_password, method="pbkdf2:sha256")
-        user_rec["password"] = password_hash
-        fb.save_user(user_rec)
+            fb.save_password_reset(reset_token, {
+                "email":      email,
+                "otp_hash":   generate_password_hash(otp, method="pbkdf2:sha256"),
+                "expires_at": expires_at,
+                "verified":   False,
+            })
+            _send_otp_email(email, otp)
 
-        flash("Your password has been successfully reset! Please log in.")
-        return redirect(url_for("login"))
+            flash("A 6-digit code was sent to your email. Check your inbox (and spam folder).")
+            return redirect(url_for("forgot_password", step="2", token=reset_token))
 
-    return render_template("forgot_password.html")
+        # ── STEP 2: Verify OTP ───────────────────────────────────────────────
+        elif form_step == "2":
+            token     = request.form.get("token", "")
+            otp_input = request.form.get("otp", "").strip()
+
+            rec = fb.get_password_reset(token) if token != "invalid" else None
+            if not rec:
+                flash("Invalid or expired reset session. Please start again.")
+                return redirect(url_for("forgot_password"))
+
+            expires_at = datetime.fromisoformat(rec["expires_at"])
+            if datetime.now(timezone.utc) > expires_at:
+                fb.delete_password_reset(token)
+                flash("Your reset code has expired. Please try again.")
+                return redirect(url_for("forgot_password"))
+
+            if not check_password_hash(rec["otp_hash"], otp_input):
+                flash("Incorrect code. Please try again.")
+                return redirect(url_for("forgot_password", step="2", token=token))
+
+            rec["verified"] = True
+            fb.save_password_reset(token, rec)
+            return redirect(url_for("forgot_password", step="3", token=token))
+
+        # ── STEP 3: Set new password ─────────────────────────────────────────
+        elif form_step == "3":
+            token            = request.form.get("token", "")
+            new_password     = request.form.get("new_password", "").strip()
+            confirm_password = request.form.get("confirm_password", "").strip()
+
+            rec = fb.get_password_reset(token)
+            if not rec or not rec.get("verified"):
+                flash("Invalid or expired reset session. Please start again.")
+                return redirect(url_for("forgot_password"))
+
+            expires_at = datetime.fromisoformat(rec["expires_at"])
+            if datetime.now(timezone.utc) > expires_at:
+                fb.delete_password_reset(token)
+                flash("Your reset session has expired. Please try again.")
+                return redirect(url_for("forgot_password"))
+
+            if not new_password or not confirm_password:
+                flash("Please fill in all fields.")
+                return redirect(url_for("forgot_password", step="3", token=token))
+
+            if len(new_password) < 8:
+                flash("Password must be at least 8 characters.")
+                return redirect(url_for("forgot_password", step="3", token=token))
+
+            if new_password != confirm_password:
+                flash("Passwords do not match.")
+                return redirect(url_for("forgot_password", step="3", token=token))
+
+            user_rec = fb.get_user_by_email(rec["email"])
+            if not user_rec:
+                flash("Account not found. Please try again.")
+                return redirect(url_for("forgot_password"))
+
+            user_rec["password"] = generate_password_hash(new_password, method="pbkdf2:sha256")
+            fb.save_user(user_rec)
+            fb.delete_password_reset(token)
+
+            flash("Your password has been successfully reset! Please log in.")
+            return redirect(url_for("login"))
+
+    return render_template("forgot_password.html", step=step, token=token)
 
 @app.route("/logout")
 @login_required
