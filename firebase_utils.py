@@ -114,9 +114,12 @@ def get_user_by_email(email: str) -> dict | None:
     users = db.reference("users").get() or {}
     if not isinstance(users, dict):
         return None
+    target_email = (email or "").strip().lower()
     for u in users.values():
-        if isinstance(u, dict) and u.get("email") == email:
-            return u
+        if isinstance(u, dict):
+            u_email = (u.get("email") or "").strip().lower()
+            if u_email and u_email == target_email:
+                return u
     return None
 
 

@@ -667,9 +667,16 @@ def forgot_password():
                 "expires_at": expires_at,
                 "verified":   False,
             })
-            _send_otp_email(email, otp)
+            sent = _send_otp_email(email, otp)
+            mail_user = os.getenv("MAIL_USER")
+            mail_pass = os.getenv("MAIL_PASS")
+            if not mail_user or not mail_pass:
+                flash(f"Reset code generated! (Dev Notice: Gmail SMTP credentials MAIL_USER/MAIL_PASS are not configured in .env. Your 6-digit code is: {otp})", "info")
+            elif sent:
+                flash("A 6-digit code was sent to your email. Check your inbox (and spam folder).", "success")
+            else:
+                flash("Failed to send reset email via SMTP. Please check server mail settings.", "warning")
 
-            flash("A 6-digit code was sent to your email. Check your inbox (and spam folder).")
             return redirect(url_for("forgot_password", step="2", token=reset_token))
 
         # ── STEP 2: Verify OTP ───────────────────────────────────────────────
