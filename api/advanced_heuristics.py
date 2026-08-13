@@ -172,7 +172,13 @@ IOC_PATTERNS: dict[str, re.Pattern] = {
         r"cmd\.exe\s*/[cCkK]|command\.com|%COMSPEC%", re.I
     ),
     "Registry Paths":   re.compile(
-        r"HKEY_[A-Z_]+\\[^\s\"']{5,}|HKLM\\|HKCU\\|HKCR\\", re.I
+        r"HKEY_[A-Z_]+\\[^\s\"']{5,}|HKLM\\|HKCU\\|HKCR\\|\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b", re.I
+    ),
+    "Windows Persistence Commands": re.compile(
+        r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\s*(/create|/run|/change)?\b|\bNew-ScheduledTask\b|\bRegister-ScheduledTask\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b", re.I
+    ),
+    "Living-off-the-Land Commands": re.compile(
+        r"\bcertutil(\.exe)?\s+.*-(urlcache|decode)\b|\bwmic(\.exe)?\s+.*(process\s+call\s+create|process)\b|\bbitsadmin(\.exe)?\s+.*(/transfer|/create|/addfile)\b|\bnet\s+(user|localgroup)\b", re.I
     ),
     "Suspicious Keywords": re.compile(
         r"\b(backdoor|rootkit|keylogger|ransomware|cryptominer|"
@@ -490,6 +496,8 @@ SCORE_WEIGHTS: dict[str, int] = {
     "appended_payload":            50,
 
     # ── CRITICAL (70–100) ────────────────────────────────────────────────────
+    "obfuscated_loader_exec_pattern": 95,   # exec/eval + base64/encoding routine
+    "windows_persistence_lotl":    85,   # reg add / schtasks / HKLM Run persistence / LotL commands
     "ransomware_api":              72,
     "validated_embedded_pe":       68,
     "polyglot_file":               75,
@@ -506,8 +514,8 @@ SCORE_WEIGHTS: dict[str, int] = {
 
 # Indicators that count toward the CRITICAL gate (require ≥2 for Malicious verdict)
 HIGH_CONFIDENCE_INDICATORS: set[str] = {
-    "validated_embedded_pe", "polyglot_file", "appended_payload",
-    "powershell_encoded", "amsi_bypass", "process_injection_api",
+    "obfuscated_loader_exec_pattern", "windows_persistence_lotl", "validated_embedded_pe", "polyglot_file",
+    "appended_payload", "powershell_encoded", "amsi_bypass", "process_injection_api",
     "ransomware_api", "credential_api", "uac_bypass",
     "vba_auto_exec", "vba_shell", "vba_download", "vba_powershell", "vba_dde",
     "renamed_executable", "fake_extension", "av_test_signature",
@@ -719,16 +727,41 @@ def analyze_file_type(
     result.claimed_extension = ext
 
     detected = _detect_magic(file_bytes)
-    result.detected_type = detected or "Unknown / Text"
+    if detected:
+        result.detected_type = detected
+    else:
+        text_ext_map = {
+            ".txt":  "Plain Text Document (.txt)",
+            ".py":   "Python Script (.py)",
+            ".js":   "JavaScript Source File (.js)",
+            ".ps1":  "PowerShell Script (.ps1)",
+            ".bat":  "Windows Batch Script (.bat)",
+            ".cmd":  "Windows Command Script (.cmd)",
+            ".vbs":  "VBScript (.vbs)",
+            ".sh":   "Shell Script (.sh)",
+            ".json": "JSON Data Document (.json)",
+            ".html": "HTML Document (.html)",
+            ".htm":  "HTML Document (.htm)",
+            ".css":  "CSS Stylesheet (.css)",
+            ".xml":  "XML Document (.xml)",
+            ".md":   "Markdown Document (.md)",
+            ".csv":  "CSV Spreadsheet (.csv)",
+        }
+        result.detected_type = text_ext_map.get(ext, "Text / Code Artifact" if ext else "Standard Data Stream")
 
     # ── RULE 2: Identify Office XML containers immediately ───────────────────
     if ext in OFFICE_XML_EXTENSIONS and file_bytes[:4] == b"\x50\x4b\x03\x04":
         result.is_office_container = True
         _classify_office_xml(file_bytes, ext, result)
-
-    if ext in OFFICE_OLE_EXTENSIONS and file_bytes[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+    elif ext in OFFICE_OLE_EXTENSIONS and file_bytes[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
         result.is_ole_office = True
         result.container_type = "OLE Compound Document"
+    else:
+        result.is_office_container = False
+        result.office_xml_validated = False
+        result.is_ole_office = False
+        if not result.container_type:
+            result.container_type = "Standard File Stream"
 
     # ── RULE 9: Clean magic match credit ────────────────────────────────────
     expected_sigs = EXTENSION_TO_EXPECTED_MAGIC.get(ext, [])
@@ -970,12 +1003,67 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
     # ── Text vs Executable Intent Classification ─────────────────────────────
     PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
     if result.claimed_extension in PASSIVE_MARKUP_EXTS:
-        code_syntax = re.findall(r"\b(def|function|import|var|const|let|powershell|cmd\.exe|curl|wget|subprocess|os\.system)\b", text, re.I)
-        if not code_syntax:
-            result.intent_classification = "Text / Documentation Artifact (non-executable intent)"
-            result.fp_notes.append("Intent Classifier: Document/text file contains no executable code structure or shell execution commands (RULE 11).")
-        else:
+        # Expanded keyword list: includes dynamic execution AND encoding/obfuscation markers
+        code_syntax = re.findall(
+            r"\b(eval|exec|compile|base64|b64decode|b64encode|decode|encode"
+            r"|def |function |import |var |const |let "
+            r"|powershell|cmd\.exe|curl|wget|subprocess|os\.system)\b",
+            text, re.I
+        )
+        if code_syntax:
             result.intent_classification = "Script / Loader Artifact"
+        else:
+            result.intent_classification = "Text / Documentation Artifact (non-executable intent)"
+            result.fp_notes.append(
+                "Intent Classifier: Document/text file contains no executable code structure "
+                "or shell execution commands (RULE 11)."
+            )
+
+    # ── Obfuscated Loader / Execution Routine Detection (exec/eval + base64) ─
+    has_exec_func = bool(re.search(
+        r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
+        text, re.I
+    ))
+    has_obf_func = bool(re.search(
+        r"\b(base64|b64decode|b64encode|codecs|zlib|decompress|uncompress)\b|-[Ee][Nn][Cc]|\b(chr|ord)\s*\(|\\x[0-9a-fA-F]{2}",
+        text, re.I
+    )) or (layers > 0)
+
+    if has_exec_func and has_obf_func:
+        if "Obfuscated Execution Routine (exec/eval + base64)" not in result.detections:
+            result.detections.append("Obfuscated Execution Routine (exec/eval + base64)")
+        if "obfuscated_loader_exec_pattern" not in result._hc_indicators:
+            result._hc_indicators.append("obfuscated_loader_exec_pattern")
+        if "obfuscated_loader_exec_pattern" not in result._co_indicators:
+            result._co_indicators.append("obfuscated_loader_exec_pattern")
+        if "Obfuscated Loader Pattern (exec/eval + base64)" not in result.script_findings:
+            result.script_findings.append("Obfuscated Loader Pattern (exec/eval + base64)")
+
+    # ── Windows Persistence & LotL Detection (reg add / schtasks / HKLM Run / certutil / wmic) ─
+    has_persistence_lotl = bool(re.search(
+        r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b|\bcertutil.*-(urlcache|decode)|\bwmic.*process|\bbitsadmin|\bnet\s+(user|localgroup)",
+        text, re.I
+    ))
+    if has_persistence_lotl:
+        if "Windows Persistence Mechanism (reg add / schtasks / HKLM Run)" not in result.detections:
+            result.detections.append("Windows Persistence Mechanism (reg add / schtasks / HKLM Run)")
+        if "windows_persistence_lotl" not in result._hc_indicators:
+            result._hc_indicators.append("windows_persistence_lotl")
+        if "windows_persistence_lotl" not in result._co_indicators:
+            result._co_indicators.append("windows_persistence_lotl")
+        if "Windows Persistence Mechanism: Registry Run Key modification (reg add) and/or Scheduled Task creation (schtasks)" not in result.script_findings:
+            result.script_findings.append("Windows Persistence Mechanism: Registry Run Key modification (reg add) and/or Scheduled Task creation (schtasks)")
+
+    # ── Line-by-Line Evidence Extraction for IOC Table ───────────────────────
+    evidence_items = []
+    for idx, line in enumerate(text.splitlines(), 1):
+        line_clean = line.strip()
+        if not line_clean or len(line_clean) > 400:
+            continue
+        if re.search(r"\b(reg(\.exe)?\s+add|schtasks|HKLM\\|HKCU\\|HKEY_LOCAL_MACHINE\\|HKEY_CURRENT_USER\\|certutil|wmic|bitsadmin|net\s+user|net\s+localgroup|eval|exec|compile|base64|b64decode|subprocess|os\.system)\b", line_clean, re.I):
+            evidence_items.append(f"Line {idx}: {line_clean[:120]}")
+    if evidence_items:
+        iocs["Code Execution / Persistence Evidence"] = evidence_items[:15]
 
     # RULE 3 — Contextual PowerShell download (3-part gate)
     result.ps_download_contextual = _is_contextual_ps_download(text)
@@ -1046,10 +1134,24 @@ def analyze_entropy(
         return
 
     # ── Determine file-type-appropriate threshold ─────────────────────────────
-    if ext in {".py", ".js", ".vbs", ".ps1", ".bat", ".txt",
-               ".html", ".css", ".xml", ".csv"}:
-        high_thresh = 5.8
-    elif ext in {".exe", ".dll", ".bin", ".dat"}:
+    text_formats = {".py", ".js", ".vbs", ".ps1", ".bat", ".txt", ".html", ".css", ".xml", ".csv", ".md", ".rst"}
+    if ext in text_formats:
+        if result.entropy > 5.0:
+            result.entropy_context = (
+                f"{result.entropy} — Elevated entropy for text format (>5.0). "
+                f"Potential obfuscation/encoding concern."
+            )
+            result.detections.append(
+                f"Elevated text entropy ({result.entropy} > 5.0) — potential obfuscated/encoded content concern"
+            )
+        else:
+            result.entropy_context = (
+                f"{result.entropy} — Within normal range for {ext or '.txt'}. No entropy concern."
+            )
+        result.entropy_explanation = result.entropy_context
+        return
+
+    if ext in {".exe", ".dll", ".bin", ".dat"}:
         high_thresh = 7.0
     else:
         high_thresh = 6.5
@@ -2038,12 +2140,19 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
 
     # ── Req. 7 — Confidence gate: Malicious requires ≥2 HC indicators ────────
     # EXCEPTION: certain single indicators are inherently definitive:
-    #   • av_test_signature (EICAR)   — industry-standard malware marker
-    #   • polyglot_file               — structurally impossible to be innocent
-    #   • appended_payload            — data after EOF is never accidental
+    #   • av_test_signature (EICAR)           — industry-standard malware marker
+    #   • polyglot_file                       — structurally impossible to be innocent
+    #   • appended_payload                    — data after EOF is never accidental
+    #   • obfuscated_loader_exec_pattern      — exec/eval + base64/encoding loader routine
     # These bypass the ≥2 gate and always reach Malicious.
-    SINGLE_INDICATOR_CRITICAL = {"av_test_signature", "polyglot_file", "appended_payload"}
+    SINGLE_INDICATOR_CRITICAL = {"av_test_signature", "polyglot_file", "appended_payload", "obfuscated_loader_exec_pattern", "windows_persistence_lotl"}
     is_single_critical = bool(set(result._hc_indicators) & SINGLE_INDICATOR_CRITICAL)
+
+    if "obfuscated_loader_exec_pattern" in result._hc_indicators:
+        score = max(score, 95)
+
+    if "windows_persistence_lotl" in result._hc_indicators:
+        score = max(score, 85)
 
     raw_score = min(score, 100)
     if raw_score >= 75 and hc_count < 2 and not is_single_critical:
@@ -2122,8 +2231,19 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
 
 
 def _build_risk_explanation(r: AdvancedHeuristicResult) -> str:
-    """Req. 8 — Plain-English explanation using detection_summary categories."""
+    """Req. 8 — Plain-English explanation strictly based on detected evidence."""
     parts: list[str] = []
+
+    # Lead with critical detections if present
+    critical_hits = [d for d in r.detections if any(k in d for k in ["Obfuscated Execution", "Code Execution", "EICAR", "Executable payload", "PowerShell download", "Polyglot", "Windows Persistence"])]
+    if any("Windows Persistence" in d for d in r.detections):
+        parts.append(
+            "⚠️ CRITICAL: Windows persistence mechanisms detected. Includes Registry Run Key modification (reg add HKLM\\...\\Run) and Scheduled Task creation (schtasks). "
+            "These are standard techniques used by malware to maintain access after reboot. Even if the file claims to be 'patterns only,' the commands are live and dangerous."
+        )
+    elif critical_hits:
+        for hit in critical_hits[:2]:
+            parts.append(f"[CRITICAL WARNING] {hit}.")
 
     if r.is_office_container and r.office_xml_validated:
         parts.append(
@@ -2139,7 +2259,7 @@ def _build_risk_explanation(r: AdvancedHeuristicResult) -> str:
     for key in ("av_signature", "embedded_exe", "vba_execution", "ps_download",
                 "script_findings", "packing", "external_urls",
                 "external_relationships", "vba_present"):
-        if key in ds:
+        if key in ds and not any(ds[key] in p for p in parts):
             parts.append(ds[key] + ".")
 
     # Safe / informational observations follow
@@ -2149,9 +2269,9 @@ def _build_risk_explanation(r: AdvancedHeuristicResult) -> str:
         parts.append(ds["office_structure"] + ".")
     if "macros" in ds and r.threat_level in ("Benign", "Low Risk"):
         parts.append(ds["macros"] + ".")
-    if "executable_payload" in ds and r.threat_level in ("Benign", "Low Risk"):
+    if "executable_payload" in ds and r.threat_level in ("Benign", "Low Risk") and not critical_hits:
         parts.append(ds["executable_payload"] + ".")
-    if "scripts" in ds and r.threat_level in ("Benign", "Low Risk"):
+    if "scripts" in ds and r.threat_level in ("Benign", "Low Risk") and not critical_hits:
         parts.append(ds["scripts"] + ".")
     if "informational_hyperlinks" in ds:
         parts.append(ds["informational_hyperlinks"] + ".")

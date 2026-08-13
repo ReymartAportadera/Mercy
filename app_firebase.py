@@ -144,13 +144,15 @@ def _in_memory_heuristics(text: str) -> list:
         findings.append("Obfuscated Execution")
     if re.search(r"socket\.socket.*?connect.*?subprocess\.(Popen|call|run)", clean_text, re.I | re.DOTALL):
         findings.append("Reverse Shell")
-    if re.search(r"schtasks.*?/create|HKEY_LOCAL_MACHINE\\.*?\\Run", clean_text, re.I):
+    if re.search(r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b", text, re.I):
         findings.append("Persistence Mechanism")
     return findings
 
 def determine_threat_level(risk_score: int, detection_details: list) -> tuple[str, str]:
     joined = " ".join(detection_details).lower()
-    if risk_score >= 70 or "reverse shell" in joined:
+    if risk_score >= 80 or "persistence" in joined or "reg add" in joined or "schtasks" in joined:
+        level = "Critical"
+    elif risk_score >= 70 or "reverse shell" in joined:
         level = "Critical"
     elif risk_score >= 50 or "data exfiltration" in joined:
         level = "High"
@@ -164,6 +166,13 @@ def determine_threat_level(risk_score: int, detection_details: list) -> tuple[st
     return level, status
 
 def generate_explanation(file_dict: dict) -> str:
+    all_det = " ".join(file_dict.get("all_detections", []) + [file_dict.get("explanation", ""), file_dict.get("signature_status", ""), file_dict.get("pattern_result", "")]).lower()
+    if "persistence" in all_det or "reg add" in all_det or "schtasks" in all_det or "hklm" in all_det:
+        return (
+            "⚠️ CRITICAL: Windows persistence mechanisms detected. Includes Registry Run Key modification (reg add HKLM\\...\\Run) and Scheduled Task creation (schtasks). "
+            "These are standard techniques used by malware to maintain access after reboot. Even if the file claims to be 'patterns only,' the commands are live and dangerous."
+        )
+
     reasons = []
     if file_dict.get("pattern_result") and file_dict.get("pattern_result") != "Clean":
         reasons.append(f"it exhibits {file_dict.get('pattern_result').lower()} behavior")
@@ -254,9 +263,9 @@ def _run_full_heuristic_scan(
     heuristics: list = []
     suspicious: list = []
     risky_imports: list = []
+    text       = file_bytes.decode("utf-8", errors="ignore")
 
     if not is_binary:
-        text = file_bytes.decode("utf-8", errors="ignore")
         heuristics = _in_memory_heuristics(text)
         text_lower = text.lower()
 
@@ -284,12 +293,24 @@ def _run_full_heuristic_scan(
     if not norm_ext.startswith("."):
         norm_ext = "." + norm_ext
 
-    # Layer 2 Context Shield: For passive markup/data formats, suppress false-positive patterns.
+    # Layer 2 Context Shield: For passive markup/data formats, suppress common false-positive patterns.
     # HTML/CSS naturally contain: open/write DOM ops, http:// CDN links, base64 data-URIs.
+    # NOTE: "Code Execution" (eval/exec) and "Encoding" (base64) are NOT suppressed here
+    # because .txt files can intentionally contain script obfuscation patterns that are
+    # genuinely suspicious (e.g. eval(base64_decode(...)) in a test or malware dropper).
+    has_persistence_lotl = bool(re.search(
+        r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b|\bcertutil.*-(urlcache|decode)|\bwmic.*process|\bbitsadmin|\bnet\s+(user|localgroup)",
+        text, re.I
+    ))
+    has_reg_or_schtasks = bool(re.search(
+        r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b",
+        text, re.I
+    ))
+
     PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
     is_passive_markup = norm_ext in PASSIVE_MARKUP_EXTS
-    if is_passive_markup:
-        suppress_labels = {"file access", "network", "encoding", "script engine", "code execution", "system command", "process spawn", "batch abuse"}
+    if is_passive_markup and not has_persistence_lotl:
+        suppress_labels = {"file access", "network", "script engine", "system command", "process spawn", "batch abuse"}
         suspicious = [s for s in suspicious if not any(lbl in s.lower() for lbl in suppress_labels)]
 
     threshold  = get_file_type_entropy_threshold("x" + ext)
@@ -331,14 +352,42 @@ def _run_full_heuristic_scan(
     total = len(heuristics) + len(suspicious) + len(risky_imports)
     risk_score += 15 if total >= 5 else (8 if total >= 3 else (3 if total >= 1 else 0))
     risk_score  = min(risk_score, 100)
-    # Only apply minimum-floor rules for non-markup files.
-    # Passive markup (HTML/CSS/TXT/JSON/XML) should NOT be artificially elevated
-    # by low-confidence false-positive patterns like Network/Encoding/File Access.
+
     if not is_passive_markup:
         if suspicious and risk_score < 30:
             risk_score = 30
         if risky_imports and risk_score < 20:
             risk_score = 20
+
+    has_exec_func = bool(re.search(
+        r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
+        text, re.I
+    ))
+    has_obf_func = bool(re.search(
+        r"\b(base64|b64decode|b64encode|codecs|zlib|decompress|uncompress)\b|-[Ee][Nn][Cc]|\b(chr|ord)\s*\(|\\x[0-9a-fA-F]{2}",
+        text, re.I
+    ))
+
+    if has_reg_or_schtasks:
+        if "Windows Persistence Mechanism (reg add / schtasks / HKLM Run)" not in suspicious:
+            suspicious.append("Windows Persistence Mechanism (reg add / schtasks / HKLM Run)")
+        if "Windows Persistence Mechanism: reg add or schtasks command" not in heuristics:
+            heuristics.append("Windows Persistence Mechanism: reg add or schtasks command")
+        risk_score = max(risk_score, 85)
+    elif has_persistence_lotl:
+        if "Living-off-the-Land Command Execution (certutil/wmic/bitsadmin/net user)" not in suspicious:
+            suspicious.append("Living-off-the-Land Command Execution (certutil/wmic/bitsadmin/net user)")
+        risk_score = max(risk_score, 70)
+    elif has_exec_func and has_obf_func:
+        if "Obfuscated Execution Routine (exec/eval + base64)" not in suspicious:
+            suspicious.append("Obfuscated Execution Routine (exec/eval + base64)")
+        if "Obfuscated Loader Pattern: eval/exec combined with base64/encoding" not in heuristics:
+            heuristics.append("Obfuscated Loader Pattern: eval/exec combined with base64/encoding")
+        risk_score = max(risk_score, 95)
+    elif is_passive_markup:
+        has_code_exec = any("code execution" in s.lower() or "encoding" in s.lower() for s in suspicious)
+        if has_code_exec and risk_score < 15:
+            risk_score = 15
 
     # ── Advanced heuristics (always, on bytes) ────────────────────────────────
     adv: dict = {}
@@ -795,6 +844,15 @@ def dashboard():
 @csrf.exempt
 @login_required
 def upload_single_file_api():
+    try:
+        return _upload_single_file_impl()
+    except Exception as exc:
+        import traceback
+        logger.error("upload_single_file_api unhandled crash: %s\n%s", exc, traceback.format_exc())
+        return jsonify({"error": f"Server error during upload: {exc}"}), 500
+
+
+def _upload_single_file_impl():
     f = request.files.get("file")
     if not f or not f.filename:
         return jsonify({"error": "No file provided"}), 400
@@ -832,11 +890,14 @@ def upload_single_file_api():
         filename = uuid.uuid4().hex + ext
         path = os.path.abspath(os.path.join(user_folder, filename))
 
-    # Duplicate check: exact hash AND path/folder
+    # Duplicate check: hash-only match (SHA-256 is a reliable file fingerprint)
     existing_files = fb.list_user_files(current_user.uid)
     for existing in existing_files:
-        if existing.get("hash") == file_hash and (existing.get("folder_name") == folder_name or existing.get("filepath") == path):
-            return jsonify({"duplicate": True, "filename": filename, "file_id": existing.get("id")}), 200
+        if existing.get("hash") == file_hash:
+            existing_id = existing.get("id")
+            if existing_id:
+                return jsonify({"duplicate": True, "filename": filename, "file_id": existing_id}), 200
+            # Record found but id is missing — treat as new upload and proceed
 
     try:
         with open(path, "wb") as out:
@@ -1191,8 +1252,15 @@ def uploadfiles():
 
             file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-            # Skip duplicate file if already uploaded
-            if file_hash in existing_hashes or filename in existing_names:
+            # Duplicate check: hash-only match (most reliable fingerprint)
+            if file_hash in existing_hashes:
+                # Redirect to the existing scan result instead of dead-end message
+                existing_match = next(
+                    (ef for ef in existing_files if ef.get("hash") == file_hash and ef.get("id")),
+                    None
+                )
+                if existing_match and not last_file_id:
+                    last_file_id = existing_match.get("id")
                 duplicate_count += 1
                 continue
 
@@ -1236,8 +1304,12 @@ def uploadfiles():
             existing_names.add(filename)
 
         if saved_count == 0:
-            if duplicate_count > 0:
-                flash("Selected files were already scanned or duplicates.", "warning")
+            if duplicate_count > 0 and last_file_id:
+                # Redirect directly to the existing scan result
+                flash("This file was already scanned. Showing existing results.", "info")
+                return redirect(url_for("scan_page", file_id=last_file_id))
+            elif duplicate_count > 0:
+                flash("Selected files were already uploaded. Please check your dashboard.", "warning")
             else:
                 flash("No valid files could be processed.", "warning")
             return redirect(url_for("dashboard"))

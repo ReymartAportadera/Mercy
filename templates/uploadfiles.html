@@ -615,6 +615,7 @@ let totalQueued = 0;
 let totalDone = 0;
 let totalDupes = 0;
 let totalSkipped = 0;
+let totalServerErrors = 0;
 let scannedFileIds = [];       // file_ids from successful scans
 let scannedFileNames = {};     // file_id -> filename map
 
@@ -743,7 +744,7 @@ function startScanQueue() {
 
     // Build queue entries
     scanQueue = [];
-    totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0;
+    totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0; totalServerErrors = 0;
     scannedFileIds = []; scannedFileNames = {};
 
     for (let i = 0; i < selectedFiles.length; i++) {
@@ -1005,10 +1006,11 @@ async function processNextInQueue() {
             }
         } else {
             const errData = await resp.json().catch(() => ({}));
-            const msg = errData.error || errData.reason || ('HTTP ' + resp.status + ' upload error');
+            const msg = errData.error || errData.reason || ('HTTP ' + resp.status + ' error');
             console.error('[TrustFile] Upload failed:', nextItem.name, msg);
-            totalSkipped++;
+            totalServerErrors++;
             nextItem.status = 'done';
+            nextItem.errorMsg = msg;
         }
     } catch (err) {
         console.error('Error uploading', nextItem.name, err);
@@ -1044,9 +1046,10 @@ function showScanDone() {
         ? totalQueued + ' file(s) scanned — view results below!'
         : 'Scan queue complete.';
     let sub = '';
-    if (totalDupes > 0) sub += totalDupes + ' duplicate(s) skipped. ';
-    if (totalSkipped > 0) sub += totalSkipped + ' file(s) skipped (exceeded Vercel 4.5 MB payload limit). ';
-    if (totalQueued === 0) sub += 'All selected files were already scanned or exceeded file size limits.';
+    if (totalDupes > 0) sub += totalDupes + ' duplicate(s) redirected to existing results. ';
+    if (totalSkipped > 0) sub += totalSkipped + ' file(s) skipped (exceeded 4.5 MB upload limit). ';
+    if (totalServerErrors > 0) sub += totalServerErrors + ' file(s) failed to upload (server error — check file format or try again). ';
+    if (totalQueued === 0 && totalServerErrors === 0) sub += 'All selected files were already scanned or exceeded file size limits.';
 
     document.getElementById('scanDoneTitle').textContent = title;
     document.getElementById('scanDoneSub').textContent = sub;
@@ -1097,7 +1100,7 @@ function showScanDone() {
 function resetToUpload() {
     scanQueue = [];
     isScanning = false;
-    totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0;
+    totalQueued = 0; totalDone = 0; totalDupes = 0; totalSkipped = 0; totalServerErrors = 0;
     clearInterval(scanStatInterval);
 
     document.getElementById('fileInput').value = '';

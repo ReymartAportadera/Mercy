@@ -46,17 +46,17 @@ def analyze_file_ai(entropy, patterns, imports, risk_score):
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
             
+            verdict_label = "Critical Threat" if risk_val >= 80 else "High Risk" if risk_val >= 55 else "Suspicious" if risk_val >= 35 else "Low Risk" if risk_val >= 16 else "Clean"
             prompt = (
-                f"Analyze this file for potential malware threats based on static analysis metadata:\n\n"
-                f"Metadata:\n"
-                f"- File Entropy: {ent_val:.2f}/8.0 (measure of randomness; packed/encrypted files usually have high entropy > 7.2)\n"
-                f"- Detected Suspicious Patterns: {pat_val}\n"
-                f"- Risky/Dangerous Imports: {imp_val}\n"
-                f"- Heuristic Risk Score: {risk_val}/100\n\n"
-                f"Please provide a concise 3-4 sentence security assessment. Specify the overall threat verdict "
-                f"(Clean, Low Risk, Medium Risk, High Risk, or Critical Risk), key findings (e.g. suspicious behavior, "
-                f"obfuscated entropy, dangerous imports), likely malware family classification if suspicious, and a final recommendation. "
-                f"Keep the response compact, highly professional, and technical."
+                f"You are a Senior Security Analyst synthesizing static malware engine analysis.\n\n"
+                f"DETERMINISTIC HEURISTIC ENGINE RESULTS:\n"
+                f"- Risk Score: {risk_val}/100\n"
+                f"- Engine Verdict: {verdict_label}\n"
+                f"- File Entropy: {ent_val:.2f}/8.0\n"
+                f"- Detected Patterns: {pat_val}\n"
+                f"- Risky Imports / APIs: {imp_val}\n\n"
+                f"STRICT INSTRUCTION: You must summarize the deterministic findings without changing, lowering, or contradicting the risk score ({risk_val}/100) or verdict ({verdict_label}). "
+                f"Provide a 3-4 sentence professional security assessment highlighting the primary threat indicators (e.g. obfuscated execution routines, dynamic code evaluation, dangerous imports) and recommended mitigation."
             )
 
             payload = {
@@ -74,11 +74,10 @@ def analyze_file_ai(entropy, patterns, imports, risk_score):
                     text_content = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     if text_content.strip():
                         txt = text_content.strip()
-                        verdict = "Critical Risk" if risk_val >= 70 else "High Risk" if risk_val >= 50 else "Medium Risk" if risk_val >= 30 else "Low Risk" if risk_val >= 10 else "Clean"
                         return {
-                            "verdict": verdict,
-                            "label": verdict,
-                            "confidence": round(min(0.65 + (risk_val / 300.0), 0.98), 2),
+                            "verdict": verdict_label,
+                            "label": verdict_label,
+                            "confidence": round(min(0.70 + (risk_val / 300.0), 0.99), 2),
                             "reason": txt,
                             "explanation": txt,
                             "text": txt
@@ -106,12 +105,16 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
         has_real_indicators = (
             any(k in patterns for k in ["code execution", "eval", "exec", "system command", "process spawn",
                                          "network", "exfiltration", "reverse shell", "persistence", "obfuscat",
-                                         "base64", "batch abuse", "taskkill"])
+                                         "base64", "batch abuse", "taskkill", "reg add", "schtasks"])
             or any(k in imports for k in ["subprocess", "socket", "ctypes", "winreg"])
         )
 
+        has_persistence = any(k in patterns for k in ["persistence", "reg add", "schtasks", "hklm", "hkcu"])
+        if has_persistence:
+            risk_score = max(risk_score, 85)
+
         # Cap risk label to LOW/MEDIUM if no real behavioral indicators found
-        effective_risk = risk_score if has_real_indicators else min(risk_score, 29)
+        effective_risk = risk_score if (has_real_indicators or has_persistence) else min(risk_score, 29)
 
         if effective_risk >= 70:
             verdict     = "highly malicious"
