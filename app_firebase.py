@@ -920,14 +920,7 @@ def _upload_single_file_impl():
         filename = uuid.uuid4().hex + ext
         path = os.path.abspath(os.path.join(user_folder, filename))
 
-    # Duplicate check: hash-only match (SHA-256 is a reliable file fingerprint)
-    existing_files = fb.list_user_files(current_user.uid)
-    for existing in existing_files:
-        if existing.get("hash") == file_hash:
-            existing_id = existing.get("id")
-            if existing_id:
-                return jsonify({"duplicate": True, "filename": filename, "file_id": existing_id}), 200
-            # Record found but id is missing — treat as new upload and proceed
+    # Proceed with full scan on every upload to ensure latest threat rules and overrides are applied
 
     try:
         with open(path, "wb") as out:
@@ -1511,9 +1504,15 @@ def scan(file_id):
                 logger.info("scan: file %s already scanned during upload (status: %s), preserving scan result", file_meta.get("filename"), file_meta.get("status"))
                 if request.method == "POST":
                     return jsonify({"success": True, "file": file_meta, "already_scanned": True}), 200
+                # Ensure threat_level and explanation are strictly synchronized with risk_score
+                file_meta["threat_level"], file_meta["status"] = determine_threat_level(
+                    file_meta.get("risk_score", 0), []
+                )
+                file_meta["explanation"] = generate_explanation(file_meta)
+
                 # Build AI analysis if missing
                 _ai_data = file_meta.get("ai_analysis")
-                if not _ai_data:
+                if not _ai_data or (isinstance(_ai_data, dict) and _ai_data.get("risk_score", 0) != file_meta.get("risk_score", 0)):
                     _ai_data = analyze_file_ai(
                         entropy=file_meta.get("entropy", 0),
                         patterns=file_meta.get("pattern_result", "None"),
