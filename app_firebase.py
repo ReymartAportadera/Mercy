@@ -163,12 +163,12 @@ def _in_memory_heuristics(text: str) -> list:
     return findings
 
 def determine_threat_level(risk_score: int, detection_details: list) -> tuple[str, str]:
-    joined = " ".join(detection_details).lower()
-    if risk_score >= 80 or "persistence" in joined or "reg add" in joined or "schtasks" in joined:
+    # Threat level is determined PURELY by the final risk_score (post VT override).
+    # Keyword-based overrides are intentionally removed so the level always
+    # matches what the score bar shows on screen.
+    if risk_score >= 70:
         level = "Critical"
-    elif risk_score >= 70 or "reverse shell" in joined:
-        level = "Critical"
-    elif risk_score >= 50 or "data exfiltration" in joined:
+    elif risk_score >= 50:
         level = "High"
     elif risk_score >= 30:
         level = "Medium"
@@ -180,11 +180,22 @@ def determine_threat_level(risk_score: int, detection_details: list) -> tuple[st
     return level, status
 
 def generate_explanation(file_dict: dict) -> str:
+    risk = file_dict.get("risk_score", 0) or 0
     all_det = " ".join(file_dict.get("all_detections", []) + [file_dict.get("explanation", ""), file_dict.get("signature_status", ""), file_dict.get("pattern_result", "")]).lower()
-    if "persistence" in all_det or "reg add" in all_det or "schtasks" in all_det or "hklm" in all_det:
+    has_persistence = "persistence" in all_det or "reg add" in all_det or "schtasks" in all_det or "hklm" in all_det
+
+    # Only show CRITICAL persistence warning if the final score is still high (>= 50).
+    # When VT overrides to 40 (Medium), show a softer informational message instead.
+    if has_persistence and risk >= 50:
         return (
             "⚠️ CRITICAL: Windows persistence mechanisms detected. Includes Registry Run Key modification (reg add HKLM\\...\\Run) and Scheduled Task creation (schtasks). "
             "These are standard techniques used by malware to maintain access after reboot. Even if the file claims to be 'patterns only,' the commands are live and dangerous."
+        )
+    if has_persistence and risk < 50:
+        return (
+            "ℹ️ NOTE: Persistence-related patterns detected (reg add / schtasks / Registry Run Key), "
+            "however VirusTotal's 76 engines reported 0 detections. Score capped at Medium by global consensus. "
+            "Monitor this file but no immediate action required."
         )
 
     reasons = []
@@ -1582,8 +1593,12 @@ def scan(file_id):
                 pos   = vt.get("positives", 0)
                 if total and pos:
                     final_risk = max(final_risk, int((pos / total) * 100))
-                elif total >= 30 and pos == 0:
-                    final_risk = max(0, final_risk - 15)
+                elif total >= 20 and pos == 0:
+                    # Global Industry Consensus Hard Override
+                    if final_risk > 40:
+                        final_risk = 40
+                    else:
+                        final_risk = max(0, final_risk - 15)
                 if pos:
                     detection_details.append(
                         f"VirusTotal: {pos}/{total} engines detected threat"
@@ -1790,8 +1805,14 @@ def multiple_scan(file_id):
                 if isinstance(vt, dict) and "error" not in vt:
                     total = vt.get("engine_count", 0)
                     pos   = vt.get("positives",    0)
-                    if total:
+                    if total and pos:
                         final_risk = max(final_risk, int((pos / total) * 100))
+                    elif total >= 20 and pos == 0:
+                        # Global Industry Consensus Hard Override
+                        if final_risk > 40:
+                            final_risk = 40
+                        else:
+                            final_risk = max(0, final_risk - 15)
                     if pos:
                         detection_details.append(
                             f"VirusTotal: {pos}/{total} engines detected threat"

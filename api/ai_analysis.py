@@ -110,10 +110,8 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
         )
 
         has_persistence = any(k in patterns for k in ["persistence", "reg add", "schtasks", "hklm", "hkcu"])
-        if has_persistence:
-            risk_score = max(risk_score, 85)
 
-        # Cap risk label to LOW/MEDIUM if no real behavioral indicators found
+        # Use the passed-in risk_score (which may be overridden to 40 by VirusTotal consensus)
         effective_risk = risk_score if (has_real_indicators or has_persistence) else min(risk_score, 29)
 
         if effective_risk >= 70:
