@@ -202,17 +202,17 @@ IOC_PATTERNS: dict[str, re.Pattern] = {
         r"|bc1[a-z0-9]{39,59}"
         r"|0x[a-fA-F0-9]{40})\b"
     ),
-    "API Keys / Tokens": re.compile(
+    "API Keys and Tokens": re.compile(
         r"(api[_-]?key|access[_-]?token|secret[_-]?key|auth[_-]?token)"
         r"\s*[:=]\s*['\"]?[A-Za-z0-9_\-]{16,}['\"]?",
         re.I,
     ),
-    "Pastebin / Paste Sites": re.compile(
+    "Pastebin and Paste Sites": re.compile(
         r"pastebin\.com|paste\.ee|hastebin\.com|ghostbin\.com|"
         r"paste\.org|pastecode\.io",
         re.I,
     ),
-    "Ngrok / Tunnels":  re.compile(
+    "Ngrok and Tunnels":  re.compile(
         r"ngrok\.io|ngrok\.com|localtunnel|serveo\.net|"
         r"pagekite\.me|bore\.pub",
         re.I,
@@ -1063,7 +1063,7 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         if re.search(r"\b(reg(\.exe)?\s+add|schtasks|HKLM\\|HKCU\\|HKEY_LOCAL_MACHINE\\|HKEY_CURRENT_USER\\|certutil|wmic|bitsadmin|net\s+user|net\s+localgroup|eval|exec|compile|base64|b64decode|subprocess|os\.system)\b", line_clean, re.I):
             evidence_items.append(f"Line {idx}: {line_clean[:120]}")
     if evidence_items:
-        iocs["Code Execution / Persistence Evidence"] = evidence_items[:15]
+        iocs["Code Execution and Persistence Evidence"] = evidence_items[:15]
 
     # RULE 3 — Contextual PowerShell download (3-part gate)
     result.ps_download_contextual = _is_contextual_ps_download(text)
@@ -1087,9 +1087,9 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         result.detections.append("PowerShell encoded command detected")
     if "PowerShell Bypass" in iocs:
         result.detections.append("PowerShell execution policy bypass")
-    if "Ngrok / Tunnels" in iocs:
+    if "Ngrok and Tunnels" in iocs:
         result.detections.append("Ngrok / reverse tunnel domain detected")
-    if "Pastebin / Paste Sites" in iocs:
+    if "Pastebin and Paste Sites" in iocs:
         result.detections.append("Paste-site URL detected (common C2 staging)")
     if "Crypto Wallet" in iocs:
         result.detections.append("Cryptocurrency wallet address found")

@@ -48,6 +48,20 @@ else:
 
 # ── Uploaded-File Helpers ──────────────────────────────────────────────────────
 
+def _sanitize_firebase_keys(obj):
+    """Recursively sanitize keys for Firebase Realtime Database.
+    Replaces forbidden key characters (/, ., $, #, [, ]) with spaces or parens."""
+    if isinstance(obj, dict):
+        clean_dict = {}
+        for k, v in obj.items():
+            clean_k = str(k).replace("/", " ").replace(".", " ").replace("$", "").replace("#", "").replace("[", "(").replace("]", ")")
+            clean_dict[clean_k] = _sanitize_firebase_keys(v)
+        return clean_dict
+    elif isinstance(obj, list):
+        return [_sanitize_firebase_keys(item) for item in obj]
+    return obj
+
+
 def save_uploaded_file(file_record: dict) -> str:
     """Persist a file record under uploaded_files and user_files/{user_id}."""
     file_id = file_record.get("id") or str(uuid.uuid4())
@@ -61,12 +75,15 @@ def save_uploaded_file(file_record: dict) -> str:
             file_record["user_email"] = file_record.get("user_email") or u.get("email")
             file_record["username"] = file_record.get("username") or u.get("username")
 
+    # Sanitize dictionary keys for Firebase compatibility (removes /, ., etc.)
+    clean_record = _sanitize_firebase_keys(file_record)
+
     # Save to main uploaded_files node
-    db.reference(f"uploaded_files/{file_id}").set(file_record)
+    db.reference(f"uploaded_files/{file_id}").set(clean_record)
 
     # Save to user-specific index node for clean organized Firebase structure
     if user_id:
-        db.reference(f"user_files/{user_id}/{file_id}").set(file_record)
+        db.reference(f"user_files/{user_id}/{file_id}").set(clean_record)
 
     logger.info("Saved file record %s for user %s (%s)", file_id, user_id, file_record.get("user_email"))
     return file_id
