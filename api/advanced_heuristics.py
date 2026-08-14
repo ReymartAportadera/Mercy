@@ -145,6 +145,40 @@ INHERENTLY_COMPRESSED_EXTENSIONS: set[str] = {
     ".avi", ".mkv", ".aac", ".ogg", ".flac",
 }
 
+def strip_comments_and_docstrings(text: str) -> str:
+    """Strip docstrings and single/multiline comments from text to avoid false positives on comments."""
+    if not text:
+        return ""
+    # Strip python multiline docstrings
+    cleaned = re.sub(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'', '', text)
+    # Strip C-style block comments
+    cleaned = re.sub(r'/\*[\s\S]*?\*/', '', cleaned)
+    # Filter out single-line comment lines (#, //, ;, --, rem)
+    active_lines = []
+    for line in cleaned.splitlines():
+        s = line.strip()
+        if s.startswith("#") or s.startswith("//") or s.startswith(";") or s.startswith("--") or s.lower().startswith("rem "):
+            continue
+        active_lines.append(line)
+    return "\n".join(active_lines)
+
+
+def is_executable_or_malicious_payload(decoded_bytes: bytes, decoded_str: str) -> bool:
+    """Check if decoded payload contains executable headers or active code constructs vs benign text."""
+    if not decoded_bytes:
+        return False
+    # Check binary headers (PE / ELF / Mach-O / Zip)
+    if decoded_bytes.startswith(b"MZ") or decoded_bytes.startswith(b"\x7fELF") or decoded_bytes.startswith(b"PK\x03\x04"):
+        return True
+    payload_pattern = re.compile(
+        r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|powershell|cmd\.exe|"
+        r"wscript|cscript|Invoke-Expression|iex|VirtualAlloc|socket|connect|requests|"
+        r"wget|curl|reg(\.exe)?\s+add|schtasks|Net\.WebClient|DownloadString|"
+        r"def\s+\w+|function\s+\w+|import\s+\w+|from\s+\w+\s+import|<\?php|sh\b|bash\b)\b",
+        re.I
+    )
+    return bool(payload_pattern.search(decoded_str))
+
 # ─────────────────────────────────────────────────────────────────────────────
 # IOC patterns
 # ─────────────────────────────────────────────────────────────────────────────
@@ -959,11 +993,15 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         if matches:
             iocs[category] = matches[:20]
 
-    # ── Multi-Layer Controlled Decoding & Depth Control ─────────────────────
+    # ── Active Text (Strip Comments & Docstrings) ────────────────────────────
+    active_text = strip_comments_and_docstrings(text)
+
+    # ── Multi-Layer Controlled Decoding & Base64 Payload Inspection ─────────
     import base64
     layers = 0
     curr_bytes = file_bytes
     decoded_buffers = []
+    decoded_raw = []
     while layers < 2:
         b64_matches = re.findall(rb"[A-Za-z0-9+/]{40,}={0,2}", curr_bytes)
         if not b64_matches:
@@ -973,6 +1011,7 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
             if 10 < len(dec) < 50000 and dec != curr_bytes:
                 layers += 1
                 curr_bytes = dec
+                decoded_raw.append(dec)
                 try:
                     decoded_buffers.append(dec.decode("utf-8", errors="ignore"))
                 except Exception:
@@ -987,18 +1026,23 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
 
     decoded_text_combined = "\n".join(decoded_buffers)
 
+    # Evaluate whether any decoded Base64 payload actually contains executable constructs
+    has_executable_b64 = any(is_executable_or_malicious_payload(raw, buf) for raw, buf in zip(decoded_raw, decoded_buffers))
+    if decoded_buffers and not has_executable_b64:
+        result.fp_notes.append("Automated Base64 Inspection: Decoded payload is harmless plain text — suppressed obfuscation alert.")
+
     # ── Indicator Grounding for eval / exec ───────────────────────────────────
-    raw_eval = bool(re.search(r"\b(eval|exec)\s*\(", text, re.I))
+    raw_eval = bool(re.search(r"\b(eval|exec)\s*\(", active_text, re.I))
     dec_eval = bool(re.search(r"\b(eval|exec)\s*\(", decoded_text_combined, re.I)) if decoded_text_combined else False
 
     if raw_eval:
-        result.indicator_grounding.append("eval/exec keyword found in plaintext script")
+        result.indicator_grounding.append("eval/exec keyword found in active script code")
     elif dec_eval:
         result.indicator_grounding.append("eval-like keyword found only inside decoded string (unvalidated as executable body)")
         result.fp_notes.append("eval/exec token detected only inside decoded string — not validated as executable code structure.")
 
-    if layers > 0:
-        result.fp_notes.append(f"Decode Depth Control: Layer {layers} decoded ({result.decoded_size} bytes). No executable payload structure found.")
+    if layers > 0 and not has_executable_b64:
+        result.fp_notes.append(f"Decode Depth Control: Layer {layers} decoded ({result.decoded_size} bytes). Harmless text payload.")
 
     # ── Text vs Executable Intent Classification ─────────────────────────────
     PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
@@ -1008,25 +1052,25 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
             r"\b(eval|exec|compile|base64|b64decode|b64encode|decode|encode"
             r"|def |function |import |var |const |let "
             r"|powershell|cmd\.exe|curl|wget|subprocess|os\.system)\b",
-            text, re.I
+            active_text, re.I
         )
         if code_syntax:
             result.intent_classification = "Script / Loader Artifact"
         else:
             result.intent_classification = "Text / Documentation Artifact (non-executable intent)"
             result.fp_notes.append(
-                "Intent Classifier: Document/text file contains no executable code structure "
+                "Intent Classifier: Document/text file contains no active executable code structure "
                 "or shell execution commands (RULE 11)."
             )
 
     # ── Obfuscated Loader / Execution Routine Detection (exec/eval + base64) ─
     has_exec_func = bool(re.search(
         r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
-        text, re.I
+        active_text, re.I
     ))
     has_obf_func = bool(re.search(
         r"\b(base64|b64decode|b64encode|codecs|zlib|decompress|uncompress)\b|-[Ee][Nn][Cc]|\b(chr|ord)\s*\(|\\x[0-9a-fA-F]{2}",
-        text, re.I
+        active_text, re.I
     )) or (layers > 0)
 
     if has_exec_func and has_obf_func:
@@ -1042,7 +1086,7 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
     # ── Windows Persistence & LotL Detection (reg add / schtasks / HKLM Run / certutil / wmic) ─
     has_persistence_lotl = bool(re.search(
         r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b|\bcertutil.*-(urlcache|decode)|\bwmic.*process|\bbitsadmin|\bnet\s+(user|localgroup)",
-        text, re.I
+        active_text, re.I
     ))
     if has_persistence_lotl:
         if "Windows Persistence Mechanism (reg add / schtasks / HKLM Run)" not in result.detections:
@@ -1289,9 +1333,11 @@ def analyze_script(
     except Exception:
         return
 
-    # RULE 8 — check each pattern with context, not isolated tokens
+    active_text = strip_comments_and_docstrings(text)
+
+    # RULE 8 — check each pattern with context on active (non-comment) code
     for name, pattern in DANGEROUS_SCRIPT_PATTERNS.items():
-        if pattern.search(text):
+        if pattern.search(active_text):
             result.script_findings.append(name)
             result.detections.append(f"Script: {name} detected")
             result._co_indicators.append(name)

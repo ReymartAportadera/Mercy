@@ -132,19 +132,33 @@ def get_file_type_entropy_threshold(file_path: str) -> float:
         return 7.95
     return 6.5
 
+def strip_comments_and_docstrings(text: str) -> str:
+    """Strip docstrings and single/multiline comments from text to avoid false positives on comments."""
+    if not text:
+        return ""
+    # Strip python multiline docstrings
+    cleaned = re.sub(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'', '', text)
+    # Strip C-style block comments
+    cleaned = re.sub(r'/\*[\s\S]*?\*/', '', cleaned)
+    # Filter out single-line comment lines (#, //, ;, --, rem)
+    active_lines = []
+    for line in cleaned.splitlines():
+        s = line.strip()
+        if s.startswith("#") or s.startswith("//") or s.startswith(";") or s.startswith("--") or s.lower().startswith("rem "):
+            continue
+        active_lines.append(line)
+    return "\n".join(active_lines)
+
+
 def _in_memory_heuristics(text: str) -> list:
     findings = []
-    # Strip comment lines to prevent signature definitions/comments from triggering false alarms
-    clean_lines = [line for line in text.splitlines() if not line.strip().startswith("#") and not line.strip().startswith("//")]
-    clean_text = "\n".join(clean_lines)
+    active_text = strip_comments_and_docstrings(text)
 
-    if re.search(r"requests\.(post|get).*?(webhook|pastebin|ngrok|token|password|cookie)", clean_text, re.I):
+    if re.search(r"requests\.(post|get).*?(webhook|pastebin|ngrok|token|password|cookie)", active_text, re.I):
         findings.append("Data Exfiltration")
-    if re.search(r"base64.*(decode|b64decode).*eval\s*\(", clean_text, re.I):
-        findings.append("Obfuscated Execution")
-    if re.search(r"socket\.socket.*?connect.*?subprocess\.(Popen|call|run)", clean_text, re.I | re.DOTALL):
+    if re.search(r"socket\.socket.*?connect.*?subprocess\.(Popen|call|run)", active_text, re.I | re.DOTALL):
         findings.append("Reverse Shell")
-    if re.search(r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b", text, re.I):
+    if re.search(r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b", active_text, re.I):
         findings.append("Persistence Mechanism")
     return findings
 
@@ -265,9 +279,11 @@ def _run_full_heuristic_scan(
     risky_imports: list = []
     text       = file_bytes.decode("utf-8", errors="ignore")
 
+    active_text = strip_comments_and_docstrings(text)
+
     if not is_binary:
-        heuristics = _in_memory_heuristics(text)
-        text_lower = text.lower()
+        heuristics = _in_memory_heuristics(active_text)
+        text_lower = active_text.lower()
 
         string_patterns = {
             "Code Execution":  r"\b(eval|exec)\s*\(",
@@ -286,25 +302,21 @@ def _run_full_heuristic_scan(
 
         dangerous_mods = {"os", "sys", "subprocess", "socket", "requests"}
         for imp in dangerous_mods:
-            if re.search(rf"\bimport {imp}\b|\bfrom {imp} import", text):
+            if re.search(rf"\bimport {imp}\b|\bfrom {imp} import", active_text):
                 risky_imports.append(imp)
 
     norm_ext = ext.lower().strip()
     if not norm_ext.startswith("."):
         norm_ext = "." + norm_ext
 
-    # Layer 2 Context Shield: For passive markup/data formats, suppress common false-positive patterns.
-    # HTML/CSS naturally contain: open/write DOM ops, http:// CDN links, base64 data-URIs.
-    # NOTE: "Code Execution" (eval/exec) and "Encoding" (base64) are NOT suppressed here
-    # because .txt files can intentionally contain script obfuscation patterns that are
-    # genuinely suspicious (e.g. eval(base64_decode(...)) in a test or malware dropper).
+    # Check for active persistence commands in non-commented code
     has_persistence_lotl = bool(re.search(
         r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b|\bcertutil.*-(urlcache|decode)|\bwmic.*process|\bbitsadmin|\bnet\s+(user|localgroup)",
-        text, re.I
+        active_text, re.I
     ))
     has_reg_or_schtasks = bool(re.search(
         r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b",
-        text, re.I
+        active_text, re.I
     ))
 
     PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
@@ -361,11 +373,11 @@ def _run_full_heuristic_scan(
 
     has_exec_func = bool(re.search(
         r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
-        text, re.I
+        active_text, re.I
     ))
     has_obf_func = bool(re.search(
         r"\b(base64|b64decode|b64encode|codecs|zlib|decompress|uncompress)\b|-[Ee][Nn][Cc]|\b(chr|ord)\s*\(|\\x[0-9a-fA-F]{2}",
-        text, re.I
+        active_text, re.I
     ))
 
     if has_reg_or_schtasks:
@@ -943,8 +955,14 @@ def _upload_single_file_impl():
             vt_total = vt_result.get("engine_count", 0)
             if vt_total and vt_pos:
                 risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
-            elif vt_total >= 30 and vt_pos == 0:
-                risk_score = max(0, risk_score - 15)
+            elif vt_total >= 20 and vt_pos == 0:
+                # ── Global Industry Consensus Hard Override Rule ─────────────
+                # When VirusTotal reports 0 detections across 20+ engines,
+                # cap internal heuristic risk score at maximum of MEDIUM (40%).
+                if risk_score > 40:
+                    risk_score = 40
+                else:
+                    risk_score = max(0, risk_score - 15)
         finally:
             try:
                 _signal.alarm(0)
