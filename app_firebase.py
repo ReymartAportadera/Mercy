@@ -958,8 +958,23 @@ def _upload_single_file_impl():
             elif vt_total >= 20 and vt_pos == 0:
                 # ── Global Industry Consensus Hard Override Rule ─────────────
                 # When VirusTotal reports 0 detections across 20+ engines,
-                # cap internal heuristic risk score at maximum of MEDIUM (40%).
-                if risk_score > 40:
+                # cap internal heuristic score at MEDIUM (40%) ONLY when
+                # local heuristics have NO confirmed high-confidence indicators.
+                # Do NOT override confirmed Obfuscated Loaders or Persistence commands —
+                # VT may simply not have seen this specific file yet.
+                pattern_result = scan_res.get("pattern_result", "")
+                heuristics_str = " ".join(scan_res.get("heuristics", []))
+                has_confirmed_critical = (
+                    "Obfuscated Execution Routine" in pattern_result or
+                    "Obfuscated Loader Pattern" in heuristics_str or
+                    "Windows Persistence Mechanism" in pattern_result or
+                    "Persistence Mechanism" in heuristics_str or
+                    risk_score >= 85
+                )
+                if has_confirmed_critical:
+                    # Only apply a small reduction — local evidence overrides VT absence
+                    risk_score = max(risk_score - 10, 70)
+                elif risk_score > 40:
                     risk_score = 40
                 else:
                     risk_score = max(0, risk_score - 15)
