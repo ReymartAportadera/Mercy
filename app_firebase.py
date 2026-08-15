@@ -1172,8 +1172,13 @@ def guest_upload_api():
 
     # ── Engine 2: VirusTotal (hash lookup first, then file upload) ────────────
     vt_result = {}
+    temp_dir = os.path.join(app.config["UPLOAD_FOLDER"], "guest_scans")
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.abspath(os.path.join(temp_dir, f"{uuid.uuid4().hex}_{filename}"))
     try:
-        vt_raw = smart_virustotal_scan(None, file_hash)
+        with open(temp_path, "wb") as out:
+            out.write(file_bytes)
+        vt_raw = smart_virustotal_scan(temp_path, file_hash)
         if vt_raw and "scans" not in vt_raw:
             vt_raw["scans"] = {}
         vt_result = vt_raw or {}
@@ -1181,9 +1186,20 @@ def guest_upload_api():
         vt_total = vt_result.get("engine_count", 0)
         if vt_total and vt_pos:
             risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
+        elif vt_total >= 20 and vt_pos == 0:
+            # ── Global Industry Consensus Hard Override Rule ─────────────
+            if risk_score > 40:
+                risk_score = 40
+            else:
+                risk_score = max(0, risk_score - 15)
     except Exception as exc:
         logger.warning("Guest scan - VirusTotal error: %s", exc)
         vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
+    finally:
+        try:
+            os.remove(temp_path)
+        except Exception:
+            pass
 
     # ── Engine 3: AI analysis ─────────────────────────────────────────────────
     ai_result = {}
@@ -2432,8 +2448,14 @@ def auto_scan_api():
         if vt_res and "error" not in vt_res:
             total = vt_res.get("engine_count", 0)
             pos = vt_res.get("positives", 0)
-            if total:
+            if total and pos:
                 final_risk = max(final_risk, int((pos / total) * 100))
+            elif total >= 20 and pos == 0:
+                # ── Global Industry Consensus Hard Override Rule ─────────────
+                if final_risk > 40:
+                    final_risk = 40
+                else:
+                    final_risk = max(0, final_risk - 15)
             if pos:
                 detection_details.append(f"VirusTotal: {pos}/{total} engines detected threat")
                 
