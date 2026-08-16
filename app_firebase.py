@@ -979,7 +979,13 @@ def _upload_single_file_impl():
         logger.warning("Upload scan - VirusTotal error: %s", exc)
         vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
 
-    # ── Engine 3: AI analysis (network — cap at 8 s on Vercel) ───────────────
+    # ── Final threat classification — done BEFORE AI so AI gets the correct final score
+    detection_details = (scan_res.get("suspicious_functions", []) + scan_res.get("heuristics", []))
+    if vt_result.get("positives", 0):
+        detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count',0)} engines")
+    threat_level, status = determine_threat_level(risk_score, detection_details)
+
+    # ── Engine 3: AI analysis — AFTER VT override so risk_score is the final adjusted value ──
     ai_result = {}
     try:
         try:
@@ -992,7 +998,7 @@ def _upload_single_file_impl():
                 entropy=scan_res.get("entropy", 0),
                 patterns=scan_res.get("pattern_result", "None"),
                 imports=scan_res.get("risky_imports_str", "None"),
-                risk_score=risk_score,
+                risk_score=risk_score,  # Uses VT-adjusted final score
             )
         finally:
             try:
@@ -1005,12 +1011,6 @@ def _upload_single_file_impl():
     except Exception as exc:
         logger.warning("Upload scan - AI analysis error: %s", exc)
         ai_result = {"error": str(exc)}
-
-    # ── Final threat classification ───────────────────────────────────────────
-    detection_details = (scan_res.get("suspicious_functions", []) + scan_res.get("heuristics", []))
-    if vt_result.get("positives", 0):
-        detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count',0)} engines")
-    threat_level, status = determine_threat_level(risk_score, detection_details)
 
     file_record = {
         "id": file_id,
@@ -2431,17 +2431,7 @@ def auto_scan_api():
             except Exception:
                 pass
                 
-        # 3. AI Analysis
-        patterns = heuristic_res.get("pattern_result", "None")
-        imports = heuristic_res.get("risky_imports_str", "None")
-        ai_res = analyze_file_ai(
-            entropy=heuristic_res.get("entropy", 0.0),
-            patterns=patterns,
-            imports=imports,
-            risk_score=heuristic_res.get("risk_score", 0)
-        )
-        
-        # Compute final risk score, threat level, status
+        # Compute final risk score after VT override FIRST
         final_risk = heuristic_res.get("risk_score", 0)
         detection_details = heuristic_res.get("suspicious_functions", []) + heuristic_res.get("heuristics", [])
         
@@ -2461,6 +2451,16 @@ def auto_scan_api():
                 
         final_risk = min(final_risk, 100)
         threat_level, status = determine_threat_level(final_risk, detection_details)
+
+        # 3. AI Analysis — called AFTER VT override so it uses the correct final_risk
+        patterns = heuristic_res.get("pattern_result", "None")
+        imports = heuristic_res.get("risky_imports_str", "None")
+        ai_res = analyze_file_ai(
+            entropy=heuristic_res.get("entropy", 0.0),
+            patterns=patterns,
+            imports=imports,
+            risk_score=final_risk
+        )
         
         return jsonify({
             "success": True,
