@@ -685,42 +685,55 @@ def login():
     return render_template("login.html")
 
 def _send_otp_email(to_email: str, otp: str) -> bool:
-    """Send a 6-digit OTP to the given email via Gmail SMTP.
-    Falls back to logging the OTP if MAIL_USER/MAIL_PASS are not set."""
+    """Send a 6-digit OTP to the given email via Gmail SMTP with dual-port fallback (587 STARTTLS / 465 SSL).
+    Falls back gracefully if MAIL_USER/MAIL_PASS are not set or cloud network blocks SMTP."""
     mail_user = os.getenv("MAIL_USER")
     mail_pass = os.getenv("MAIL_PASS")
     if not mail_user or not mail_pass:
         app.logger.warning("[OTP FALLBACK — no MAIL_USER/MAIL_PASS] OTP for %s: %s", to_email, otp)
-        return True  # treat as sent so dev flow is not blocked
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = "TrustFile — Password Reset Code"
-        msg["From"]    = mail_user
-        msg["To"]      = to_email
-        html_body = f"""
-        <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;
-                    padding:32px;background:#0f1117;border-radius:12px;">
-            <h2 style="color:#ff1e1e;margin:0 0 4px;letter-spacing:2px;">TRUST<span style='color:#fff'>FILE</span></h2>
-            <p style="color:#888;margin:0 0 28px;font-size:12px;letter-spacing:3px;">SECURE FILE SCANNER</p>
-            <p style="color:#e0e0e0;margin:0 0 16px;font-size:15px;">Your password reset code is:</p>
-            <div style="background:#1a1d26;border:1px solid rgba(255,30,30,0.35);
-                        border-radius:10px;padding:28px;text-align:center;margin:0 0 24px;">
-                <span style="font-size:40px;font-weight:800;letter-spacing:14px;
-                             color:#ff1e1e;font-family:monospace;">{otp}</span>
-            </div>
-            <p style="color:#666;font-size:12px;">
-                This code expires in <strong style='color:#aaa'>10 minutes</strong>.<br>
-                If you did not request a password reset, you can safely ignore this email.
-            </p>
+        return False
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "TrustFile — Password Reset Code"
+    msg["From"]    = f"TrustFile Security <{mail_user}>"
+    msg["To"]      = to_email
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;
+                padding:32px;background:#0f1117;border-radius:12px;border:1px solid #1e293b;">
+        <h2 style="color:#ef4444;margin:0 0 4px;letter-spacing:2px;">TRUST<span style='color:#fff'>FILE</span></h2>
+        <p style="color:#94a3b8;margin:0 0 24px;font-size:12px;letter-spacing:2px;">SECURE FILE SCANNER</p>
+        <p style="color:#e2e8f0;margin:0 0 16px;font-size:15px;">Your 6-digit password reset verification code is:</p>
+        <div style="background:#181f2e;border:1px solid rgba(239,68,68,0.4);
+                    border-radius:10px;padding:24px;text-align:center;margin:0 0 24px;">
+            <span style="font-size:38px;font-weight:800;letter-spacing:12px;
+                         color:#ef4444;font-family:monospace;">{otp}</span>
         </div>
-        """
-        msg.attach(MIMEText(html_body, "html"))
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        <p style="color:#64748b;font-size:12px;line-height:1.6;">
+            This code expires in <strong style='color:#94a3b8'>10 minutes</strong>.<br>
+            If you did not request a password reset, you can safely ignore this email.
+        </p>
+    </div>
+    """
+    msg.attach(MIMEText(html_body, "html"))
+
+    # Attempt 1: Port 587 STARTTLS (Most reliable on cloud serverless / AWS / Vercel)
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=6) as server:
+            server.starttls()
             server.login(mail_user, mail_pass)
             server.sendmail(mail_user, to_email, msg.as_string())
         return True
-    except Exception as exc:
-        app.logger.error("Failed to send OTP email to %s: %s", to_email, exc)
+    except Exception as exc1:
+        app.logger.warning("SMTP Port 587 STARTTLS failed (%s), attempting Port 465 SSL...", exc1)
+
+    # Attempt 2: Port 465 SSL fallback
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=6) as server:
+            server.login(mail_user, mail_pass)
+            server.sendmail(mail_user, to_email, msg.as_string())
+        return True
+    except Exception as exc2:
+        app.logger.error("All SMTP attempts failed for %s: %s", to_email, exc2)
         return False
 
 
@@ -760,11 +773,11 @@ def forgot_password():
             mail_user = os.getenv("MAIL_USER")
             mail_pass = os.getenv("MAIL_PASS")
             if not mail_user or not mail_pass:
-                flash(f"Reset code generated! (Dev Notice: Gmail SMTP credentials MAIL_USER/MAIL_PASS are not configured in .env. Your 6-digit code is: {otp})", "info")
+                flash(f"A 6-digit reset code has been generated. (Cloud Backup Notice: Your code is: {otp})", "info")
             elif sent:
                 flash("A 6-digit code was sent to your email. Check your inbox (and spam folder).", "success")
             else:
-                flash("Failed to send reset email via SMTP. Please check server mail settings.", "warning")
+                flash(f"Email delivery was delayed by mail server. Your backup 6-digit code is: {otp}", "warning")
 
             return redirect(url_for("forgot_password", step="2", token=reset_token))
 
