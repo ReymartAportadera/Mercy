@@ -35,7 +35,7 @@ import firebase_utils as fb
 from flask_wtf.csrf import CSRFProtect
 
 # ── Scan Dependencies ────────────────────────────────────────────────────────
-from api.malware_api import check_hash_api, smart_virustotal_scan
+from api.malware_api import check_hash_api, smart_virustotal_scan, get_cached_result
 from api.ai_analysis import analyze_file_ai
 from api.advanced_heuristics import run_advanced_heuristics
 
@@ -223,6 +223,72 @@ def generate_explanation(file_dict: dict) -> str:
     if risk < 30:
         return f"{intro}. No significant suspicious behavior detected."
     return f"This file is classified as {level} but no specific suspicious behavior was detected."
+
+def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
+    """Checks if a file record in Firebase should be updated based on VirusTotal consensus.
+    If VirusTotal reports 0 detections across >= 20 engines, caps risk_score at 40 (Medium)
+    and synchronizes threat_level, explanation, and AI verdict."""
+    if not isinstance(file_dict, dict):
+        return False
+
+    file_hash = file_dict.get("hash")
+    vt = file_dict.get("virustotal")
+
+    # If VT is missing, timed out, or had 0 engines, query Firebase vt_cache or quick hash check
+    if not vt or not isinstance(vt, dict) or vt.get("error") or vt.get("engine_count", 0) == 0:
+        if file_hash:
+            cached_vt = get_cached_result(file_hash)
+            if not cached_vt:
+                try:
+                    cached_vt = check_hash_api(file_hash)
+                except Exception:
+                    cached_vt = None
+            if cached_vt and cached_vt.get("engine_count", 0) > 0:
+                vt = cached_vt
+                file_dict["virustotal"] = cached_vt
+
+    if not vt or not isinstance(vt, dict) or vt.get("error"):
+        return False
+
+    pos = vt.get("positives", 0)
+    total = vt.get("engine_count", 0) or vt.get("total_engines", 0)
+
+    updated = False
+    current_risk = file_dict.get("risk_score", 0) or 0
+
+    if total >= 20 and pos == 0:
+        if current_risk > 40:
+            file_dict["risk_score"] = 40
+            current_risk = 40
+            updated = True
+        elif current_risk > 0 and current_risk == file_dict.get("raw_heuristic_score"):
+            current_risk = max(0, current_risk - 15)
+            file_dict["risk_score"] = current_risk
+            updated = True
+
+        new_level, new_status = determine_threat_level(current_risk, [])
+        if file_dict.get("threat_level") != new_level or file_dict.get("status") != new_status:
+            file_dict["threat_level"] = new_level
+            file_dict["status"] = new_status
+            updated = True
+
+        new_exp = generate_explanation(file_dict)
+        if file_dict.get("explanation") != new_exp:
+            file_dict["explanation"] = new_exp
+            updated = True
+
+        # Ensure AI analysis reflects the adjusted 40% Medium score
+        ai_data = file_dict.get("ai_analysis")
+        if not ai_data or not isinstance(ai_data, dict) or ai_data.get("verdict") in {"CRITICAL", "Critical", "Critical Threat", "CRITICAL RISK"} and current_risk <= 40:
+            file_dict["ai_analysis"] = analyze_file_ai(
+                entropy=file_dict.get("entropy", 0),
+                patterns=file_dict.get("pattern_result", "None"),
+                imports=file_dict.get("risky_imports", "None"),
+                risk_score=current_risk,
+            )
+            updated = True
+
+    return updated
 
 def _persist_advanced_to_file(file_dict: dict, adv: dict) -> None:
     if not adv:
@@ -812,6 +878,12 @@ def dashboard():
     folder_groups_dict = {}
 
     for f in files:
+        if _sync_file_with_vt_consensus(f):
+            try:
+                fb.save_uploaded_file(f)
+            except Exception:
+                pass
+
         risk = f.get("risk_score", 0) or 0
         if risk >= 70:
             f["threat_level"] = "Critical"
@@ -1471,6 +1543,13 @@ def scan(file_id):
         flash("File not found.")
         return redirect(url_for("dashboard"))
 
+    # Dynamically synchronize with VirusTotal cache / consensus override
+    if _sync_file_with_vt_consensus(file_meta):
+        try:
+            fb.save_uploaded_file(file_meta)
+        except Exception:
+            pass
+
     already_scanned = file_meta.get("status") != "Pending"
     auto_scan = request.args.get("auto_scan", "false")
 
@@ -1781,29 +1860,6 @@ def multiple_scan(file_id):
                             "method": "error", "scans": {},
                         }
 
-                elif scan_type == "ai_analysis":
-                    if offline_cache is None:
-                        if file_bytes:
-                            offline_cache = _run_full_heuristic_scan(
-                                file_meta.get("filename"), file_bytes, file_hash
-                            )
-                        else:
-                            offline_cache = {
-                                "entropy": file_meta.get("entropy", 0.0),
-                                "pattern_result": "N/A",
-                                "risky_imports_str": "None",
-                                "risk_score": file_meta.get("risk_score", 0),
-                                "advanced": {},
-                            }
-                    patterns = offline_cache.get("pattern_result", "None")
-                    imports  = offline_cache.get("risky_imports_str", "None")
-                    results["ai_analysis"] = analyze_file_ai(
-                        entropy=offline_cache.get("entropy", 0),
-                        patterns=patterns,
-                        imports=imports,
-                        risk_score=offline_cache.get("risk_score", 0),
-                    )
-
             final_risk        = 0
             detection_details = []
 
@@ -1833,7 +1889,17 @@ def multiple_scan(file_id):
                             f"VirusTotal: {pos}/{total} engines detected threat"
                         )
 
-            if "ai_analysis" in results:
+            if "ai_analysis" in [st.strip() for st in scan_types_param.split(",")]:
+                if offline_cache is None:
+                    offline_cache = results.get("heuristic", {})
+                patterns = offline_cache.get("pattern_result", "None")
+                imports  = offline_cache.get("risky_imports_str", "None")
+                results["ai_analysis"] = analyze_file_ai(
+                    entropy=offline_cache.get("entropy", 0),
+                    patterns=patterns,
+                    imports=imports,
+                    risk_score=final_risk,
+                )
                 file_meta["ai_analysis"] = results["ai_analysis"]
 
             file_meta["risk_score"] = min(final_risk, 100)
