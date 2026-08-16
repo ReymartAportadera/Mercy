@@ -1,0 +1,327 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07090f"/>
+      <stop offset="50%" stop-color="#0c1018"/>
+      <stop offset="100%" stop-color="#060810"/>
+    </linearGradient>
+    <linearGradient id="gCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+    <linearGradient id="gPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="gGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#065f46"/>
+    </linearGradient>
+    <linearGradient id="gRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#991b1b"/>
+    </linearGradient>
+    <linearGradient id="gAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fcd34d"/>
+      <stop offset="100%" stop-color="#92400e"/>
+    </linearGradient>
+    <linearGradient id="layerP" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0e1a30" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#091322" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="layerA" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#150d2b" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#0e0920" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="layerS" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0d2218" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#071510" stop-opacity="1"/>
+    </linearGradient>
+    <linearGradient id="layerD" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#200c30" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#140820" stop-opacity="1"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+    <marker id="arrowCyan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 Z" fill="#22d3ee"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 Z" fill="#a78bfa"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 Z" fill="#34d399"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 Z" fill="#f87171"/>
+    </marker>
+  </defs>
+
+  <style>
+    .t { font-family:'Inter',system-ui,sans-serif; }
+    .ttitle { font-size:26px; font-weight:900; fill:#fff; letter-spacing:.5px; }
+    .tsub { font-size:13px; fill:#94a3b8; }
+    .layerlbl { font-size:13px; font-weight:800; letter-spacing:.5px; }
+    .comphead { font-size:13px; font-weight:700; fill:#fff; }
+    .compsub { font-size:11px; fill:#94a3b8; }
+    .badgetxt { font-size:10px; font-weight:800; letter-spacing:.5px; }
+  </style>
+
+  <!-- BG -->
+  <rect width="1400" height="820" rx="16" fill="url(#bg)" stroke="#1a2035" stroke-width="2"/>
+
+  <!-- Grid -->
+  <g opacity="0.04" stroke="#fff" stroke-width="1">
+    <line x1="0" y1="120" x2="1400" y2="120"/>
+    <line x1="0" y1="240" x2="1400" y2="240"/>
+    <line x1="0" y1="360" x2="1400" y2="360"/>
+    <line x1="0" y1="480" x2="1400" y2="480"/>
+    <line x1="0" y1="600" x2="1400" y2="600"/>
+    <line x1="0" y1="720" x2="1400" y2="720"/>
+    <line x1="140" y1="0" x2="140" y2="820"/>
+    <line x1="280" y1="0" x2="280" y2="820"/>
+    <line x1="420" y1="0" x2="420" y2="820"/>
+    <line x1="560" y1="0" x2="560" y2="820"/>
+    <line x1="700" y1="0" x2="700" y2="820"/>
+    <line x1="840" y1="0" x2="840" y2="820"/>
+    <line x1="980" y1="0" x2="980" y2="820"/>
+    <line x1="1120" y1="0" x2="1120" y2="820"/>
+    <line x1="1260" y1="0" x2="1260" y2="820"/>
+  </g>
+
+  <!-- Title Header -->
+  <g transform="translate(56,38)">
+    <rect x="0" y="0" width="46" height="46" rx="12" fill="url(#gCyan)" filter="url(#glow)"/>
+    <!-- Shield Icon -->
+    <path d="M23 10 L35 16 V27 C35 34 29 39 23 42 C17 39 11 34 11 27 V16 Z" fill="#fff" opacity=".9"/>
+    <path d="M18 27 L22 31 L29 22" stroke="#06b6d4" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <text x="62" y="26" class="t ttitle">TRUSTFILE — SYSTEM ARCHITECTURE</text>
+    <text x="62" y="44" class="t tsub">4-Tier Modular Design: Presentation → Application → Multi-Engine Scanning Core → Data Persistence</text>
+  </g>
+
+  <!-- ─────────────────────────────────────────────── -->
+  <!-- LAYER 1: PRESENTATION                           -->
+  <!-- ─────────────────────────────────────────────── -->
+  <g transform="translate(24, 102)" filter="url(#shadow)">
+    <rect width="1352" height="145" rx="12" fill="url(#layerP)" stroke="#1e4070" stroke-width="1.5"/>
+    <rect x="0" y="0" width="4" height="145" rx="2" fill="url(#gCyan)"/>
+    <text x="20" y="24" class="t layerlbl" fill="#38bdf8">LAYER 1 — PRESENTATION</text>
+
+    <!-- Component Cards -->
+    <!-- Home & Auth -->
+    <g transform="translate(140, 18)">
+      <rect width="180" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gCyan)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">🏠</text>
+      <text x="44" y="20" class="t compsub" fill="#38bdf8">AUTH</text>
+      <text x="10" y="54" class="t comphead">Home &amp; Auth Views</text>
+      <text x="10" y="70" class="t compsub">home.html, login.html</text>
+      <text x="10" y="85" class="t compsub">signup.html</text>
+    </g>
+    <!-- Dashboard -->
+    <g transform="translate(336, 18)">
+      <rect width="195" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gCyan)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">📊</text>
+      <text x="44" y="20" class="t compsub" fill="#38bdf8">DASHBOARD</text>
+      <text x="10" y="54" class="t comphead">Interactive Dashboard</text>
+      <text x="10" y="70" class="t compsub">Folder Groups, Threat Meters</text>
+      <text x="10" y="85" class="t compsub">Stats &amp; Scan History</text>
+    </g>
+    <!-- Upload Queue -->
+    <g transform="translate(547, 18)">
+      <rect width="210" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gCyan)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">📁</text>
+      <text x="44" y="20" class="t compsub" fill="#38bdf8">UPLOAD ENGINE</text>
+      <text x="10" y="54" class="t comphead">Batch Queue Engine</text>
+      <text x="10" y="70" class="t compsub">Drag &amp; Drop, Folder Mode</text>
+      <text x="10" y="85" class="t compsub">webkitdirectory support</text>
+    </g>
+    <!-- Scan Results -->
+    <g transform="translate(773, 18)">
+      <rect width="210" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gCyan)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">🔍</text>
+      <text x="44" y="20" class="t compsub" fill="#38bdf8">SCAN REPORT</text>
+      <text x="10" y="54" class="t comphead">Scan Result Inspector</text>
+      <text x="10" y="70" class="t compsub">Spectrum Meter, IOC Cards</text>
+      <text x="10" y="85" class="t compsub">AI Analysis View</text>
+    </g>
+    <!-- Guest + Crypto -->
+    <g transform="translate(999, 18)">
+      <rect width="330" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gCyan)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">👤</text>
+      <text x="44" y="20" class="t compsub" fill="#38bdf8">GUEST + WEBCRYPTO</text>
+      <text x="10" y="54" class="t comphead">Guest Scanner &amp; SHA-256 Pre-Hash</text>
+      <text x="10" y="70" class="t compsub">Zero-auth quick scan (guest_scan.html)</text>
+      <text x="10" y="85" class="t compsub">Web Crypto API: instant hash for &gt;4.5MB</text>
+    </g>
+  </g>
+
+  <!-- Arrows L1 → L2 -->
+  <g stroke="#22d3ee" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arrowCyan)">
+    <line x1="230" y1="248" x2="230" y2="275"/>
+    <line x1="430" y1="248" x2="430" y2="275"/>
+    <line x1="660" y1="248" x2="660" y2="275"/>
+    <line x1="870" y1="248" x2="870" y2="275"/>
+    <line x1="1110" y1="248" x2="1110" y2="275"/>
+  </g>
+
+  <!-- ─────────────────────────────────────────────── -->
+  <!-- LAYER 2: APPLICATION                            -->
+  <!-- ─────────────────────────────────────────────── -->
+  <g transform="translate(24, 280)" filter="url(#shadow)">
+    <rect width="1352" height="140" rx="12" fill="url(#layerA)" stroke="#3b1f6b" stroke-width="1.5"/>
+    <rect x="0" y="0" width="4" height="140" rx="2" fill="url(#gPurple)"/>
+    <text x="20" y="24" class="t layerlbl" fill="#a78bfa">LAYER 2 — APPLICATION &amp; API ROUTING</text>
+
+    <!-- Flask Core -->
+    <g transform="translate(140, 18)">
+      <rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gPurple)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">⚙</text>
+      <text x="44" y="20" class="t compsub" fill="#a78bfa">CORE APP</text>
+      <text x="10" y="54" class="t comphead">Flask WSGI Application</text>
+      <text x="10" y="70" class="t compsub">app_firebase.py / api/index.py</text>
+      <text x="10" y="85" class="t compsub">Python 3.12 / Vercel Serverless</text>
+    </g>
+    <!-- Security Middleware -->
+    <g transform="translate(374, 18)">
+      <rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gPurple)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">🛡</text>
+      <text x="44" y="20" class="t compsub" fill="#a78bfa">SECURITY</text>
+      <text x="10" y="54" class="t comphead">Security Middleware</text>
+      <text x="10" y="70" class="t compsub">Flask-WTF CSRF Protection</text>
+      <text x="10" y="85" class="t compsub">Rate Limiting &amp; Session Mgmt</text>
+    </g>
+    <!-- Auth Manager -->
+    <g transform="translate(608, 18)">
+      <rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gPurple)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">🔐</text>
+      <text x="44" y="20" class="t compsub" fill="#a78bfa">AUTH</text>
+      <text x="10" y="54" class="t comphead">Session &amp; User Manager</text>
+      <text x="10" y="70" class="t compsub">Flask-Login Integration</text>
+      <text x="10" y="85" class="t compsub">PBKDF2 Password Hashing</text>
+    </g>
+    <!-- File Monitor -->
+    <g transform="translate(842, 18)">
+      <rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gPurple)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">👁</text>
+      <text x="44" y="20" class="t compsub" fill="#a78bfa">MONITOR</text>
+      <text x="10" y="54" class="t comphead">Realtime Dir. Watcher</text>
+      <text x="10" y="70" class="t compsub">file_monitor.py (Watchdog)</text>
+      <text x="10" y="85" class="t compsub">Auto-scan new/modified files</text>
+    </g>
+    <!-- REST APIs -->
+    <g transform="translate(1076, 18)">
+      <rect width="252" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gPurple)" opacity=".9"/>
+      <text x="20" y="27" class="t badgetxt" fill="#fff">🔗</text>
+      <text x="44" y="20" class="t compsub" fill="#a78bfa">REST API GATEWAY</text>
+      <text x="10" y="54" class="t comphead">API Endpoint Routes</text>
+      <text x="10" y="70" class="t compsub">/api/upload_single_file</text>
+      <text x="10" y="85" class="t compsub">/api/scan_hash · /api/guest_upload</text>
+    </g>
+  </g>
+
+  <!-- Arrows L2 → L3 -->
+  <g stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arrowPurple)">
+    <line x1="700" y1="422" x2="700" y2="450"/>
+  </g>
+
+  <!-- ─────────────────────────────────────────────── -->
+  <!-- LAYER 3: SCANNING CORE                          -->
+  <!-- ─────────────────────────────────────────────── -->
+  <g transform="translate(24, 455)" filter="url(#shadow)">
+    <rect width="1352" height="188" rx="12" fill="url(#layerS)" stroke="#14532d" stroke-width="1.5"/>
+    <rect x="0" y="0" width="4" height="188" rx="2" fill="url(#gGreen)"/>
+    <text x="20" y="24" class="t layerlbl" fill="#34d399">LAYER 3 — MULTI-ENGINE THREAT DETECTION CORE</text>
+
+    <!-- Engine 1 Block -->
+    <g transform="translate(140, 36)">
+      <rect width="348" height="134" rx="10" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.35)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gGreen)"/>
+      <text x="44" y="19" class="t compsub" fill="#34d399">ENGINE 1</text>
+      <text x="44" y="33" class="t comphead">Local Static Heuristics</text>
+      <line x1="10" y1="46" x2="338" y2="46" stroke="#1a3a28" stroke-width="1"/>
+      <text x="16" y="66" class="t compsub">• strip_comments_and_docstrings()</text>
+      <text x="16" y="82" class="t compsub">• is_executable_or_malicious_payload()</text>
+      <text x="16" y="98" class="t compsub">• Shannon Entropy Calculation (0.0–8.0)</text>
+      <text x="16" y="114" class="t compsub">• AST Pattern Matching &amp; PE Magic Bytes</text>
+    </g>
+
+    <!-- Engine 2 Block -->
+    <g transform="translate(504, 36)">
+      <rect width="348" height="134" rx="10" fill="rgba(59,130,246,0.06)" stroke="rgba(59,130,246,0.35)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gCyan)"/>
+      <text x="44" y="19" class="t compsub" fill="#38bdf8">ENGINE 2</text>
+      <text x="44" y="33" class="t comphead">VirusTotal Global Consensus</text>
+      <line x1="10" y1="46" x2="338" y2="46" stroke="#1a2a3a" stroke-width="1"/>
+      <text x="16" y="66" class="t compsub">• Firebase vt_cache (Instant &lt;100ms hits)</text>
+      <text x="16" y="82" class="t compsub">• VirusTotal v3 REST API (70+ AV engines)</text>
+      <text x="16" y="98" class="t compsub" fill="#93c5fd">• 0-Detection Override: cap score at 40%</text>
+      <text x="16" y="114" class="t compsub">• Kaspersky · Microsoft · Sophos · ESET</text>
+    </g>
+
+    <!-- Engine 3 Block -->
+    <g transform="translate(868, 36)">
+      <rect width="460" height="134" rx="10" fill="rgba(167,139,250,0.06)" stroke="rgba(167,139,250,0.35)" stroke-width="1"/>
+      <rect x="10" y="8" width="26" height="26" rx="6" fill="url(#gPurple)"/>
+      <text x="44" y="19" class="t compsub" fill="#c084fc">ENGINE 3</text>
+      <text x="44" y="33" class="t comphead">Gemini AI Contextual Intelligence</text>
+      <line x1="10" y1="46" x2="450" y2="46" stroke="#2a1a3a" stroke-width="1"/>
+      <text x="16" y="66" class="t compsub">• Google Gemini 2.0 Flash API (primary)</text>
+      <text x="16" y="82" class="t compsub">• analyze_file_ai_local() fallback (offline)</text>
+      <text x="16" y="98" class="t compsub">• Contextual threat synthesis &amp; summarization</text>
+      <text x="16" y="114" class="t compsub">• Plain-English remediation recommendations</text>
+    </g>
+  </g>
+
+  <!-- Arrows L3 → L4 -->
+  <g stroke="#34d399" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arrowGreen)">
+    <line x1="320" y1="644" x2="320" y2="670"/>
+    <line x1="700" y1="644" x2="700" y2="670"/>
+    <line x1="1100" y1="644" x2="1100" y2="670"/>
+  </g>
+
+  <!-- ─────────────────────────────────────────────── -->
+  <!-- LAYER 4: DATA PERSISTENCE                       -->
+  <!-- ─────────────────────────────────────────────── -->
+  <g transform="translate(24, 675)" filter="url(#shadow)">
+    <rect width="1352" height="118" rx="12" fill="url(#layerD)" stroke="#581c87" stroke-width="1.5"/>
+    <rect x="0" y="0" width="4" height="118" rx="2" fill="url(#gAmber)"/>
+    <text x="20" y="24" class="t layerlbl" fill="#fcd34d">LAYER 4 — DATA &amp; PERSISTENCE</text>
+
+    <!-- Firebase -->
+    <g transform="translate(140, 34)">
+      <rect width="390" height="68" rx="10" fill="rgba(251,191,36,0.07)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/>
+      <text x="14" y="22" class="t comphead">Firebase Realtime Database</text>
+      <text x="14" y="40" class="t compsub">Users, File Records, vt_cache/, Folder Groups, Settings</text>
+      <text x="14" y="56" class="t compsub" fill="#fcd34d">Cloud-Hosted · Real-time Sync · Shared between Local &amp; Vercel</text>
+    </g>
+    <!-- File Storage -->
+    <g transform="translate(546, 34)">
+      <rect width="390" height="68" rx="10" fill="rgba(251,191,36,0.07)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/>
+      <text x="14" y="22" class="t comphead">File Storage Subsystem</text>
+      <text x="14" y="40" class="t compsub">uploads/&lt;uid&gt;/ (local) · /tmp/uploads/ (Vercel serverless)</text>
+      <text x="14" y="56" class="t compsub" fill="#fcd34d">Sandboxed per user · Auto-cleanup on serverless instances</text>
+    </g>
+    <!-- SMTP -->
+    <g transform="translate(952, 34)">
+      <rect width="376" height="68" rx="10" fill="rgba(251,191,36,0.07)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/>
+      <text x="14" y="22" class="t comphead">Gmail SMTP Relay</text>
+      <text x="14" y="40" class="t compsub">6-Digit OTP delivery for password reset</text>
+      <text x="14" y="56" class="t compsub" fill="#fcd34d">Threat alert notifications · TLS Encrypted</text>
+    </g>
+  </g>
+</svg>

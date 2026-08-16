@@ -1,0 +1,292 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080b11"/>
+      <stop offset="50%" stop-color="#0f1420"/>
+      <stop offset="100%" stop-color="#070a0f"/>
+    </linearGradient>
+
+    <!-- Glowing Accents -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7e22ce"/>
+    </linearGradient>
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#b91c1c"/>
+    </linearGradient>
+
+    <!-- Card Backgrounds -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#161d2d"/>
+      <stop offset="100%" stop-color="#0f1420"/>
+    </linearGradient>
+
+    <!-- Filters for Neon Glow -->
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title-main { font-family: 'Inter', system-ui, sans-serif; font-size: 28px; font-weight: 900; fill: #ffffff; letter-spacing: 1px; }
+    .title-sub { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; fill: #94a3b8; }
+    .step-num { font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 800; fill: #ffffff; }
+    .step-head { font-family: 'Inter', system-ui, sans-serif; font-size: 16px; font-weight: 800; fill: #ffffff; }
+    .step-subhead { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 700; fill: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bullet-txt { font-family: 'Inter', system-ui, sans-serif; font-size: 12px; fill: #cbd5e1; }
+    .badge-txt { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 700; }
+    .arrow-label { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 600; fill: #64748b; }
+  </style>
+
+  <!-- Background Base -->
+  <rect width="1400" height="820" rx="16" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Subtle Cyber Grid -->
+  <g opacity="0.06" stroke="#ffffff" stroke-width="1">
+    <path d="M0 100 H1400 M0 200 H1400 M0 300 H1400 M0 400 H1400 M0 500 H1400 M0 600 H1400 M0 700 H1400" />
+    <path d="M100 0 V820 M200 0 V820 M300 0 V820 M400 0 V820 M500 0 V820 M600 0 V820 M700 0 V820 M800 0 V820 M900 0 V820 M1000 0 V820 M1100 0 V820 M1200 0 V820 M1300 0 V820" />
+  </g>
+
+  <!-- Header Section -->
+  <g transform="translate(60, 45)">
+    <rect x="0" y="0" width="46" height="46" rx="12" fill="url(#cyanGrad)" filter="url(#glowCyan)"/>
+    <path d="M23 10 L35 16 V26 C35 33 29 38 23 41 C17 38 11 33 11 26 V16 Z" fill="#ffffff" opacity="0.95"/>
+    <text x="62" y="26" class="title-main">TRUSTFILE SYSTEM WORKFLOW</text>
+    <text x="62" y="44" class="title-sub">End-to-End Execution Sequence: Client Ingestion → Multi-Engine Threat Scan → Consensus Adjudication → Live Report</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- TOP ROW: STEPS 1, 2, 3                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- STEP 1: Ingestion & Pre-Hashing -->
+  <g transform="translate(60, 120)" filter="url(#dropShadow)">
+    <rect width="380" height="290" rx="14" fill="url(#cardGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+    <circle cx="36" cy="38" r="16" fill="url(#cyanGrad)"/>
+    <text x="32" y="43" class="step-num">1</text>
+    <text x="64" y="32" class="step-subhead">INPUT & CLIENT INGESTION</text>
+    <text x="64" y="52" class="step-head">File & Folder Intake</text>
+    <line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+    <!-- Content Bullets -->
+    <g transform="translate(24, 94)">
+      <rect x="0" y="0" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="21" r="5" fill="#38bdf8"/>
+      <text x="32" y="19" class="bullet-txt" font-weight="700">Drag & Drop / Folder Picker</text>
+      <text x="32" y="34" class="bullet-txt" fill="#94a3b8">HTML5 webkitdirectory batch ingestion</text>
+
+      <rect x="0" y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="73" r="5" fill="#38bdf8"/>
+      <text x="32" y="69" class="bullet-txt" font-weight="700">WebCrypto SHA-256 Pre-Hashing</text>
+      <text x="32" y="85" class="bullet-txt" fill="#94a3b8">Instant client pre-hashing for &gt;4.5MB files</text>
+
+      <rect x="0" y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="125" r="5" fill="#38bdf8"/>
+      <text x="32" y="123" class="bullet-txt" font-weight="700">Guest or Authenticated Session</text>
+      <text x="32" y="138" class="bullet-txt" fill="#94a3b8">CSRF token validation & rate limiting</text>
+    </g>
+  </g>
+
+  <!-- Flow Arrow 1 -> 2 -->
+  <g transform="translate(445, 255)">
+    <line x1="0" y1="0" x2="60" y2="0" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4"/>
+    <polygon points="60,0 52,-5 52,5" fill="#38bdf8"/>
+    <text x="10" y="-10" class="arrow-label">POST payload</text>
+  </g>
+
+  <!-- STEP 2: Engine 1 (Static Heuristics) -->
+  <g transform="translate(510, 120)" filter="url(#dropShadow)">
+    <rect width="380" height="290" rx="14" fill="url(#cardGrad)" stroke="#a855f7" stroke-width="1.5"/>
+    <circle cx="36" cy="38" r="16" fill="url(#purpleGrad)"/>
+    <text x="32" y="43" class="step-num">2</text>
+    <text x="64" y="32" class="step-subhead" fill="#c084fc">ENGINE 1: LOCAL HEURISTICS</text>
+    <text x="64" y="52" class="step-head">Static Analysis & Sanitizer</text>
+    <line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(24, 94)">
+      <rect x="0" y="0" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="21" r="5" fill="#c084fc"/>
+      <text x="32" y="19" class="bullet-txt" font-weight="700">Comment & Docstring Stripping</text>
+      <text x="32" y="34" class="bullet-txt" fill="#94a3b8">Removes # and """ to eliminate false alarms</text>
+
+      <rect x="0" y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="73" r="5" fill="#c084fc"/>
+      <text x="32" y="69" class="bullet-txt" font-weight="700">Base64 Deep Payload Inspection</text>
+      <text x="32" y="85" class="bullet-txt" fill="#94a3b8">Decodes & suppresses harmless plain English</text>
+
+      <rect x="0" y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="125" r="5" fill="#c084fc"/>
+      <text x="32" y="123" class="bullet-txt" font-weight="700">Entropy (0.0-8.0) & AST Patterns</text>
+      <text x="32" y="138" class="bullet-txt" fill="#94a3b8">Scores droppers (95) & persistence (85)</text>
+    </g>
+  </g>
+
+  <!-- Flow Arrow 2 -> 3 -->
+  <g transform="translate(895, 255)">
+    <line x1="0" y1="0" x2="60" y2="0" stroke="#a855f7" stroke-width="2" stroke-dasharray="4"/>
+    <polygon points="60,0 52,-5 52,5" fill="#a855f7"/>
+    <text x="10" y="-10" class="arrow-label">Raw: 0-100</text>
+  </g>
+
+  <!-- STEP 3: Engine 2 (VirusTotal Consensus) -->
+  <g transform="translate(960, 120)" filter="url(#dropShadow)">
+    <rect width="380" height="290" rx="14" fill="url(#cardGrad)" stroke="#3b82f6" stroke-width="1.5"/>
+    <circle cx="36" cy="38" r="16" fill="url(#cyanGrad)"/>
+    <text x="32" y="43" class="step-num">3</text>
+    <text x="64" y="32" class="step-subhead" fill="#60a5fa">ENGINE 2: VIRUSTOTAL CLOUD</text>
+    <text x="64" y="52" class="step-head">70+ AV Global Consensus</text>
+    <line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(24, 94)">
+      <rect x="0" y="0" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="21" r="5" fill="#60a5fa"/>
+      <text x="32" y="19" class="bullet-txt" font-weight="700">Firebase VT Cache Lookup</text>
+      <text x="32" y="34" class="bullet-txt" fill="#94a3b8">Instant (&lt;100ms) result for known SHA-256</text>
+
+      <rect x="0" y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="73" r="5" fill="#60a5fa"/>
+      <text x="32" y="69" class="bullet-txt" font-weight="700">Multi-Engine REST Query (v3)</text>
+      <text x="32" y="85" class="bullet-txt" fill="#94a3b8">Queries Kaspersky, Microsoft, Sophos, etc.</text>
+
+      <rect x="0" y="104" width="332" height="58" rx="8" fill="#0c2340" stroke="#1e3a8a"/>
+      <circle cx="16" cy="133" r="5" fill="#38bdf8"/>
+      <text x="32" y="125" class="bullet-txt" font-weight="700" fill="#93c5fd">0-Detection Consensus Rule</text>
+      <text x="32" y="141" class="bullet-txt" fill="#bfdbfe">If 20+ engines say 0 flags &rarr; cap at 40% (Medium)</text>
+      <text x="32" y="154" class="bullet-txt" fill="#60a5fa">Overrides false-positive heuristic noise</text>
+    </g>
+  </g>
+
+  <!-- Flow Down Arrow 3 -> 4 -->
+  <g transform="translate(1150, 415)">
+    <path d="M0 0 V40 H-190 V65" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4"/>
+    <polygon points="-190,65 -195,57 -185,57" fill="#3b82f6"/>
+    <text x="-150" y="30" class="arrow-label">Consensus Score</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- BOTTOM ROW: STEPS 4, 5, 6                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- STEP 4: Engine 3 (Gemini AI Threat Reasoning) -->
+  <g transform="translate(60, 485)" filter="url(#dropShadow)">
+    <rect width="380" height="290" rx="14" fill="url(#cardGrad)" stroke="#10b981" stroke-width="1.5"/>
+    <circle cx="36" cy="38" r="16" fill="url(#greenGrad)"/>
+    <text x="32" y="43" class="step-num">4</text>
+    <text x="64" y="32" class="step-subhead" fill="#34d399">ENGINE 3: AI INTELLIGENCE</text>
+    <text x="64" y="52" class="step-head">Contextual AI Reasoning</text>
+    <line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(24, 94)">
+      <rect x="0" y="0" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="21" r="5" fill="#34d399"/>
+      <text x="32" y="19" class="bullet-txt" font-weight="700">Google Gemini 2.0 Flash</text>
+      <text x="32" y="34" class="bullet-txt" fill="#94a3b8">Low-latency contextual threat synthesis</text>
+
+      <rect x="0" y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="73" r="5" fill="#34d399"/>
+      <text x="32" y="69" class="bullet-txt" font-weight="700">Deterministic Threat Grounding</text>
+      <text x="32" y="85" class="bullet-txt" fill="#94a3b8">Constrained to strict score (no hallucination)</text>
+
+      <rect x="0" y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="125" r="5" fill="#34d399"/>
+      <text x="32" y="123" class="bullet-txt" font-weight="700">Plain-English Recommendation</text>
+      <text x="32" y="138" class="bullet-txt" fill="#94a3b8">Generates quarantine & mitigation steps</text>
+    </g>
+  </g>
+
+  <!-- Flow Arrow 4 -> 5 -->
+  <g transform="translate(445, 630)">
+    <line x1="0" y1="0" x2="60" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4"/>
+    <polygon points="60,0 52,-5 52,5" fill="#10b981"/>
+    <text x="10" y="-10" class="arrow-label">Synthesis</text>
+  </g>
+
+  <!-- STEP 5: Harmonization & Classification -->
+  <g transform="translate(510, 485)" filter="url(#dropShadow)">
+    <rect width="380" height="290" rx="14" fill="url(#cardGrad)" stroke="#f59e0b" stroke-width="1.5"/>
+    <circle cx="36" cy="38" r="16" fill="url(#amberGrad)"/>
+    <text x="32" y="43" class="step-num">5</text>
+    <text x="64" y="32" class="step-subhead" fill="#fbbf24">VERDICT HARMONIZATION</text>
+    <text x="64" y="52" class="step-head">Threat Level Classification</text>
+    <line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(24, 94)">
+      <!-- Tier Grid -->
+      <rect x="0" y="0" width="160" height="42" rx="6" fill="rgba(16,185,129,0.15)" stroke="#10b981"/>
+      <text x="12" y="18" class="badge-txt" fill="#34d399">0 - 29%</text>
+      <text x="12" y="34" class="bullet-txt" font-weight="700">BENIGN / SAFE</text>
+
+      <rect x="172" y="0" width="160" height="42" rx="6" fill="rgba(234,179,8,0.15)" stroke="#eab308"/>
+      <text x="184" y="18" class="badge-txt" fill="#facc15">30 - 49%</text>
+      <text x="184" y="34" class="bullet-txt" font-weight="700">MEDIUM RISK</text>
+
+      <rect x="0" y="50" width="160" height="42" rx="6" fill="rgba(249,115,22,0.15)" stroke="#f97316"/>
+      <text x="12" y="68" class="badge-txt" fill="#fb923c">50 - 69%</text>
+      <text x="12" y="84" class="bullet-txt" font-weight="700">HIGH THREAT</text>
+
+      <rect x="172" y="50" width="160" height="42" rx="6" fill="rgba(239,68,68,0.15)" stroke="#ef4444"/>
+      <text x="184" y="68" class="badge-txt" fill="#f87171">70 - 100%</text>
+      <text x="184" y="84" class="bullet-txt" font-weight="700">CRITICAL MALWARE</text>
+
+      <rect x="0" y="100" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <text x="12" y="119" class="bullet-txt" font-weight="700">Unified Badge Alignment</text>
+      <text x="12" y="133" class="bullet-txt" fill="#94a3b8">Hero card, spectrum bar & text agree 100%</text>
+    </g>
+  </g>
+
+  <!-- Flow Arrow 5 -> 6 -->
+  <g transform="translate(895, 630)">
+    <line x1="0" y1="0" x2="60" y2="0" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4"/>
+    <polygon points="60,0 52,-5 52,5" fill="#f59e0b"/>
+    <text x="10" y="-10" class="arrow-label">Final Record</text>
+  </g>
+
+  <!-- STEP 6: Persistence & Presentation -->
+  <g transform="translate(960, 485)" filter="url(#dropShadow)">
+    <rect width="380" height="290" rx="14" fill="url(#cardGrad)" stroke="#ef4444" stroke-width="1.5"/>
+    <circle cx="36" cy="38" r="16" fill="url(#redGrad)" filter="url(#glowRed)"/>
+    <text x="32" y="43" class="step-num">6</text>
+    <text x="64" y="32" class="step-subhead" fill="#f87171">PERSISTENCE & UI</text>
+    <text x="64" y="52" class="step-head">Interactive Report</text>
+    <line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(24, 94)">
+      <rect x="0" y="0" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="21" r="5" fill="#ef4444"/>
+      <text x="32" y="19" class="bullet-txt" font-weight="700">Firebase Realtime Database</text>
+      <text x="32" y="34" class="bullet-txt" fill="#94a3b8">Stores sanitized IOCs, history & metrics</text>
+
+      <rect x="0" y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="73" r="5" fill="#ef4444"/>
+      <text x="32" y="69" class="bullet-txt" font-weight="700">Interactive Spectrum Meter</text>
+      <text x="32" y="85" class="bullet-txt" fill="#94a3b8">Visual score slider with confidence badge</text>
+
+      <rect x="0" y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/>
+      <circle cx="16" cy="125" r="5" fill="#ef4444"/>
+      <text x="32" y="123" class="bullet-txt" font-weight="700">Detailed IOC Extraction Card</text>
+      <text x="32" y="138" class="bullet-txt" fill="#94a3b8">Shows registry keys, tasks, commands, strings</text>
+    </g>
+  </g>
+</svg>

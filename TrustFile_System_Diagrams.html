@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrustFile — Technical Diagrams Pack</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #07090f;
+    --surface: #0f1420;
+    --surface2: #141b2a;
+    --border: rgba(255,255,255,0.07);
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --dim: #475569;
+    --cyan: #22d3ee;
+    --blue: #3b82f6;
+    --purple: #a78bfa;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(7,9,15,0.90);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+    font-weight: 900; font-size: 1.15rem; letter-spacing: 1.5px;
+    color: var(--text);
+  }
+  .logo-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg,#ef4444,#b91c1c);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+  }
+  .logo em { color: var(--red); font-style: normal; }
+  .logo-tag {
+    font-size: 0.7rem; font-weight: 700;
+    background: rgba(34,211,238,0.12);
+    border: 1px solid rgba(34,211,238,0.35);
+    color: var(--cyan);
+    padding: 3px 10px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .bar-actions { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    padding: 9px 18px; border-radius: 8px; font-size: 0.84rem;
+    font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: all .2s; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--cyan); color: var(--cyan); background: var(--surface2); transform: translateY(-1px); }
+  .btn-pdf {
+    background: linear-gradient(135deg,#ef4444,#dc2626);
+    border-color: #ef4444; color: #fff;
+    box-shadow: 0 4px 16px rgba(239,68,68,.3);
+  }
+  .btn-pdf:hover { background: linear-gradient(135deg,#dc2626,#b91c1c); color:#fff; box-shadow: 0 6px 22px rgba(239,68,68,.5); }
+
+  /* ── PAGE WRAP ── */
+  .page { max-width: 1280px; margin: 0 auto; padding: 48px 32px 80px; }
+
+  /* ── HERO HEADER ── */
+  .hero {
+    text-align: center; padding-bottom: 44px;
+    border-bottom: 1px solid var(--border); margin-bottom: 48px;
+  }
+  .hero h1 {
+    font-size: 2.8rem; font-weight: 900; letter-spacing: -0.5px;
+    color: #fff; margin-bottom: 12px;
+  }
+  .hero p { font-size: 1.05rem; color: var(--muted); max-width: 700px; margin: 0 auto 20px; line-height: 1.7; }
+  .meta-row { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
+  .meta-chip {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 0.82rem; color: var(--dim);
+  }
+  .meta-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); }
+
+  /* ── DIAGRAM SECTION ── */
+  .diag-section { margin-bottom: 56px; }
+  .diag-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+  }
+  .diag-num {
+    width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 1.1rem;
+  }
+  .num-cyan  { background: rgba(34,211,238,0.15); color: var(--cyan); border: 1px solid rgba(34,211,238,0.3); }
+  .num-purple{ background: rgba(167,139,250,0.15); color: var(--purple); border: 1px solid rgba(167,139,250,0.3); }
+  .num-green { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .diag-title-wrap h2 { font-size: 1.5rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+  .diag-title-wrap p { font-size: 0.9rem; color: var(--muted); }
+
+  /* ── SVG WRAPPER ── */
+  .svg-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px -12px rgba(0,0,0,0.6);
+  }
+  .svg-wrap svg { display: block; width: 100%; height: auto; }
+
+  /* ── LEGEND / SPECS TABLE ── */
+  .specs-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px; margin-top: 20px;
+  }
+  .spec-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px;
+  }
+  .spec-label {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; margin-bottom: 6px;
+  }
+  .spec-val { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+  .spec-val code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+    background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px;
+    color: var(--cyan);
+  }
+
+  .formula-box {
+    background: #0b0e17;
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 12px; padding: 20px 24px; margin-top: 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+    color: #ddd6fe; line-height: 2.0;
+  }
+  .formula-box .flabel {
+    font-size: 0.72rem; font-weight: 700; color: var(--purple);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+
+  /* ── PRINT / PDF ── */
+  @media print {
+    body { background: #fff !important; color: #0f172a !important; }
+    .topbar { display: none !important; }
+    .page { padding: 12px !important; max-width: 100% !important; }
+    .hero h1 { color: #0f172a !important; }
+    .hero p, .diag-title-wrap p, .spec-val { color: #334155 !important; }
+    .diag-section { page-break-inside: avoid; margin-bottom: 24px !important; }
+    .svg-wrap {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      box-shadow: none !important;
+    }
+    .spec-card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; }
+    .formula-box { background: #f0f4ff !important; border: 1px solid #c7d2fe !important; color: #312e81 !important; }
+    .btn { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    TRUST<em>FILE</em>
+    <span class="logo-tag">Technical Specification v2.4</span>
+  </div>
+  <div class="bar-actions">
+    <button class="btn" onclick="toggleTheme()" id="themeBtn">🌙 Light Mode</button>
+    <button class="btn btn-pdf" onclick="window.print()">📄 Save as PDF</button>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>System Architecture, Workflow &amp; Agile SDLC</h1>
+    <p>Full technical blueprint for the TrustFile Malware Analysis System — covering structural architecture, end-to-end scan pipeline, and agile development lifecycle.</p>
+    <div class="meta-row">
+      <div class="meta-chip"><span class="dot"></span>Stack: Flask · Python 3.12 · Firebase · Vercel</div>
+      <div class="meta-chip"><span class="dot"></span>Engine: Heuristics + VirusTotal 70+ AV + Gemini AI</div>
+      <div class="meta-chip"><span class="dot"></span>Version: 2.4.0 Production · August 2026</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- DIAGRAM 1: SYSTEM ARCHITECTURE                  -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <section class="diag-section">
+    <div class="diag-header">
+      <div class="diag-num num-cyan">1</div>
+      <div class="diag-title-wrap">
+        <h2>System Architecture Diagram</h2>
+        <p>Four-tier modular structure: Presentation Layer → Application Routing → Multi-Engine Scanning Core → Data Persistence</p>
+      </div>
+    </div>
+
+    <div class="svg-wrap">
+      <!-- INLINE SVG: SYSTEM ARCHITECTURE -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820">
+        <defs>
+          <linearGradient id="a1bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#07090f"/><stop offset="50%" stop-color="#0c1018"/><stop offset="100%" stop-color="#060810"/></linearGradient>
+          <linearGradient id="a1c" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#0369a1"/></linearGradient>
+          <linearGradient id="a1p" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+          <linearGradient id="a1g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#065f46"/></linearGradient>
+          <linearGradient id="a1am" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fcd34d"/><stop offset="100%" stop-color="#92400e"/></linearGradient>
+          <linearGradient id="lP" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0e1a30"/><stop offset="100%" stop-color="#091322"/></linearGradient>
+          <linearGradient id="lA" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#150d2b"/><stop offset="100%" stop-color="#0e0920"/></linearGradient>
+          <linearGradient id="lS" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0d2218"/><stop offset="100%" stop-color="#071510"/></linearGradient>
+          <linearGradient id="lD" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#200c30"/><stop offset="100%" stop-color="#140820"/></linearGradient>
+          <filter id="sh1"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity="0.5"/></filter>
+          <marker id="ac1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#22d3ee"/></marker>
+          <marker id="ap1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#a78bfa"/></marker>
+          <marker id="ag1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 Z" fill="#34d399"/></marker>
+        </defs>
+        <style>.t1{font-family:'Inter',system-ui,sans-serif;} .tt{font-size:26px;font-weight:900;fill:#fff;} .ts{font-size:13px;fill:#94a3b8;} .ll{font-size:13px;font-weight:800;letter-spacing:.5px;} .ch{font-size:13px;font-weight:700;fill:#fff;} .cs{font-size:11px;fill:#94a3b8;} .bt{font-size:10px;font-weight:800;letter-spacing:.5px;}</style>
+        <rect width="1400" height="820" rx="16" fill="url(#a1bg)" stroke="#1a2035" stroke-width="2"/>
+        <g opacity=".04" stroke="#fff" stroke-width="1"><line x1="0" y1="120" x2="1400" y2="120"/><line x1="0" y1="240" x2="1400" y2="240"/><line x1="0" y1="360" x2="1400" y2="360"/><line x1="0" y1="480" x2="1400" y2="480"/><line x1="0" y1="600" x2="1400" y2="600"/><line x1="0" y1="720" x2="1400" y2="720"/><line x1="140" y1="0" x2="140" y2="820"/><line x1="280" y1="0" x2="280" y2="820"/><line x1="420" y1="0" x2="420" y2="820"/><line x1="560" y1="0" x2="560" y2="820"/><line x1="700" y1="0" x2="700" y2="820"/><line x1="840" y1="0" x2="840" y2="820"/><line x1="980" y1="0" x2="980" y2="820"/><line x1="1120" y1="0" x2="1120" y2="820"/><line x1="1260" y1="0" x2="1260" y2="820"/></g>
+        <!-- Header -->
+        <g transform="translate(56,38)"><rect width="46" height="46" rx="12" fill="url(#a1c)"/><path d="M23 10 L35 16 V27 C35 34 29 39 23 42 C17 39 11 34 11 27 V16 Z" fill="#fff" opacity=".9"/><path d="M18 27 L22 31 L29 22" stroke="#06b6d4" stroke-width="2.5" fill="none" stroke-linecap="round"/><text x="62" y="26" class="t1 tt">TRUSTFILE — SYSTEM ARCHITECTURE</text><text x="62" y="44" class="t1 ts">4-Tier Modular Design: Presentation → Application → Multi-Engine Scanning Core → Data Persistence</text></g>
+        <!-- Layer 1 Presentation -->
+        <g transform="translate(24,102)" filter="url(#sh1)"><rect width="1352" height="145" rx="12" fill="url(#lP)" stroke="#1e4070" stroke-width="1.5"/><rect x="0" y="0" width="4" height="145" rx="2" fill="url(#a1c)"/><text x="20" y="24" class="t1 ll" fill="#38bdf8">LAYER 1 — PRESENTATION</text><g transform="translate(140,18)"><rect width="180" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#38bdf8">HOME &amp; AUTH</text><text x="10" y="52" class="t1 ch">Home &amp; Auth Views</text><text x="10" y="68" class="t1 cs">home.html, login.html</text><text x="10" y="83" class="t1 cs">signup.html</text></g><g transform="translate(336,18)"><rect width="195" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#38bdf8">DASHBOARD</text><text x="10" y="52" class="t1 ch">Interactive Dashboard</text><text x="10" y="68" class="t1 cs">Folder Groups, Threat Meters</text><text x="10" y="83" class="t1 cs">Stats &amp; Scan History</text></g><g transform="translate(547,18)"><rect width="210" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#38bdf8">UPLOAD ENGINE</text><text x="10" y="52" class="t1 ch">Batch Queue Engine</text><text x="10" y="68" class="t1 cs">Drag &amp; Drop, Folder Mode</text><text x="10" y="83" class="t1 cs">webkitdirectory support</text></g><g transform="translate(773,18)"><rect width="210" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#38bdf8">SCAN REPORT</text><text x="10" y="52" class="t1 ch">Scan Result Inspector</text><text x="10" y="68" class="t1 cs">Spectrum Meter, IOC Cards</text><text x="10" y="83" class="t1 cs">AI Analysis View</text></g><g transform="translate(999,18)"><rect width="330" height="108" rx="10" fill="rgba(56,189,248,0.08)" stroke="rgba(56,189,248,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#38bdf8">GUEST + WEBCRYPTO SHA-256</text><text x="10" y="52" class="t1 ch">Guest Scanner &amp; Pre-Hashing</text><text x="10" y="68" class="t1 cs">Zero-auth scan (guest_scan.html)</text><text x="10" y="83" class="t1 cs">Web Crypto API for &gt;4.5MB files</text></g></g>
+        <!-- Down Arrows L1→L2 -->
+        <g stroke="#22d3ee" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#ac1)"><line x1="230" y1="248" x2="230" y2="275"/><line x1="430" y1="248" x2="430" y2="275"/><line x1="660" y1="248" x2="660" y2="275"/><line x1="870" y1="248" x2="870" y2="275"/><line x1="1110" y1="248" x2="1110" y2="275"/></g>
+        <!-- Layer 2 Application -->
+        <g transform="translate(24,280)" filter="url(#sh1)"><rect width="1352" height="140" rx="12" fill="url(#lA)" stroke="#3b1f6b" stroke-width="1.5"/><rect x="0" y="0" width="4" height="140" rx="2" fill="url(#a1p)"/><text x="20" y="24" class="t1 ll" fill="#a78bfa">LAYER 2 — APPLICATION &amp; API ROUTING</text><g transform="translate(140,18)"><rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#a78bfa">CORE APP</text><text x="10" y="52" class="t1 ch">Flask WSGI Application</text><text x="10" y="68" class="t1 cs">app_firebase.py / api/index.py</text><text x="10" y="83" class="t1 cs">Python 3.12 / Vercel Serverless</text></g><g transform="translate(374,18)"><rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#a78bfa">SECURITY</text><text x="10" y="52" class="t1 ch">Security Middleware</text><text x="10" y="68" class="t1 cs">Flask-WTF CSRF Protection</text><text x="10" y="83" class="t1 cs">Rate Limiting &amp; Session Mgmt</text></g><g transform="translate(608,18)"><rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#a78bfa">AUTH</text><text x="10" y="52" class="t1 ch">Session &amp; User Manager</text><text x="10" y="68" class="t1 cs">Flask-Login Integration</text><text x="10" y="83" class="t1 cs">PBKDF2 Password Hashing</text></g><g transform="translate(842,18)"><rect width="218" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#a78bfa">MONITOR</text><text x="10" y="52" class="t1 ch">Realtime Dir. Watcher</text><text x="10" y="68" class="t1 cs">file_monitor.py (Watchdog)</text><text x="10" y="83" class="t1 cs">Auto-scan new/modified files</text></g><g transform="translate(1076,18)"><rect width="252" height="102" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.4)" stroke-width="1"/><text x="10" y="22" class="t1 bt" fill="#a78bfa">REST API GATEWAY</text><text x="10" y="52" class="t1 ch">API Endpoint Routes</text><text x="10" y="68" class="t1 cs">/api/upload_single_file</text><text x="10" y="83" class="t1 cs">/api/scan_hash · /api/guest_upload</text></g></g>
+        <!-- Down Arrow L2→L3 -->
+        <g stroke="#a78bfa" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#ap1)"><line x1="700" y1="422" x2="700" y2="450"/></g>
+        <!-- Layer 3 Scanning Core -->
+        <g transform="translate(24,455)" filter="url(#sh1)"><rect width="1352" height="188" rx="12" fill="url(#lS)" stroke="#14532d" stroke-width="1.5"/><rect x="0" y="0" width="4" height="188" rx="2" fill="url(#a1g)"/><text x="20" y="24" class="t1 ll" fill="#34d399">LAYER 3 — MULTI-ENGINE THREAT DETECTION CORE</text><g transform="translate(140,36)"><rect width="348" height="134" rx="10" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.35)" stroke-width="1"/><text x="10" y="20" class="t1 bt" fill="#34d399">ENGINE 1 — LOCAL STATIC HEURISTICS</text><text x="10" y="38" class="t1 ch">Static Analysis Engine</text><line x1="10" y1="46" x2="338" y2="46" stroke="#1a3a28" stroke-width="1"/><text x="14" y="64" class="t1 cs">• strip_comments_and_docstrings()</text><text x="14" y="80" class="t1 cs">• is_executable_or_malicious_payload()</text><text x="14" y="96" class="t1 cs">• Shannon Entropy (0.0–8.0 scale)</text><text x="14" y="112" class="t1 cs">• AST Pattern Matching &amp; PE Magic Bytes</text></g><g transform="translate(504,36)"><rect width="348" height="134" rx="10" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.35)" stroke-width="1"/><text x="10" y="20" class="t1 bt" fill="#22d3ee">ENGINE 2 — VIRUSTOTAL GLOBAL CONSENSUS</text><text x="10" y="38" class="t1 ch">70+ AV Cloud Scan</text><line x1="10" y1="46" x2="338" y2="46" stroke="#1a2a3a" stroke-width="1"/><text x="14" y="64" class="t1 cs">• Firebase vt_cache (instant &lt;100ms hits)</text><text x="14" y="80" class="t1 cs">• VirusTotal v3 REST API (70+ engines)</text><text x="14" y="96" class="t1 cs" fill="#93c5fd">• 0-Detection Rule: cap at 40% Medium</text><text x="14" y="112" class="t1 cs">• Kaspersky · Microsoft · Sophos · ESET</text></g><g transform="translate(868,36)"><rect width="460" height="134" rx="10" fill="rgba(167,139,250,0.06)" stroke="rgba(167,139,250,0.35)" stroke-width="1"/><text x="10" y="20" class="t1 bt" fill="#c084fc">ENGINE 3 — GEMINI AI INTELLIGENCE</text><text x="10" y="38" class="t1 ch">Contextual Threat Reasoning</text><line x1="10" y1="46" x2="450" y2="46" stroke="#2a1a3a" stroke-width="1"/><text x="14" y="64" class="t1 cs">• Google Gemini 2.0 Flash API (primary)</text><text x="14" y="80" class="t1 cs">• analyze_file_ai_local() offline fallback</text><text x="14" y="96" class="t1 cs">• Contextual threat synthesis</text><text x="14" y="112" class="t1 cs">• Plain-English remediation steps</text></g></g>
+        <!-- Down Arrows L3→L4 -->
+        <g stroke="#34d399" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#ag1)"><line x1="320" y1="644" x2="320" y2="670"/><line x1="700" y1="644" x2="700" y2="670"/><line x1="1100" y1="644" x2="1100" y2="670"/></g>
+        <!-- Layer 4 Data -->
+        <g transform="translate(24,675)" filter="url(#sh1)"><rect width="1352" height="118" rx="12" fill="url(#lD)" stroke="#581c87" stroke-width="1.5"/><rect x="0" y="0" width="4" height="118" rx="2" fill="url(#a1am)"/><text x="20" y="24" class="t1 ll" fill="#fcd34d">LAYER 4 — DATA &amp; PERSISTENCE</text><g transform="translate(140,34)"><rect width="390" height="68" rx="10" fill="rgba(251,191,36,0.07)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/><text x="14" y="22" class="t1 ch">Firebase Realtime Database</text><text x="14" y="40" class="t1 cs">Users, File Records, vt_cache/, Folder Groups, Settings</text><text x="14" y="56" class="t1 cs" fill="#fcd34d">Cloud-Hosted · Real-time Sync · Shared: Local &amp; Vercel</text></g><g transform="translate(546,34)"><rect width="390" height="68" rx="10" fill="rgba(251,191,36,0.07)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/><text x="14" y="22" class="t1 ch">File Storage Subsystem</text><text x="14" y="40" class="t1 cs">uploads/&lt;uid&gt;/ (local) · /tmp/uploads/ (Vercel)</text><text x="14" y="56" class="t1 cs" fill="#fcd34d">Sandboxed per user · Auto-cleanup on serverless</text></g><g transform="translate(952,34)"><rect width="376" height="68" rx="10" fill="rgba(251,191,36,0.07)" stroke="rgba(251,191,36,0.35)" stroke-width="1"/><text x="14" y="22" class="t1 ch">Gmail SMTP Relay</text><text x="14" y="40" class="t1 cs">6-Digit OTP delivery for password reset flows</text><text x="14" y="56" class="t1 cs" fill="#fcd34d">Threat alert notifications · TLS Encrypted</text></g></g>
+      </svg>
+    </div>
+
+    <div class="specs-grid" style="margin-top:20px;">
+      <div class="spec-card"><div class="spec-label" style="color:var(--cyan)">Layer 1 — Presentation</div><div class="spec-val">HTML5, CSS3, Vanilla JS ES6+, Web Crypto API, <code>webkitdirectory</code> folder picker</div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--purple)">Layer 2 — Application</div><div class="spec-val">Flask Python 3.12, Flask-Login, Flask-WTF CSRF, Watchdog real-time monitor, Vercel WSGI</div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--green)">Layer 3 — Scanning Core</div><div class="spec-val">Static AST heuristics, VirusTotal v3 REST, Firebase VT cache, Google Gemini 2.0 Flash AI</div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--amber)">Layer 4 — Persistence</div><div class="spec-val">Firebase Realtime DB, sandboxed file store (<code>uploads/&lt;uid&gt;/</code>), Gmail SMTP OTP relay</div></div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- DIAGRAM 2: SYSTEM WORKFLOW                      -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <section class="diag-section">
+    <div class="diag-header">
+      <div class="diag-num num-purple">2</div>
+      <div class="diag-title-wrap">
+        <h2>System Workflow Diagram</h2>
+        <p>Step-by-step scan execution: Client file ingestion → Three-engine analysis → Consensus override → Firebase persistence → Interactive report</p>
+      </div>
+    </div>
+
+    <div class="svg-wrap">
+      <!-- INLINE SVG: SYSTEM WORKFLOW -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820">
+        <defs>
+          <linearGradient id="w_bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#080b11"/><stop offset="50%" stop-color="#0f1420"/><stop offset="100%" stop-color="#070a0f"/></linearGradient>
+          <linearGradient id="w_c" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0284c7"/></linearGradient>
+          <linearGradient id="w_p" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#c084fc"/><stop offset="100%" stop-color="#7e22ce"/></linearGradient>
+          <linearGradient id="w_g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4ade80"/><stop offset="100%" stop-color="#15803d"/></linearGradient>
+          <linearGradient id="w_a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#b45309"/></linearGradient>
+          <linearGradient id="w_r" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f87171"/><stop offset="100%" stop-color="#b91c1c"/></linearGradient>
+          <linearGradient id="w_card" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#161d2d"/><stop offset="100%" stop-color="#0f1420"/></linearGradient>
+          <filter id="w_sh"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.6"/></filter>
+        </defs>
+        <style>.w{font-family:'Inter',system-ui,sans-serif;} .wt{font-size:26px;font-weight:900;fill:#fff;letter-spacing:.5px;} .ws{font-size:13px;fill:#94a3b8;} .wn{font-size:13px;font-weight:800;fill:#fff;} .wh{font-size:16px;font-weight:800;fill:#fff;} .wb{font-size:11px;font-weight:700;fill:#38bdf8;text-transform:uppercase;letter-spacing:.5px;} .wc{font-size:12px;fill:#cbd5e1;} .wa{font-size:11px;font-weight:600;fill:#64748b;}</style>
+        <rect width="1400" height="820" rx="16" fill="url(#w_bg)" stroke="#1e293b" stroke-width="2"/>
+        <g opacity=".06" stroke="#fff" stroke-width="1"><path d="M0 100 H1400 M0 200 H1400 M0 300 H1400 M0 400 H1400 M0 500 H1400 M0 600 H1400 M0 700 H1400"/><path d="M100 0 V820 M200 0 V820 M300 0 V820 M400 0 V820 M500 0 V820 M600 0 V820 M700 0 V820 M800 0 V820 M900 0 V820 M1000 0 V820 M1100 0 V820 M1200 0 V820 M1300 0 V820"/></g>
+        <!-- Header -->
+        <g transform="translate(60,45)"><rect width="46" height="46" rx="12" fill="url(#w_c)"/><path d="M23 10 L35 16 V26 C35 33 29 38 23 41 C17 38 11 33 11 26 V16 Z" fill="#fff" opacity=".95"/><text x="62" y="26" class="w wt">TRUSTFILE SYSTEM WORKFLOW</text><text x="62" y="44" class="w ws">End-to-End: Client Ingestion → Static Heuristics → VirusTotal Consensus → Gemini AI → Live Threat Report</text></g>
+        <!-- STEP 1 -->
+        <g transform="translate(60,120)" filter="url(#w_sh)"><rect width="380" height="290" rx="14" fill="url(#w_card)" stroke="#38bdf8" stroke-width="1.5"/><circle cx="36" cy="38" r="16" fill="url(#w_c)"/><text x="32" y="43" class="w wn">1</text><text x="64" y="32" class="w wb">INPUT &amp; INGESTION</text><text x="64" y="52" class="w wh">File &amp; Folder Intake</text><line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/><g transform="translate(24,94)"><rect width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="21" r="5" fill="#38bdf8"/><text x="32" y="19" class="w wc" font-weight="700">Drag &amp; Drop / Folder Picker</text><text x="32" y="34" class="w wc" fill="#94a3b8">HTML5 webkitdirectory batch ingestion</text><rect y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="73" r="5" fill="#38bdf8"/><text x="32" y="69" class="w wc" font-weight="700">WebCrypto SHA-256 Pre-Hashing</text><text x="32" y="85" class="w wc" fill="#94a3b8">Instant client pre-hashing for &gt;4.5MB files</text><rect y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="125" r="5" fill="#38bdf8"/><text x="32" y="123" class="w wc" font-weight="700">Guest or Authenticated Session</text><text x="32" y="138" class="w wc" fill="#94a3b8">CSRF token validation &amp; rate limiting</text></g></g>
+        <!-- Arrow 1→2 --><g transform="translate(445,255)"><line x1="0" y1="0" x2="60" y2="0" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4"/><polygon points="60,0 52,-5 52,5" fill="#38bdf8"/><text x="10" y="-10" class="w wa">POST payload</text></g>
+        <!-- STEP 2 -->
+        <g transform="translate(510,120)" filter="url(#w_sh)"><rect width="380" height="290" rx="14" fill="url(#w_card)" stroke="#a855f7" stroke-width="1.5"/><circle cx="36" cy="38" r="16" fill="url(#w_p)"/><text x="32" y="43" class="w wn">2</text><text x="64" y="32" class="w wb" fill="#c084fc">ENGINE 1: STATIC HEURISTICS</text><text x="64" y="52" class="w wh">Analysis &amp; Sanitizer</text><line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/><g transform="translate(24,94)"><rect width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="21" r="5" fill="#c084fc"/><text x="32" y="19" class="w wc" font-weight="700">Comment &amp; Docstring Stripping</text><text x="32" y="34" class="w wc" fill="#94a3b8">Removes # and """ to cut false alarms</text><rect y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="73" r="5" fill="#c084fc"/><text x="32" y="69" class="w wc" font-weight="700">Base64 Deep Payload Inspection</text><text x="32" y="85" class="w wc" fill="#94a3b8">Decodes &amp; suppresses harmless plain text</text><rect y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="125" r="5" fill="#c084fc"/><text x="32" y="123" class="w wc" font-weight="700">Entropy (0.0–8.0) &amp; AST Patterns</text><text x="32" y="138" class="w wc" fill="#94a3b8">Scores droppers (95) &amp; persistence (85)</text></g></g>
+        <!-- Arrow 2→3 --><g transform="translate(895,255)"><line x1="0" y1="0" x2="60" y2="0" stroke="#a855f7" stroke-width="2" stroke-dasharray="4"/><polygon points="60,0 52,-5 52,5" fill="#a855f7"/><text x="10" y="-10" class="w wa">Raw: 0–100</text></g>
+        <!-- STEP 3 -->
+        <g transform="translate(960,120)" filter="url(#w_sh)"><rect width="380" height="290" rx="14" fill="url(#w_card)" stroke="#3b82f6" stroke-width="1.5"/><circle cx="36" cy="38" r="16" fill="url(#w_c)"/><text x="32" y="43" class="w wn">3</text><text x="64" y="32" class="w wb" fill="#60a5fa">ENGINE 2: VIRUSTOTAL CLOUD</text><text x="64" y="52" class="w wh">70+ AV Global Consensus</text><line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/><g transform="translate(24,94)"><rect width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="21" r="5" fill="#60a5fa"/><text x="32" y="19" class="w wc" font-weight="700">Firebase VT Cache Lookup</text><text x="32" y="34" class="w wc" fill="#94a3b8">Instant (&lt;100ms) for known SHA-256</text><rect y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="73" r="5" fill="#60a5fa"/><text x="32" y="69" class="w wc" font-weight="700">Multi-Engine REST Query (v3)</text><text x="32" y="85" class="w wc" fill="#94a3b8">Queries Kaspersky, Microsoft, Sophos...</text><rect y="104" width="332" height="58" rx="8" fill="#0c2340" stroke="#1e3a8a"/><circle cx="16" cy="133" r="5" fill="#38bdf8"/><text x="32" y="125" class="w wc" font-weight="700" fill="#93c5fd">0-Detection Consensus Rule</text><text x="32" y="141" class="w wc" fill="#bfdbfe">20+ engines say 0 flags → cap at 40%</text><text x="32" y="154" class="w wc" fill="#60a5fa">Overrides heuristic false-positive noise</text></g></g>
+        <!-- Arrow 3→4 --><g transform="translate(1150,415)"><path d="M0 0 V40 H-190 V65" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4"/><polygon points="-190,65 -195,57 -185,57" fill="#3b82f6"/><text x="-150" y="30" class="w wa">Consensus score</text></g>
+        <!-- STEP 4 -->
+        <g transform="translate(60,485)" filter="url(#w_sh)"><rect width="380" height="290" rx="14" fill="url(#w_card)" stroke="#10b981" stroke-width="1.5"/><circle cx="36" cy="38" r="16" fill="url(#w_g)"/><text x="32" y="43" class="w wn">4</text><text x="64" y="32" class="w wb" fill="#34d399">ENGINE 3: AI INTELLIGENCE</text><text x="64" y="52" class="w wh">Contextual AI Reasoning</text><line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/><g transform="translate(24,94)"><rect width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="21" r="5" fill="#34d399"/><text x="32" y="19" class="w wc" font-weight="700">Google Gemini 2.0 Flash</text><text x="32" y="34" class="w wc" fill="#94a3b8">Low-latency contextual threat synthesis</text><rect y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="73" r="5" fill="#34d399"/><text x="32" y="69" class="w wc" font-weight="700">Deterministic Threat Grounding</text><text x="32" y="85" class="w wc" fill="#94a3b8">Constrained to score (no hallucination)</text><rect y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="125" r="5" fill="#34d399"/><text x="32" y="123" class="w wc" font-weight="700">Plain-English Recommendation</text><text x="32" y="138" class="w wc" fill="#94a3b8">Generates quarantine &amp; mitigation steps</text></g></g>
+        <!-- Arrow 4→5 --><g transform="translate(445,630)"><line x1="0" y1="0" x2="60" y2="0" stroke="#10b981" stroke-width="2" stroke-dasharray="4"/><polygon points="60,0 52,-5 52,5" fill="#10b981"/><text x="10" y="-10" class="w wa">Synthesis</text></g>
+        <!-- STEP 5 -->
+        <g transform="translate(510,485)" filter="url(#w_sh)"><rect width="380" height="290" rx="14" fill="url(#w_card)" stroke="#f59e0b" stroke-width="1.5"/><circle cx="36" cy="38" r="16" fill="url(#w_a)"/><text x="32" y="43" class="w wn">5</text><text x="64" y="32" class="w wb" fill="#fbbf24">VERDICT HARMONIZATION</text><text x="64" y="52" class="w wh">Threat Classification</text><line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/><g transform="translate(24,94)"><rect width="160" height="42" rx="6" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="12" y="18" class="w wc" fill="#34d399" font-weight="700">0 – 29%</text><text x="12" y="34" class="w wc" font-weight="700">BENIGN / SAFE</text><rect x="172" y="0" width="160" height="42" rx="6" fill="rgba(234,179,8,.15)" stroke="#eab308"/><text x="184" y="18" class="w wc" fill="#facc15" font-weight="700">30 – 49%</text><text x="184" y="34" class="w wc" font-weight="700">MEDIUM RISK</text><rect y="50" width="160" height="42" rx="6" fill="rgba(249,115,22,.15)" stroke="#f97316"/><text x="12" y="68" class="w wc" fill="#fb923c" font-weight="700">50 – 69%</text><text x="12" y="84" class="w wc" font-weight="700">HIGH THREAT</text><rect x="172" y="50" width="160" height="42" rx="6" fill="rgba(239,68,68,.15)" stroke="#ef4444"/><text x="184" y="68" class="w wc" fill="#f87171" font-weight="700">70 – 100%</text><text x="184" y="84" class="w wc" font-weight="700">CRITICAL</text><rect y="100" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><text x="12" y="119" class="w wc" font-weight="700">Unified Badge Alignment</text><text x="12" y="133" class="w wc" fill="#94a3b8">Hero card, spectrum bar &amp; text agree 100%</text></g></g>
+        <!-- Arrow 5→6 --><g transform="translate(895,630)"><line x1="0" y1="0" x2="60" y2="0" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4"/><polygon points="60,0 52,-5 52,5" fill="#f59e0b"/><text x="10" y="-10" class="w wa">Final record</text></g>
+        <!-- STEP 6 -->
+        <g transform="translate(960,485)" filter="url(#w_sh)"><rect width="380" height="290" rx="14" fill="url(#w_card)" stroke="#ef4444" stroke-width="1.5"/><circle cx="36" cy="38" r="16" fill="url(#w_r)"/><text x="32" y="43" class="w wn">6</text><text x="64" y="32" class="w wb" fill="#f87171">PERSISTENCE &amp; UI</text><text x="64" y="52" class="w wh">Interactive Report</text><line x1="20" y1="74" x2="360" y2="74" stroke="#1e293b" stroke-width="1"/><g transform="translate(24,94)"><rect width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="21" r="5" fill="#ef4444"/><text x="32" y="19" class="w wc" font-weight="700">Firebase Realtime Database</text><text x="32" y="34" class="w wc" fill="#94a3b8">Stores IOCs, scan history &amp; metrics</text><rect y="50" width="332" height="46" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="73" r="5" fill="#ef4444"/><text x="32" y="69" class="w wc" font-weight="700">Interactive Spectrum Meter</text><text x="32" y="85" class="w wc" fill="#94a3b8">Visual score slider with confidence badge</text><rect y="104" width="332" height="42" rx="8" fill="#111827" stroke="#1f2937"/><circle cx="16" cy="125" r="5" fill="#ef4444"/><text x="32" y="123" class="w wc" font-weight="700">Detailed IOC Extraction Card</text><text x="32" y="138" class="w wc" fill="#94a3b8">Registry keys, tasks, commands, strings</text></g></g>
+      </svg>
+    </div>
+
+    <div class="formula-box">
+      <div class="flabel">🧮 Deterministic Scoring Formula (Global Consensus Override)</div>
+      Final_Risk_Score =<br>
+      &nbsp;&nbsp; if (VT_Engines &ge; 20 AND VT_Positives == 0) &rarr; min(Heuristic_Score, 40)  ← Global Consensus Cap<br>
+      &nbsp;&nbsp; if (VT_Positives &gt; 0)                        &rarr; max(Heuristic_Score, (VT_Positives / VT_Engines) × 100)<br>
+      &nbsp;&nbsp; else                                             &rarr; Heuristic_Score
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- DIAGRAM 3: AGILE SDLC                           -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <section class="diag-section">
+    <div class="diag-header">
+      <div class="diag-num num-green">3</div>
+      <div class="diag-title-wrap">
+        <h2>Agile Methodology &amp; SDLC Diagram</h2>
+        <p>Iterative Scrum sprint lifecycle with AI pair programming, automated parity QA, and Vercel CI/CD continuous delivery</p>
+      </div>
+    </div>
+
+    <div class="svg-wrap">
+      <!-- INLINE SVG: AGILE SDLC -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760">
+        <defs>
+          <linearGradient id="s_bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#090d16"/><stop offset="50%" stop-color="#111726"/><stop offset="100%" stop-color="#080c14"/></linearGradient>
+          <linearGradient id="s_p" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#6d28d9"/></linearGradient>
+          <linearGradient id="s_c" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0284c7"/></linearGradient>
+          <linearGradient id="s_g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+          <linearGradient id="s_a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#d97706"/></linearGradient>
+          <linearGradient id="s_r" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f87171"/><stop offset="100%" stop-color="#dc2626"/></linearGradient>
+          <linearGradient id="s_card" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#172033"/><stop offset="100%" stop-color="#0f1624"/></linearGradient>
+          <filter id="s_sh"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.5"/></filter>
+        </defs>
+        <style>.s{font-family:'Inter',system-ui,sans-serif;} .st{font-size:26px;font-weight:900;fill:#fff;letter-spacing:.5px;} .ss{font-size:13px;fill:#94a3b8;} .sp{font-size:11px;font-weight:800;letter-spacing:.5px;} .sph{font-size:17px;font-weight:800;fill:#fff;} .sd{font-size:12px;fill:#cbd5e1;} .sdt{font-size:11px;fill:#94a3b8;} .sl{font-size:12px;font-weight:700;fill:#38bdf8;}</style>
+        <rect width="1400" height="760" rx="16" fill="url(#s_bg)" stroke="#1e293b" stroke-width="2"/>
+        <g opacity=".05" stroke="#fff" stroke-width="1"><line x1="0" y1="150" x2="1400" y2="150"/><line x1="0" y1="300" x2="1400" y2="300"/><line x1="0" y1="450" x2="1400" y2="450"/><line x1="0" y1="600" x2="1400" y2="600"/><line x1="200" y1="0" x2="200" y2="760"/><line x1="400" y1="0" x2="400" y2="760"/><line x1="600" y1="0" x2="600" y2="760"/><line x1="800" y1="0" x2="800" y2="760"/><line x1="1000" y1="0" x2="1000" y2="760"/><line x1="1200" y1="0" x2="1200" y2="760"/></g>
+        <!-- Header -->
+        <g transform="translate(56,38)"><rect width="46" height="46" rx="12" fill="url(#s_p)"/><path d="M23 12 C16 12 12 18 12 23 C12 28 16 34 23 34 C28 34 32 30 33 26 H29 C28 28 26 30 23 30 C19 30 16 27 16 23 C16 19 19 16 23 16 C26 16 28 18 29 20 H25 L32 27 L36 18 H32 C30 14 27 12 23 12 Z" fill="#fff"/><text x="62" y="26" class="s st">TRUSTFILE — AGILE SDLC METHODOLOGY</text><text x="62" y="44" class="s ss">Iterative 1-2 Week Sprint Framework → AI Pair Coding → QA → Vercel CI/CD → Retrospective Feedback Loop</text></g>
+        <!-- Phase 1 -->
+        <g transform="translate(50,120)" filter="url(#s_sh)"><rect width="240" height="380" rx="14" fill="url(#s_card)" stroke="#38bdf8" stroke-width="1.5"/><rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(56,189,248,.15)" stroke="#38bdf8"/><text x="24" y="32" class="s sp" fill="#38bdf8">PHASE 1</text><text x="16" y="68" class="s sph">Backlog &amp; Planning</text><line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/><g transform="translate(16,100)"><circle cx="6" cy="10" r="4" fill="#38bdf8"/><text x="18" y="14" class="s sd" font-weight="700">Threat Taxonomy Backlog</text><text x="18" y="30" class="s sdt">Obfuscation, Persistence, Shells</text><circle cx="6" cy="60" r="4" fill="#38bdf8"/><text x="18" y="64" class="s sd" font-weight="700">False-Positive Thresholds</text><text x="18" y="80" class="s sdt">Zero-tolerance on test files</text><circle cx="6" cy="110" r="4" fill="#38bdf8"/><text x="18" y="114" class="s sd" font-weight="700">Sprint Goal Definition</text><text x="18" y="130" class="s sdt">Consensus override rules &amp; UI</text><circle cx="6" cy="160" r="4" fill="#38bdf8"/><text x="18" y="164" class="s sd" font-weight="700">User Story Estimation</text><text x="18" y="180" class="s sdt">1 to 2-week sprint cadence</text></g></g>
+        <!-- Arrow 1→2 --><g transform="translate(295,300)"><line x1="0" y1="0" x2="22" y2="0" stroke="#38bdf8" stroke-width="2"/><polygon points="22,0 16,-4 16,4" fill="#38bdf8"/></g>
+        <!-- Phase 2 -->
+        <g transform="translate(320,120)" filter="url(#s_sh)"><rect width="240" height="380" rx="14" fill="url(#s_card)" stroke="#a855f7" stroke-width="1.5"/><rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(168,85,247,.15)" stroke="#a855f7"/><text x="24" y="32" class="s sp" fill="#c084fc">PHASE 2</text><text x="16" y="68" class="s sph">Sprint Execution</text><line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/><g transform="translate(16,100)"><circle cx="6" cy="10" r="4" fill="#c084fc"/><text x="18" y="14" class="s sd" font-weight="700">Static AST Engine Dev</text><text x="18" y="30" class="s sdt">Regex, docstring strip, entropy</text><circle cx="6" cy="60" r="4" fill="#c084fc"/><text x="18" y="64" class="s sd" font-weight="700">AI Pair Programming</text><text x="18" y="80" class="s sdt">Antigravity real-time pairing</text><circle cx="6" cy="110" r="4" fill="#c084fc"/><text x="18" y="114" class="s sd" font-weight="700">VirusTotal v3 Integration</text><text x="18" y="130" class="s sdt">Fast cache + cloud override</text><circle cx="6" cy="160" r="4" fill="#c084fc"/><text x="18" y="164" class="s sd" font-weight="700">Security Middleware</text><text x="18" y="180" class="s sdt">CSRF tokens, rate limiters, auth</text></g></g>
+        <!-- Arrow 2→3 --><g transform="translate(565,300)"><line x1="0" y1="0" x2="22" y2="0" stroke="#a855f7" stroke-width="2"/><polygon points="22,0 16,-4 16,4" fill="#a855f7"/></g>
+        <!-- Phase 3 -->
+        <g transform="translate(590,120)" filter="url(#s_sh)"><rect width="240" height="380" rx="14" fill="url(#s_card)" stroke="#10b981" stroke-width="1.5"/><rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(16,185,129,.15)" stroke="#10b981"/><text x="24" y="32" class="s sp" fill="#34d399">PHASE 3</text><text x="16" y="68" class="s sph">Automated QA</text><line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/><g transform="translate(16,100)"><circle cx="6" cy="10" r="4" fill="#34d399"/><text x="18" y="14" class="s sd" font-weight="700">test_enhancements.py</text><text x="18" y="30" class="s sdt">Base64 &amp; comment tests (100%)</text><circle cx="6" cy="60" r="4" fill="#34d399"/><text x="18" y="64" class="s sd" font-weight="700">test_guest_parity.py</text><text x="18" y="80" class="s sdt">Guest scan = Dashboard scan</text><circle cx="6" cy="110" r="4" fill="#34d399"/><text x="18" y="114" class="s sd" font-weight="700">VirusTotal Override Test</text><text x="18" y="130" class="s sdt">0-detection cap validation</text><circle cx="6" cy="160" r="4" fill="#34d399"/><text x="18" y="164" class="s sd" font-weight="700">Live API Test Runner</text><text x="18" y="180" class="s sdt">Zero regressions guaranteed</text></g></g>
+        <!-- Arrow 3→4 --><g transform="translate(835,300)"><line x1="0" y1="0" x2="22" y2="0" stroke="#10b981" stroke-width="2"/><polygon points="22,0 16,-4 16,4" fill="#10b981"/></g>
+        <!-- Phase 4 -->
+        <g transform="translate(860,120)" filter="url(#s_sh)"><rect width="240" height="380" rx="14" fill="url(#s_card)" stroke="#f59e0b" stroke-width="1.5"/><rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(245,158,11,.15)" stroke="#f59e0b"/><text x="24" y="32" class="s sp" fill="#fbbf24">PHASE 4</text><text x="16" y="68" class="s sph">CI/CD &amp; Cloud</text><line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/><g transform="translate(16,100)"><circle cx="6" cy="10" r="4" fill="#fbbf24"/><text x="18" y="14" class="s sd" font-weight="700">Git Commit &amp; Push</text><text x="18" y="30" class="s sdt">origin/main automatic sync</text><circle cx="6" cy="60" r="4" fill="#fbbf24"/><text x="18" y="64" class="s sd" font-weight="700">Vercel Cloud Build</text><text x="18" y="80" class="s sdt">Python 3.12 + uv fast packaging</text><circle cx="6" cy="110" r="4" fill="#fbbf24"/><text x="18" y="114" class="s sd" font-weight="700">Zero-Downtime Release</text><text x="18" y="130" class="s sdt">Live at trustfile-tau-alpha</text><circle cx="6" cy="160" r="4" fill="#fbbf24"/><text x="18" y="164" class="s sd" font-weight="700">Firebase DB Integration</text><text x="18" y="180" class="s sdt">Shared state: Local &amp; Cloud</text></g></g>
+        <!-- Arrow 4→5 --><g transform="translate(1105,300)"><line x1="0" y1="0" x2="22" y2="0" stroke="#f59e0b" stroke-width="2"/><polygon points="22,0 16,-4 16,4" fill="#f59e0b"/></g>
+        <!-- Phase 5 -->
+        <g transform="translate(1130,120)" filter="url(#s_sh)"><rect width="220" height="380" rx="14" fill="url(#s_card)" stroke="#ef4444" stroke-width="1.5"/><rect x="16" y="16" width="100" height="24" rx="6" fill="rgba(239,68,68,.15)" stroke="#ef4444"/><text x="24" y="32" class="s sp" fill="#f87171">PHASE 5</text><text x="16" y="68" class="s sph">Review &amp; Retro</text><line x1="16" y1="84" x2="204" y2="84" stroke="#1e293b" stroke-width="1"/><g transform="translate(16,100)"><circle cx="6" cy="10" r="4" fill="#f87171"/><text x="18" y="14" class="s sd" font-weight="700">Cross-Platform Audit</text><text x="18" y="30" class="s sdt">VS Code &amp; Vercel parity</text><circle cx="6" cy="60" r="4" fill="#f87171"/><text x="18" y="64" class="s sd" font-weight="700">User Acceptance Demo</text><text x="18" y="80" class="s sdt">Live dashboard review</text><circle cx="6" cy="110" r="4" fill="#f87171"/><text x="18" y="114" class="s sd" font-weight="700">Rule Refinement</text><text x="18" y="130" class="s sdt">Engine heuristics tuning</text><circle cx="6" cy="160" r="4" fill="#f87171"/><text x="18" y="164" class="s sd" font-weight="700">Feedback to Backlog</text><text x="18" y="180" class="s sdt">Continuous improvement</text></g></g>
+        <!-- Feedback Loop Arrow -->
+        <g transform="translate(0,520)"><path d="M1240 20 V80 H170 V20" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6"/><polygon points="170,20 165,28 175,28" fill="#38bdf8"/><rect x="490" y="62" width="420" height="34" rx="17" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/><text x="510" y="84" class="s sl">🔄  Continuous Agile Feedback Loop  →  Sprint Backlog Refinement</text></g>
+      </svg>
+    </div>
+
+    <div class="specs-grid" style="margin-top:20px;">
+      <div class="spec-card"><div class="spec-label" style="color:var(--cyan)">Phase 1 — Backlog</div><div class="spec-val">Threat taxonomy definition, false-positive threshold benchmarking, sprint goal scoping</div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--purple)">Phase 2 — Development</div><div class="spec-val">Python module coding in <code>app_firebase.py</code>, <code>api/advanced_heuristics.py</code>, <code>api/malware_api.py</code></div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--green)">Phase 3 — QA Testing</div><div class="spec-val"><code>test_enhancements.py</code>, <code>test_guest_parity.py</code>, <code>test_vt_override.py</code> — 100% pass rate</div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--amber)">Phase 4 — CI/CD</div><div class="spec-val">Automated Git push to <code>main</code> → Vercel Python 3.12 serverless cloud build → zero-downtime deploy</div></div>
+      <div class="spec-card"><div class="spec-label" style="color:var(--red)">Phase 5 — Retrospective</div><div class="spec-val">Cross-platform Local vs Vercel parity checks, user acceptance, engine scoring rule refinement</div></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  let dark = true;
+  function toggleTheme() {
+    dark = !dark;
+    const r = document.documentElement;
+    const btn = document.getElementById('themeBtn');
+    if (!dark) {
+      r.style.setProperty('--bg','#f8fafc');
+      r.style.setProperty('--surface','#ffffff');
+      r.style.setProperty('--surface2','#f1f5f9');
+      r.style.setProperty('--border','rgba(0,0,0,0.1)');
+      r.style.setProperty('--text','#0f172a');
+      r.style.setProperty('--muted','#475569');
+      r.style.setProperty('--dim','#64748b');
+      btn.textContent = '🌙 Dark Mode';
+    } else {
+      r.style.setProperty('--bg','#07090f');
+      r.style.setProperty('--surface','#0f1420');
+      r.style.setProperty('--surface2','#141b2a');
+      r.style.setProperty('--border','rgba(255,255,255,0.07)');
+      r.style.setProperty('--text','#f1f5f9');
+      r.style.setProperty('--muted','#94a3b8');
+      r.style.setProperty('--dim','#475569');
+      btn.textContent = '🌙 Light Mode';
+    }
+  }
+</script>
+</body>
+</html>

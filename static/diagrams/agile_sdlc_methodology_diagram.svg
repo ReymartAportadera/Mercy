@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16"/>
+      <stop offset="50%" stop-color="#111726"/>
+      <stop offset="100%" stop-color="#080c14"/>
+    </linearGradient>
+    <linearGradient id="gradBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="gradPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7e22ce"/>
+    </linearGradient>
+    <linearGradient id="gradEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="gradAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="gradRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f87171"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="cardGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#172033"/>
+      <stop offset="100%" stop-color="#0f1624"/>
+    </linearGradient>
+    <filter id="dropShadow2" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <style>
+    .sdlc-title { font-family: 'Inter', system-ui, sans-serif; font-size: 28px; font-weight: 900; fill: #ffffff; letter-spacing: 1px; }
+    .sdlc-sub { font-family: 'Inter', system-ui, sans-serif; font-size: 14px; fill: #94a3b8; }
+    .phase-badge { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+    .phase-title { font-family: 'Inter', system-ui, sans-serif; font-size: 17px; font-weight: 800; fill: #ffffff; }
+    .phase-desc { font-family: 'Inter', system-ui, sans-serif; font-size: 12px; fill: #cbd5e1; }
+    .phase-detail { font-family: 'Inter', system-ui, sans-serif; font-size: 11px; fill: #94a3b8; }
+    .loop-txt { font-family: 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 700; fill: #38bdf8; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1400" height="760" rx="16" fill="url(#bgGrad2)" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Cyber Grid -->
+  <g opacity="0.05" stroke="#ffffff" stroke-width="1">
+    <path d="M0 150 H1400 M0 300 H1400 M0 450 H1400 M0 600 H1400" />
+    <path d="M200 0 V760 M400 0 V760 M600 0 V760 M800 0 V760 M1000 0 V760 M1200 0 V760" />
+  </g>
+
+  <!-- Header -->
+  <g transform="translate(60, 40)">
+    <rect x="0" y="0" width="46" height="46" rx="12" fill="url(#gradPurple)"/>
+    <path d="M23 12 C16 12 12 18 12 23 C12 28 16 34 23 34 C28 34 32 30 33 26 H29 C28 28 26 30 23 30 C19 30 16 27 16 23 C16 19 19 16 23 16 C26 16 28 18 29 20 H25 L32 27 L36 18 H32 C30 14 27 12 23 12 Z" fill="#ffffff"/>
+    <text x="62" y="26" class="sdlc-title">TRUSTFILE AGILE SDLC METHODOLOGY</text>
+    <text x="62" y="44" class="sdlc-sub">Iterative 1-2 Week Sprint Framework: Requirements → AI Pair Coding → Automated Parity QA → Vercel CI/CD → Retrospective</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- 5 HORIZONTAL AGILE PHASES                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- PHASE 1: Backlog & Sprint Planning -->
+  <g transform="translate(50, 120)" filter="url(#dropShadow2)">
+    <rect width="240" height="380" rx="14" fill="url(#cardGrad2)" stroke="#38bdf8" stroke-width="1.5"/>
+    <rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(56,189,248,0.15)" stroke="#38bdf8"/>
+    <text x="24" y="32" class="phase-badge" fill="#38bdf8">PHASE 1</text>
+    <text x="16" y="68" class="phase-title">Backlog & Planning</text>
+    <line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(16, 100)">
+      <circle cx="6" cy="10" r="4" fill="#38bdf8"/>
+      <text x="18" y="14" class="phase-desc" font-weight="700">Threat Taxonomy Backlog</text>
+      <text x="18" y="30" class="phase-detail">Obfuscation, Persistence, Shells</text>
+
+      <circle cx="6" cy="60" r="4" fill="#38bdf8"/>
+      <text x="18" y="64" class="phase-desc" font-weight="700">False-Positive Thresholds</text>
+      <text x="18" y="80" class="phase-detail">Zero-tolerance on test files</text>
+
+      <circle cx="6" cy="110" r="4" fill="#38bdf8"/>
+      <text x="18" y="114" class="phase-desc" font-weight="700">Sprint Goal Definition</text>
+      <text x="18" y="130" class="phase-detail">Consensus override rules & UI</text>
+
+      <circle cx="6" cy="160" r="4" fill="#38bdf8"/>
+      <text x="18" y="164" class="phase-desc" font-weight="700">User Story Estimation</text>
+      <text x="18" y="180" class="phase-detail">1 to 2-week sprint cadence</text>
+    </g>
+  </g>
+
+  <!-- Flow 1 -> 2 -->
+  <g transform="translate(295, 300)">
+    <line x1="0" y1="0" x2="22" y2="0" stroke="#38bdf8" stroke-width="2"/>
+    <polygon points="22,0 16,-4 16,4" fill="#38bdf8"/>
+  </g>
+
+  <!-- PHASE 2: Sprint Development & AI Pair Coding -->
+  <g transform="translate(320, 120)" filter="url(#dropShadow2)">
+    <rect width="240" height="380" rx="14" fill="url(#cardGrad2)" stroke="#a855f7" stroke-width="1.5"/>
+    <rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(168,85,247,0.15)" stroke="#a855f7"/>
+    <text x="24" y="32" class="phase-badge" fill="#c084fc">PHASE 2</text>
+    <text x="16" y="68" class="phase-title">Sprint Execution</text>
+    <line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(16, 100)">
+      <circle cx="6" cy="10" r="4" fill="#c084fc"/>
+      <text x="18" y="14" class="phase-desc" font-weight="700">Static AST Engine Dev</text>
+      <text x="18" y="30" class="phase-detail">Regex, docstring strip, entropy</text>
+
+      <circle cx="6" cy="60" r="4" fill="#c084fc"/>
+      <text x="18" y="64" class="phase-desc" font-weight="700">AI Pair Programming</text>
+      <text x="18" y="80" class="phase-detail">Antigravity real-time pairing</text>
+
+      <circle cx="6" cy="110" r="4" fill="#c084fc"/>
+      <text x="18" y="114" class="phase-desc" font-weight="700">VirusTotal v3 Integration</text>
+      <text x="18" y="130" class="phase-detail">Fast cache + cloud override</text>
+
+      <circle cx="6" cy="160" r="4" fill="#c084fc"/>
+      <text x="18" y="164" class="phase-desc" font-weight="700">Security Middleware</text>
+      <text x="18" y="180" class="phase-detail">CSRF tokens, rate limiters, auth</text>
+    </g>
+  </g>
+
+  <!-- Flow 2 -> 3 -->
+  <g transform="translate(565, 300)">
+    <line x1="0" y1="0" x2="22" y2="0" stroke="#a855f7" stroke-width="2"/>
+    <polygon points="22,0 16,-4 16,4" fill="#a855f7"/>
+  </g>
+
+  <!-- PHASE 3: Automated Testing & Parity QA -->
+  <g transform="translate(590, 120)" filter="url(#dropShadow2)">
+    <rect width="240" height="380" rx="14" fill="url(#cardGrad2)" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(16,185,129,0.15)" stroke="#10b981"/>
+    <text x="24" y="32" class="phase-badge" fill="#34d399">PHASE 3</text>
+    <text x="16" y="68" class="phase-title">Automated QA</text>
+    <line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(16, 100)">
+      <circle cx="6" cy="10" r="4" fill="#34d399"/>
+      <text x="18" y="14" class="phase-desc" font-weight="700">test_enhancements.py</text>
+      <text x="18" y="30" class="phase-detail">Verifies Base64 & comments (100%)</text>
+
+      <circle cx="6" cy="60" r="4" fill="#34d399"/>
+      <text x="18" y="64" class="phase-desc" font-weight="700">test_guest_parity.py</text>
+      <text x="18" y="80" class="phase-detail">Guest scan = Dashboard scan</text>
+
+      <circle cx="6" cy="110" r="4" fill="#34d399"/>
+      <text x="18" y="114" class="phase-desc" font-weight="700">VirusTotal Override Test</text>
+      <text x="18" y="130" class="phase-detail">0-detection cap validation</text>
+
+      <circle cx="6" cy="160" r="4" fill="#34d399"/>
+      <text x="18" y="164" class="phase-desc" font-weight="700">Live API Test Runner</text>
+      <text x="18" y="180" class="phase-detail">Zero regressions guaranteed</text>
+    </g>
+  </g>
+
+  <!-- Flow 3 -> 4 -->
+  <g transform="translate(835, 300)">
+    <line x1="0" y1="0" x2="22" y2="0" stroke="#10b981" stroke-width="2"/>
+    <polygon points="22,0 16,-4 16,4" fill="#10b981"/>
+  </g>
+
+  <!-- PHASE 4: CI/CD & Vercel Deployment -->
+  <g transform="translate(860, 120)" filter="url(#dropShadow2)">
+    <rect width="240" height="380" rx="14" fill="url(#cardGrad2)" stroke="#f59e0b" stroke-width="1.5"/>
+    <rect x="16" y="16" width="110" height="24" rx="6" fill="rgba(245,158,11,0.15)" stroke="#f59e0b"/>
+    <text x="24" y="32" class="phase-badge" fill="#fbbf24">PHASE 4</text>
+    <text x="16" y="68" class="phase-title">CI/CD & Cloud</text>
+    <line x1="16" y1="84" x2="224" y2="84" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(16, 100)">
+      <circle cx="6" cy="10" r="4" fill="#fbbf24"/>
+      <text x="18" y="14" class="phase-desc" font-weight="700">Git Commit & Push</text>
+      <text x="18" y="30" class="phase-detail">origin/main automatic sync</text>
+
+      <circle cx="6" cy="60" r="4" fill="#fbbf24"/>
+      <text x="18" y="64" class="phase-desc" font-weight="700">Vercel Cloud Build</text>
+      <text x="18" y="80" class="phase-detail">Python 3.12 + uv fast packaging</text>
+
+      <circle cx="6" cy="110" r="4" fill="#fbbf24"/>
+      <text x="18" y="114" class="phase-desc" font-weight="700">Zero-Downtime Release</text>
+      <text x="18" y="130" class="phase-detail">Live at trustfile-tau-alpha</text>
+
+      <circle cx="6" cy="160" r="4" fill="#fbbf24"/>
+      <text x="18" y="164" class="phase-desc" font-weight="700">Firebase DB Integration</text>
+      <text x="18" y="180" class="phase-detail">Shared state between local & cloud</text>
+    </g>
+  </g>
+
+  <!-- Flow 4 -> 5 -->
+  <g transform="translate(1105, 300)">
+    <line x1="0" y1="0" x2="22" y2="0" stroke="#f59e0b" stroke-width="2"/>
+    <polygon points="22,0 16,-4 16,4" fill="#f59e0b"/>
+  </g>
+
+  <!-- PHASE 5: Review, Retrospective & Feedback -->
+  <g transform="translate(1130, 120)" filter="url(#dropShadow2)">
+    <rect width="220" height="380" rx="14" fill="url(#cardGrad2)" stroke="#ef4444" stroke-width="1.5"/>
+    <rect x="16" y="16" width="100" height="24" rx="6" fill="rgba(239,68,68,0.15)" stroke="#ef4444"/>
+    <text x="24" y="32" class="phase-badge" fill="#f87171">PHASE 5</text>
+    <text x="16" y="68" class="phase-title">Review & Retro</text>
+    <line x1="16" y1="84" x2="204" y2="84" stroke="#1e293b" stroke-width="1"/>
+
+    <g transform="translate(16, 100)">
+      <circle cx="6" cy="10" r="4" fill="#f87171"/>
+      <text x="18" y="14" class="phase-desc" font-weight="700">Cross-Platform Audit</text>
+      <text x="18" y="30" class="phase-detail">VS Code & Vercel parity test</text>
+
+      <circle cx="6" cy="60" r="4" fill="#f87171"/>
+      <text x="18" y="64" class="phase-desc" font-weight="700">User Acceptance Demo</text>
+      <text x="18" y="80" class="phase-detail">Live dashboard review</text>
+
+      <circle cx="6" cy="110" r="4" fill="#f87171"/>
+      <text x="18" y="114" class="phase-desc" font-weight="700">Rule Refinement</text>
+      <text x="18" y="130" class="phase-detail">Engine heuristics tuning</text>
+
+      <circle cx="6" cy="160" r="4" fill="#f87171"/>
+      <text x="18" y="164" class="phase-desc" font-weight="700">Feedback to Backlog</text>
+      <text x="18" y="180" class="phase-detail">Continuous improvement</text>
+    </g>
+  </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- AGILE FEEDBACK LOOP (RETROSPECTIVE BACK TO BACKLOG)                     -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <g transform="translate(0, 520)">
+    <path d="M1240 20 V80 H170 V20" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-dasharray="6"/>
+    <polygon points="170,20 165,28 175,28" fill="#38bdf8"/>
+    <rect x="520" y="65" width="360" height="32" rx="16" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+    <text x="540" y="86" class="loop-txt"><tspan fill="#38bdf8">🔄 Continuous Agile Feedback Loop</tspan> &rarr; Sprint Backlog Refinement</text>
+  </g>
+</svg>
