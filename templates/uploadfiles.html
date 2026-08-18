@@ -1047,9 +1047,9 @@ function showScanDone() {
         : 'Scan queue complete.';
     let sub = '';
     if (totalDupes > 0) sub += totalDupes + ' duplicate(s) redirected to existing results. ';
-    if (totalSkipped > 0) sub += totalSkipped + ' file(s) skipped (exceeded 4.5 MB upload limit). ';
-    if (totalServerErrors > 0) sub += totalServerErrors + ' file(s) failed to upload (server error — check file format or try again). ';
-    if (totalQueued === 0 && totalServerErrors === 0) sub += 'All selected files were already scanned or exceeded file size limits.';
+    if (totalSkipped > 0) sub += totalSkipped + ' file(s) failed to scan! Please check your dashboard if this file exist! ';
+    if (totalServerErrors > 0) sub += totalServerErrors + ' file(s) failed to upload (please check file or try again). ';
+    if (totalQueued === 0 && totalServerErrors === 0 && totalSkipped === 0) sub += 'All selected files were already scanned.';
 
     document.getElementById('scanDoneTitle').textContent = title;
     document.getElementById('scanDoneSub').textContent = sub;
