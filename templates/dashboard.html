@@ -162,7 +162,7 @@
                 {% if files %}
                 <div class="file-cards" id="fileCards">
                     {% for file in files %}
-                    <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}">
+                    <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}" onclick="if(!event.target.closest('.file-card-actions form') && !event.target.closest('.btn-delete')) window.location.href='{{ url_for('scan_page', file_id=file.id) }}';" title="Click to view detailed scan results for {{ file.filename }}">
                         <div class="file-card-icon">
                             {% set ext = file.filename.rsplit('.', 1)[-1]|lower if '.' in file.filename else 'file' %}
                             {% if ext in ['pdf'] %}<i class="fa-solid fa-file-pdf"></i>

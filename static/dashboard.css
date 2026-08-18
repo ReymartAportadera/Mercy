@@ -514,11 +514,31 @@ body {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 16px;
-    transition: all 0.2s;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s, box-shadow 0.22s, background 0.22s;
+    cursor: pointer;
+    position: relative;
 }
 .file-card:hover {
-    border-color: rgba(255,30,30,0.25);
-    background: rgba(255,30,30,0.03);
+    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(30, 41, 59, 0.7);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.15);
+}
+.file-card:hover .file-card-icon {
+    transform: scale(1.1);
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+.file-card:hover .file-name {
+    color: #38bdf8;
+}
+.file-card:hover .btn-view {
+    background: rgba(56, 189, 248, 0.25);
+    border-color: #38bdf8;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    transform: scale(1.05);
 }
 
 .file-card-icon {
@@ -531,6 +551,7 @@ body {
     font-size: 1.3rem;
     color: var(--text-dim);
     flex-shrink: 0;
+    transition: transform 0.22s ease, background 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
 }
 
 .file-card-info {
