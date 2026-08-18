@@ -928,8 +928,9 @@ def analyze_embedded_content(
             "internal binary streams do not imply executable content."
         )
 
-    # ── Embedded ZIP archives (skip Office containers & passive text) ────────
-    if not result.is_office_container and not is_passive_text:
+    # ── Embedded ZIP archives (skip Office containers, ZIP containers themselves & passive text) ────────
+    is_zip_container = result.claimed_extension in INHERENTLY_COMPRESSED_EXTENSIONS or file_bytes[:4] == b"\x50\x4b\x03\x04"
+    if not result.is_office_container and not is_passive_text and not is_zip_container:
         pk_sig = b"\x50\x4b\x03\x04"
         offset = 4
         while True:
@@ -1719,18 +1720,21 @@ def analyze_archive(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
                 return
 
             entries = zf.infolist()
+            has_suspicious_entry = False
             for entry in entries:
                 name = entry.filename
+                low_name = name.lower()
 
                 if _SUSPICIOUS_ARCHIVE_NAMES.search(name):
+                    has_suspicious_entry = True
                     result.archive_findings.append(
                         f"Suspicious file in archive: {name}"
                     )
                     result.detections.append(
-                        f"Archive contains suspicious file: {name}"
+                        f"Archive contains executable/script file: {name}"
                     )
 
-                if name.endswith((".zip", ".rar", ".7z", ".gz")):
+                if low_name.endswith((".zip", ".rar", ".7z", ".gz", ".tar")):
                     result.nested_archives += 1
 
                 if len(name.rsplit(".", 2)) >= 3:
@@ -1740,19 +1744,68 @@ def analyze_archive(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
 
                 try:
                     inner = zf.read(entry.filename)
+                    # 1. Check for EICAR test signature inside archive entry
+                    if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in inner or b"X5O!P%@AP[4\\PZX54" in inner:
+                        has_suspicious_entry = True
+                        if "AV Test Signature" not in result.iocs:
+                            result.iocs["AV Test Signature"] = ["EICAR test signature in " + name]
+                        result.detections.append(f"Known AV test signature detected in archive entry: {name}")
+
+                    # 2. Check for Validated PE inside archive
                     if _validate_pe_structure(inner, 0):
+                        has_suspicious_entry = True
                         result.archive_findings.append(
                             f"Validated executable inside archive: {name}"
                         )
                         result.detections.append(
                             f"Validated executable hidden in archive: {name}"
                         )
+                        # Check PE imports statically in memory
+                        try:
+                            text_pe = inner.decode("latin-1", errors="ignore")
+                            inject_apis = {"VirtualAllocEx", "WriteProcessMemory", "CreateRemoteThread", "NtCreateThreadEx", "QueueUserAPC"}
+                            if any(a in text_pe for a in inject_apis):
+                                result.detections.append(f"Process injection API found in archive PE '{name}'")
+                                result._co_indicators.append("process_injection_api")
+                        except Exception:
+                            pass
+
+                    # 3. Check for script files inside archive
+                    script_exts = {".ps1", ".bat", ".cmd", ".vbs", ".js", ".py", ".sh", ".hta", ".wsf"}
+                    if any(low_name.endswith(sfx) for sfx in script_exts):
+                        try:
+                            inner_text = inner.decode("utf-8", errors="ignore")
+                            inner_active = strip_comments_and_docstrings(inner_text)
+                            if _is_contextual_ps_download(inner_text):
+                                has_suspicious_entry = True
+                                result.ps_download_contextual = True
+                                result.detections.append(f"PowerShell download cradle with execution in archive: {name}")
+                                result._co_indicators.append("powershell_download")
+                            for s_name, s_pat in DANGEROUS_SCRIPT_PATTERNS.items():
+                                if s_pat.search(inner_active):
+                                    has_suspicious_entry = True
+                                    result.script_findings.append(f"[{name}] {s_name}")
+                                    result.detections.append(f"Script threat in {name}: {s_name}")
+                                    result._co_indicators.append(s_name)
+                            if re.search(r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU)\\[^\r\n]*\\Run\b", inner_active, re.I):
+                                has_suspicious_entry = True
+                                result.script_findings.append(f"[{name}] Windows Persistence Mechanism")
+                                result.detections.append(f"Persistence commands detected in {name}")
+                                result._co_indicators.append("windows_persistence_lotl")
+                                result._hc_indicators.append("windows_persistence_lotl")
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 
             if result.nested_archives:
                 result.detections.append(
                     f"Nested archives found: {result.nested_archives} level(s)"
+                )
+
+            if not has_suspicious_entry and not result.nested_archives and not result.password_protected:
+                result.fp_notes.append(
+                    "Archive contents inspected: all entries are standard non-executable documents or data files."
                 )
 
     except zipfile.BadZipFile:
@@ -1973,6 +2026,52 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
                 )
         elif result.entropy > 6.8 and has_coind:
             score += add("high_entropy_with_coind")
+
+    # ── Req. 4 — Clean Container Caps (Office & Generic ZIP) ─────────────────
+    # A clean Office document (no macros, no scripts, no PE) must stay in Benign/Low (<= 15).
+    is_clean_office = (
+        result.is_office_container
+        and result.office_xml_validated
+        and not result.has_vba_project
+        and not result.has_macrosheet
+        and not result.embedded_executables
+        and not result.script_findings
+        and not result.vba_findings
+        and not result.packed
+    )
+    if is_clean_office:
+        pre_cap = min(score, 100)
+        if pre_cap > 15:
+            score = 15
+            breakdown["office_clean_doc_cap"] = -(pre_cap - 15)
+            result.fp_notes.append(
+                f"Score capped at 15 (Benign): clean Office document — "
+                f"no macros, scripts, or executable content. "
+                f"Original score was {pre_cap}."
+            )
+
+    # A clean ZIP archive (with only standard non-executable documents/data) must stay in Benign (<= 15).
+    is_clean_zip = (
+        (result.claimed_extension == ".zip" or result.detected_type == "ZIP Archive")
+        and not result.is_office_container
+        and not result.embedded_executables
+        and not result.script_findings
+        and not result.archive_findings
+        and not result.password_protected
+        and not result.nested_archives
+        and not result.ps_download_contextual
+        and "AV Test Signature" not in result.iocs
+    )
+    if is_clean_zip:
+        pre_cap = min(score, 100)
+        if pre_cap > 15:
+            score = 15
+            breakdown["zip_clean_container_cap"] = -(pre_cap - 15)
+            result.fp_notes.append(
+                f"Score capped at 15 (Benign): clean ZIP archive — "
+                f"no executable, script, or persistence payloads inside container. "
+                f"Original score was {pre_cap}."
+            )
 
     # ── IOCs ──────────────────────────────────────────────────────────────────
     iocs = result.iocs
@@ -2212,21 +2311,21 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     result.score           = min(max(score, 0), 100)
     result.score_breakdown = breakdown
 
-    # ── Req. 7 — Classification thresholds ───────────────────────────────────
-    # 0–15 = BENIGN, 16–35 = LOW RISK, 36–55 = SUSPICIOUS,
-    # 56–80 = HIGH RISK, 81–100 = MALICIOUS
+    # ── 5-Tier Classification thresholds ───────────────────────────────────
+    # 0–15 = Benign, 16–35 = Low, 36–55 = Medium,
+    # 56–80 = High, 81–100 = Critical
     s = result.score
     if s >= 81 and (hc_count >= 2 or is_single_critical):
-        result.threat_level = "Malicious"
+        result.threat_level = "Critical"
         result.confidence   = min(90 + hc_count * 2, 99)
     elif s >= 56:
-        result.threat_level = "High Risk"
+        result.threat_level = "High"
         result.confidence   = 75 + min(len(result._co_indicators) * 3, 20)
     elif s >= 36:
-        result.threat_level = "Suspicious"
+        result.threat_level = "Medium"
         result.confidence   = 60 + min(len(result.detections) * 2, 25)
     elif s >= 16:
-        result.threat_level = "Low Risk"
+        result.threat_level = "Low"
         result.confidence   = 45 + min(len(result.detections) * 4, 30)
     else:
         result.threat_level = "Benign"

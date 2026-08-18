@@ -163,16 +163,15 @@ def _in_memory_heuristics(text: str) -> list:
     return findings
 
 def determine_threat_level(risk_score: int, detection_details: list) -> tuple[str, str]:
-    # Threat level is determined PURELY by the final risk_score (post VT override).
-    # Keyword-based overrides are intentionally removed so the level always
-    # matches what the score bar shows on screen.
-    if risk_score >= 70:
+    # Threat level is determined strictly by the 5 standard risk score tiers:
+    # BENIGN: 0–15 | LOW: 16–35 | MEDIUM: 36–55 | HIGH: 56–80 | CRITICAL: 81–100
+    if risk_score >= 81:
         level = "Critical"
-    elif risk_score >= 50:
+    elif risk_score >= 56:
         level = "High"
-    elif risk_score >= 30:
+    elif risk_score >= 36:
         level = "Medium"
-    elif risk_score > 0:
+    elif risk_score >= 16:
         level = "Low"
     else:
         level = "Benign"
@@ -184,19 +183,16 @@ def generate_explanation(file_dict: dict) -> str:
     all_det = " ".join(file_dict.get("all_detections", []) + [file_dict.get("explanation", ""), file_dict.get("signature_status", ""), file_dict.get("pattern_result", "")]).lower()
     has_persistence = "persistence" in all_det or "reg add" in all_det or "schtasks" in all_det or "hklm" in all_det
 
-    # Only show CRITICAL persistence warning if the final score is still high (>= 50).
-    # When VT overrides to 40 (Medium), show a softer informational message instead.
-    if has_persistence and risk >= 50:
+    # Only show CRITICAL persistence warning if the final score is in High/Critical (>= 56).
+    if has_persistence and risk >= 56:
         return (
             "⚠️ CRITICAL: Windows persistence mechanisms detected. Includes Registry Run Key modification (reg add HKLM\\...\\Run) and Scheduled Task creation (schtasks). "
-            "These are standard techniques used by malware to maintain access after reboot. Even if the file claims to be 'patterns only,' the commands are live and dangerous."
+            "These are standard techniques used by malware to maintain access after reboot. The commands are live and dangerous."
         )
-    if has_persistence and risk < 50:
-        return (
-            "ℹ️ NOTE: Persistence-related patterns detected (reg add / schtasks / Registry Run Key), "
-            "however VirusTotal's 76 engines reported 0 detections. Score capped at Medium by global consensus. "
-            "Monitor this file but no immediate action required."
-        )
+
+    # Standard Medium Risk Policy Explanation
+    if 36 <= risk <= 55:
+        return "MEDIUM RISK: This file contains suspicious characteristics, but malware was not confirmed. Review the detected indicators and verify the file source before opening."
 
     reasons = []
     if file_dict.get("pattern_result") and file_dict.get("pattern_result") != "Clean":
@@ -205,24 +201,23 @@ def generate_explanation(file_dict: dict) -> str:
         reasons.append(f"it performs suspicious actions such as {file_dict.get('signature_status').lower()}")
     if file_dict.get("risky_imports") and file_dict.get("risky_imports") != "None":
         reasons.append(f"it uses risky modules like {file_dict.get('risky_imports')}")
-    if file_dict.get("entropy") and file_dict.get("entropy") > 7.5:
-        reasons.append("it has high entropy, which may indicate obfuscation")
 
-    risk = file_dict.get("risk_score", 0) or 0
-    if risk >= 70:
+    if risk >= 81:
         intro, level = "This file is very dangerous", "a critical threat"
-    elif risk >= 50:
+    elif risk >= 56:
         intro, level = "This file is potentially harmful", "a high-risk threat"
-    elif risk >= 30:
+    elif risk >= 36:
         intro, level = "This file shows suspicious behavior", "moderately suspicious"
+    elif risk >= 16:
+        intro, level = "This file has low risk", "low-risk"
     else:
-        intro, level = "This file appears mostly safe", "low-risk"
+        intro, level = "This file appears safe", "benign"
 
     if reasons:
         return f"{intro} ({level}) because " + ", ".join(reasons) + "."
-    if risk < 30:
+    if risk <= 15:
         return f"{intro}. No significant suspicious behavior detected."
-    return f"This file is classified as {level} but no specific suspicious behavior was detected."
+    return f"This file is classified as {level} based on static heuristic inspection."
 
 def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
     """Checks if a file record in Firebase should be updated based on VirusTotal consensus.
@@ -474,41 +469,42 @@ def _run_full_heuristic_scan(
     risk_score += 15 if total >= 5 else (8 if total >= 3 else (3 if total >= 1 else 0))
     risk_score  = min(risk_score, 100)
 
-    if not is_passive_markup:
-        if suspicious and risk_score < 30:
-            risk_score = 30
-        if risky_imports and risk_score < 20:
-            risk_score = 20
+    if not is_binary:
+        if not is_passive_markup:
+            if suspicious and risk_score < 30:
+                risk_score = 30
+            if risky_imports and risk_score < 20:
+                risk_score = 20
 
-    has_exec_func = bool(re.search(
-        r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
-        active_text, re.I
-    ))
-    has_obf_func = bool(re.search(
-        r"\b(base64|b64decode|b64encode|codecs|zlib|decompress|uncompress)\b|-[Ee][Nn][Cc]|\b(chr|ord)\s*\(|\\x[0-9a-fA-F]{2}",
-        active_text, re.I
-    ))
+        has_exec_func = bool(re.search(
+            r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
+            active_text, re.I
+        ))
+        has_obf_func = bool(re.search(
+            r"\b(base64|b64decode|b64encode|codecs|zlib|decompress|uncompress)\b|-[Ee][Nn][Cc]|\b(chr|ord)\s*\(|\\x[0-9a-fA-F]{2}",
+            active_text, re.I
+        ))
 
-    if has_reg_or_schtasks:
-        if "Windows Persistence Mechanism (reg add / schtasks / HKLM Run)" not in suspicious:
-            suspicious.append("Windows Persistence Mechanism (reg add / schtasks / HKLM Run)")
-        if "Windows Persistence Mechanism: reg add or schtasks command" not in heuristics:
-            heuristics.append("Windows Persistence Mechanism: reg add or schtasks command")
-        risk_score = max(risk_score, 85)
-    elif has_persistence_lotl:
-        if "Living-off-the-Land Command Execution (certutil/wmic/bitsadmin/net user)" not in suspicious:
-            suspicious.append("Living-off-the-Land Command Execution (certutil/wmic/bitsadmin/net user)")
-        risk_score = max(risk_score, 70)
-    elif has_exec_func and has_obf_func:
-        if "Obfuscated Execution Routine (exec/eval + base64)" not in suspicious:
-            suspicious.append("Obfuscated Execution Routine (exec/eval + base64)")
-        if "Obfuscated Loader Pattern: eval/exec combined with base64/encoding" not in heuristics:
-            heuristics.append("Obfuscated Loader Pattern: eval/exec combined with base64/encoding")
-        risk_score = max(risk_score, 95)
-    elif is_passive_markup:
-        has_code_exec = any("code execution" in s.lower() or "encoding" in s.lower() for s in suspicious)
-        if has_code_exec and risk_score < 15:
-            risk_score = 15
+        if has_reg_or_schtasks:
+            if "Windows Persistence Mechanism (reg add / schtasks / HKLM Run)" not in suspicious:
+                suspicious.append("Windows Persistence Mechanism (reg add / schtasks / HKLM Run)")
+            if "Windows Persistence Mechanism: reg add or schtasks command" not in heuristics:
+                heuristics.append("Windows Persistence Mechanism: reg add or schtasks command")
+            risk_score = max(risk_score, 85)
+        elif has_persistence_lotl:
+            if "Living-off-the-Land Command Execution (certutil/wmic/bitsadmin/net user)" not in suspicious:
+                suspicious.append("Living-off-the-Land Command Execution (certutil/wmic/bitsadmin/net user)")
+            risk_score = max(risk_score, 70)
+        elif has_exec_func and has_obf_func:
+            if "Obfuscated Execution Routine (exec/eval + base64)" not in suspicious:
+                suspicious.append("Obfuscated Execution Routine (exec/eval + base64)")
+            if "Obfuscated Loader Pattern: eval/exec combined with base64/encoding" not in heuristics:
+                heuristics.append("Obfuscated Loader Pattern: eval/exec combined with base64/encoding")
+            risk_score = max(risk_score, 95)
+        elif is_passive_markup:
+            has_code_exec = any("code execution" in s.lower() or "encoding" in s.lower() for s in suspicious)
+            if has_code_exec and risk_score < 15:
+                risk_score = 15
 
     # ── Advanced heuristics (always, on bytes) ────────────────────────────────
     adv: dict = {}

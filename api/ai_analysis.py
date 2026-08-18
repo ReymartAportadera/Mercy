@@ -46,17 +46,18 @@ def analyze_file_ai(entropy, patterns, imports, risk_score):
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
             
-            verdict_label = "Critical Threat" if risk_val >= 80 else "High Risk" if risk_val >= 55 else "Suspicious" if risk_val >= 35 else "Low Risk" if risk_val >= 16 else "Clean"
+            verdict_label = "Critical Threat" if risk_val >= 81 else "High Risk" if risk_val >= 56 else "Medium Risk" if risk_val >= 36 else "Low Risk" if risk_val >= 16 else "Benign"
             prompt = (
                 f"You are a Senior Security Analyst synthesizing static malware engine analysis.\n\n"
                 f"DETERMINISTIC HEURISTIC ENGINE RESULTS:\n"
                 f"- Risk Score: {risk_val}/100\n"
                 f"- Engine Verdict: {verdict_label}\n"
-                f"- File Entropy: {ent_val:.2f}/8.0\n"
+                f"- File Entropy: {ent_val:.2f}/8.0 (Note: High entropy in ZIP, Office Open XML, and compressed media is structurally normal and not malicious)\n"
                 f"- Detected Patterns: {pat_val}\n"
                 f"- Risky Imports / APIs: {imp_val}\n\n"
                 f"STRICT INSTRUCTION: You must summarize the deterministic findings without changing, lowering, or contradicting the risk score ({risk_val}/100) or verdict ({verdict_label}). "
-                f"Provide a 3-4 sentence professional security assessment highlighting the primary threat indicators (e.g. obfuscated execution routines, dynamic code evaluation, dangerous imports) and recommended mitigation."
+                f"For Medium Risk (36-55%), explicitly state: 'This file contains suspicious characteristics, but malware was not confirmed. Review the detected indicators and verify the file source before opening.' "
+                f"Provide a 3-4 sentence professional security assessment."
             )
 
             payload = {
@@ -111,41 +112,39 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
 
         has_persistence = any(k in patterns for k in ["persistence", "reg add", "schtasks", "hklm", "hkcu"])
 
-        # Use the passed-in risk_score directly so AI verdict matches the calculated threat score
+        # 5-Tier Risk Classification:
+        # BENIGN: 0–15 | LOW: 16–35 | MEDIUM: 36–55 | HIGH: 56–80 | CRITICAL: 81–100
         effective_risk = risk_score
 
-        if effective_risk >= 70:
+        if effective_risk >= 81:
             verdict     = "highly malicious"
             risk_label  = "CRITICAL RISK"
-        elif effective_risk >= 50:
-            verdict     = "likely malicious"
+        elif effective_risk >= 56:
+            verdict     = "strongly suspicious / likely malicious"
             risk_label  = "HIGH RISK"
-        elif effective_risk >= 30:
-            verdict     = "suspicious"
+        elif effective_risk >= 36:
+            verdict     = "moderately suspicious"
             risk_label  = "MEDIUM RISK"
-        elif effective_risk >= 10:
-            verdict     = "low risk (benign with minor flags)"
+        elif effective_risk >= 16:
+            verdict     = "low risk"
             risk_label  = "LOW RISK"
         else:
             verdict     = "likely safe"
             risk_label  = "CLEAN"
 
-        # ── Entropy analysis ──────────────────────────────────────────────────
-        if risk_score >= 30:
+        # ── Entropy analysis (Container & context-aware) ──────────────────────
+        # Only cite elevated entropy as suspicious if other indicators exist (risk >= 56).
+        # For clean/normal files, high entropy is normal compression.
+        if risk_score >= 56:
             if entropy >= 7.5:
                 findings.append(
-                    f"very high entropy ({entropy:.2f}/8.0) strongly indicates packed, "
-                    "encrypted, or obfuscated content — a hallmark of advanced malware"
+                    f"very high entropy ({entropy:.2f}/8.0) indicates packed, "
+                    "encrypted, or obfuscated content corroborating detected threats"
                 )
             elif entropy >= 7.0:
                 findings.append(
-                    f"elevated entropy ({entropy:.2f}/8.0) suggests obfuscation or "
-                    "compression commonly used to evade static analysis"
-                )
-            elif entropy >= 6.0:
-                findings.append(
-                    f"moderately elevated entropy ({entropy:.2f}/8.0) may indicate "
-                    "partial encoding or embedded encrypted data"
+                    f"elevated entropy ({entropy:.2f}/8.0) suggests obfuscation "
+                    "used to conceal executable code"
                 )
 
         # ── Pattern-based detections ──────────────────────────────────────────
@@ -237,27 +236,32 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
                 f"Threat classification: this file exhibits characteristics consistent "
                 f"with {malware_family}."
             )
-        elif risk_score < 10:
+        elif risk_score <= 15:
             lines.append(
-                "No malicious patterns, suspicious imports, or anomalous entropy were "
-                "detected. This file is likely benign."
+                "No malicious patterns, suspicious imports, or anomalous executable structures were "
+                "detected. Compressed container entropy is normal and safe."
             )
 
-        # Sentence 4: Recommendation
-        if risk_score >= 50:
+        # Sentence 4: Recommendation per Risk Level Policy
+        if risk_score >= 81:
             lines.append(
                 "Recommendation: QUARANTINE or DELETE this file immediately. "
                 "Do not execute it on any system."
             )
-        elif risk_score >= 30:
+        elif risk_score >= 56:
             lines.append(
-                "Recommendation: treat with caution. Investigate further before executing. "
-                "Consider running in an isolated sandbox environment."
+                "Recommendation: HIGH RISK — strong suspicious evidence detected. "
+                "Exercise extreme caution. Do not open or execute without thorough verification."
             )
-        elif risk_score >= 10:
+        elif risk_score >= 36:
             lines.append(
-                "Recommendation: this file appears low-risk but review it manually "
-                "if it came from an untrusted source."
+                "Recommendation: MEDIUM RISK — this file contains suspicious characteristics, "
+                "but malware was not confirmed. Review the detected indicators and verify the file source before opening."
+            )
+        elif risk_score >= 16:
+            lines.append(
+                "Recommendation: this file appears low-risk with minor observations. "
+                "Review manually if it originated from an untrusted source."
             )
         else:
             lines.append("Recommendation: file appears SAFE. No action required.")
