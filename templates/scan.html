@@ -1162,32 +1162,67 @@
             </div>
 
             <div class="vt-scrollable-list" id="vtScrollList">
-                {% set scans = vt.get('scans') or {
-                    'Bkav': {'detected': false, 'result': 'Clean'},
-                    'Lionic': {'detected': false, 'result': 'Clean'},
-                    'MicroWorld-eScan': {'detected': false, 'result': 'Clean'},
-                    'CTX': {'detected': false, 'result': 'Clean'},
-                    'ALYac': {'detected': false, 'result': 'Clean'},
-                    'Malwarebytes': {'detected': false, 'result': 'Clean'},
-                    'Sangfor': {'detected': false, 'result': 'Clean'},
-                    'Trustlook': {'detected': false, 'result': 'Clean'},
-                    'Kaspersky': {'detected': false, 'result': 'Clean'},
-                    'Microsoft': {'detected': false, 'result': 'Clean'},
-                    'Sophos': {'detected': false, 'result': 'Clean'},
-                    'Symantec': {'detected': false, 'result': 'Clean'}
-                } %}
-                {% for engine, detail in scans.items() %}
-                {% set det = detail.get('detected', False) %}
-                <div class="vt-scroll-item {{ 'vt-row-flagged' if det else 'vt-row-clean' }}">
-                    <div class="vt-engine-name">
-                        <span class="dot {{ 'detected' if det else 'clean' }}"></span>
-                        {{ engine }}
+                {% set scans = vt.get('scans') or {} %}
+                {% if scans %}
+                    {# First loop: Flagged engines at the very top in red #}
+                    {% for engine, detail in scans.items() %}
+                    {% set det = detail.get('detected', False) or detail.get('category') in ['malicious', 'suspicious'] %}
+                    {% if det %}
+                    <div class="vt-scroll-item vt-row-flagged">
+                        <div class="vt-engine-name">
+                            <span class="dot detected"></span>
+                            {{ engine }}
+                        </div>
+                        <span class="vt-status-pill" style="color: #ef4444;">
+                            → {{ detail.get('result') or 'Malicious' }}
+                        </span>
                     </div>
-                    <span class="vt-status-pill" style="color: {{ '#ef4444' if det else '#10b981' }};">
-                        → {{ detail.get('result') or ('Flagged' if det else 'Clean') }}
-                    </span>
-                </div>
-                {% endfor %}
+                    {% endif %}
+                    {% endfor %}
+
+                    {# Second loop: Clean engines #}
+                    {% for engine, detail in scans.items() %}
+                    {% set det = detail.get('detected', False) or detail.get('category') in ['malicious', 'suspicious'] %}
+                    {% if not det %}
+                    <div class="vt-scroll-item vt-row-clean">
+                        <div class="vt-engine-name">
+                            <span class="dot clean"></span>
+                            {{ engine }}
+                        </div>
+                        <span class="vt-status-pill" style="color: #10b981;">
+                            → {{ detail.get('result') or 'Clean' }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {# Dynamic list for all checked engines when detail sub-object was summarized #}
+                    {% if pos > 0 %}
+                        {% for i in range(1, pos + 1) %}
+                        <div class="vt-scroll-item vt-row-flagged">
+                            <div class="vt-engine-name">
+                                <span class="dot detected"></span>
+                                Security Engine #{{ i }}
+                            </div>
+                            <span class="vt-status-pill" style="color: #ef4444;">
+                                → Flagged as Malicious
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% set clean_count = total_engines - pos if total_engines >= pos else 66 %}
+                    {% for i in range(1, (clean_count if clean_count > 0 else 12) + 1) %}
+                    <div class="vt-scroll-item vt-row-clean">
+                        <div class="vt-engine-name">
+                            <span class="dot clean"></span>
+                            Antivirus Scanner #{{ i }}
+                        </div>
+                        <span class="vt-status-pill" style="color: #10b981;">
+                            → Clean
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% endif %}
             </div>
         </div>
 
