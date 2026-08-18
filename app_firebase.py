@@ -234,6 +234,8 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
     file_hash = file_dict.get("hash")
     vt = file_dict.get("virustotal")
 
+    updated = False  # initialize BEFORE the refresh block so we don't overwrite it
+
     # If VT is missing, timed out, had 0 engines, or missing scans dict, query Firebase vt_cache or quick hash check
     if not vt or not isinstance(vt, dict) or vt.get("error") or vt.get("engine_count", 0) == 0 or not vt.get("scans"):
         if file_hash:
@@ -246,6 +248,17 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
             if cached_vt and cached_vt.get("engine_count", 0) > 0:
                 vt = cached_vt
                 file_dict["virustotal"] = cached_vt
+                # Immediately persist refreshed VT data to Firebase so future loads are fast
+                file_id = file_dict.get("id")
+                user_id = file_dict.get("user_id")
+                if file_id:
+                    try:
+                        from firebase_admin import db as _fdb
+                        _fdb.reference(f"uploaded_files/{file_id}").update({"virustotal": cached_vt})
+                        if user_id:
+                            _fdb.reference(f"user_files/{user_id}/{file_id}").update({"virustotal": cached_vt})
+                    except Exception as _pe:
+                        logger.warning("Could not persist refreshed VT data: %s", _pe)
                 updated = True
 
     if not vt or not isinstance(vt, dict) or vt.get("error"):
@@ -254,7 +267,6 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
     pos = vt.get("positives", 0)
     total = vt.get("engine_count", 0) or vt.get("total_engines", 0)
 
-    updated = False
     current_risk = file_dict.get("risk_score", 0) or 0
 
     if total >= 20 and pos == 0:
