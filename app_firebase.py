@@ -234,11 +234,11 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
     file_hash = file_dict.get("hash")
     vt = file_dict.get("virustotal")
 
-    # If VT is missing, timed out, or had 0 engines, query Firebase vt_cache or quick hash check
-    if not vt or not isinstance(vt, dict) or vt.get("error") or vt.get("engine_count", 0) == 0:
+    # If VT is missing, timed out, had 0 engines, or missing scans dict, query Firebase vt_cache or quick hash check
+    if not vt or not isinstance(vt, dict) or vt.get("error") or vt.get("engine_count", 0) == 0 or not vt.get("scans"):
         if file_hash:
             cached_vt = get_cached_result(file_hash)
-            if not cached_vt:
+            if not cached_vt or not cached_vt.get("scans"):
                 try:
                     cached_vt = check_hash_api(file_hash)
                 except Exception:
@@ -246,6 +246,7 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
             if cached_vt and cached_vt.get("engine_count", 0) > 0:
                 vt = cached_vt
                 file_dict["virustotal"] = cached_vt
+                updated = True
 
     if not vt or not isinstance(vt, dict) or vt.get("error"):
         return False
