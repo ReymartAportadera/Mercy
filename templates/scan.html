@@ -800,14 +800,14 @@
                 </div>
                 <span class="pill-badge-yellow">1 CATEGORIES</span>
             </div>
-            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden; max-width:100%; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">AV TEST SIGNATURE</span>
                     <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">2</span>
                 </div>
-                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
-                    <li>X5O!P%@AP[4\PZX54</li>
-                    <li>EICAR-STANDARD-ANTIVIRUS-TEST-FILE</li>
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24; word-break:break-all; overflow-wrap:anywhere; white-space:normal;">
+                    <li style="margin-bottom:4px; line-height:1.4; word-break:break-all; overflow-wrap:anywhere;">X5O!P%@AP[4\PZX54</li>
+                    <li style="margin-bottom:4px; line-height:1.4; word-break:break-all; overflow-wrap:anywhere;">EICAR-STANDARD-ANTIVIRUS-TEST-FILE</li>
                 </ul>
             </div>
         </div>
@@ -822,14 +822,14 @@
             </div>
             {% for cat, items in raw_iocs.items() %}
             {% if items %}
-            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); margin-bottom:8px;">
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); margin-bottom:8px; overflow:hidden; max-width:100%; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">{{ cat|upper }}</span>
                     <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ items|length }}</span>
                 </div>
-                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24; word-break:break-all; overflow-wrap:anywhere; white-space:normal;">
                     {% for item in items[:10] %}
-                    <li>{{ item }}</li>
+                    <li style="margin-bottom:4px; line-height:1.4; word-break:break-all; overflow-wrap:anywhere;">{{ item }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -845,14 +845,14 @@
                 </div>
                 <span class="pill-badge-yellow">1 CATEGORIES</span>
             </div>
-            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden; max-width:100%; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">EXTRACTED INDICATORS</span>
                     <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ raw_iocs|length }}</span>
                 </div>
-                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24; word-break:break-all; overflow-wrap:anywhere; white-space:normal;">
                     {% for item in raw_iocs[:10] %}
-                    <li>{{ item }}</li>
+                    <li style="margin-bottom:4px; line-height:1.4; word-break:break-all; overflow-wrap:anywhere;">{{ item }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -866,14 +866,14 @@
                 </div>
                 <span class="pill-badge-yellow">1 CATEGORIES</span>
             </div>
-            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden; max-width:100%; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">SUSPICIOUS INDICATORS</span>
                     <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ pattern_iocs|length }}</span>
                 </div>
-                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24; word-break:break-all; overflow-wrap:anywhere; white-space:normal;">
                     {% for item in pattern_iocs[:10] %}
-                    <li>{{ item }}</li>
+                    <li style="margin-bottom:4px; line-height:1.4; word-break:break-all; overflow-wrap:anywhere;">{{ item }}</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -887,14 +887,14 @@
                 </div>
                 <span class="pill-badge-yellow">{{ _pr_items|length }} INDICATORS</span>
             </div>
-            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06);">
+            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; border:1px solid rgba(255,255,255,0.06); overflow:hidden; max-width:100%; box-sizing:border-box;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <span style="font-size:0.8rem; font-weight:800; color:#60a5fa; letter-spacing:0.5px;">SUSPICIOUS PATTERNS</span>
                     <span style="background:rgba(96,165,250,0.2); color:#60a5fa; font-size:0.7rem; padding:2px 8px; border-radius:10px; font-weight:700;">{{ _pr_items|length }}</span>
                 </div>
-                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24;">
+                <ul style="margin:0; padding-left:18px; font-family:monospace; font-size:0.78rem; color:#fbbf24; word-break:break-all; overflow-wrap:anywhere; white-space:normal;">
                     {% for item in _pr_items[:10] %}
-                    <li>{{ item }}</li>
+                    <li style="margin-bottom:4px; line-height:1.4; word-break:break-all; overflow-wrap:anywhere;">{{ item }}</li>
                     {% endfor %}
                 </ul>
             </div>
