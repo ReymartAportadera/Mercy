@@ -290,15 +290,22 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
             file_dict["status"] = new_status
             updated = True
 
-        # Ensure AI analysis reflects the adjusted 40% Medium score
+        # Ensure AI analysis reflects the critical threat level
         ai_data = file_dict.get("ai_analysis")
-        if not ai_data or not isinstance(ai_data, dict) or ai_data.get("verdict") in {"CRITICAL", "Critical", "Critical Threat", "CRITICAL RISK"} and current_risk <= 40:
+        is_stale_ai = (
+            not ai_data
+            or not isinstance(ai_data, dict)
+            or (current_risk >= 70 and str(ai_data.get("verdict", "")).upper() in {"LOW RISK", "LOW", "BENIGN", "CLEAN", "MEDIUM"})
+            or (current_risk <= 40 and str(ai_data.get("verdict", "")).upper() in {"CRITICAL", "CRITICAL RISK", "HIGH RISK", "HIGH"})
+        )
+        if is_stale_ai:
             file_dict["ai_analysis"] = analyze_file_ai(
                 entropy=file_dict.get("entropy", 0),
-                patterns=file_dict.get("pattern_result", "None"),
+                patterns=file_dict.get("pattern_result") or f"VirusTotal confirmed threat: {pos}/{total} engines flagged malicious",
                 imports=file_dict.get("risky_imports", "None"),
                 risk_score=current_risk,
             )
+            file_dict["explanation"] = _extract_ai_text(file_dict["ai_analysis"])
             updated = True
 
     return updated

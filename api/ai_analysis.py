@@ -111,8 +111,8 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
 
         has_persistence = any(k in patterns for k in ["persistence", "reg add", "schtasks", "hklm", "hkcu"])
 
-        # Use the passed-in risk_score (which may be overridden to 40 by VirusTotal consensus)
-        effective_risk = risk_score if (has_real_indicators or has_persistence) else min(risk_score, 29)
+        # Use the passed-in risk_score directly so AI verdict matches the calculated threat score
+        effective_risk = risk_score
 
         if effective_risk >= 70:
             verdict     = "highly malicious"
@@ -124,7 +124,7 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score):
             verdict     = "suspicious"
             risk_label  = "MEDIUM RISK"
         elif effective_risk >= 10:
-            verdict     = "low risk (benign with minor flags)" if risk_score < 30 else "potentially unwanted"
+            verdict     = "low risk (benign with minor flags)"
             risk_label  = "LOW RISK"
         else:
             verdict     = "likely safe"
