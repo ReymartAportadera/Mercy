@@ -12,6 +12,7 @@ import math
 import re
 import uuid
 from collections import OrderedDict
+import io
 import smtplib
 import secrets
 from email.mime.text import MIMEText
@@ -311,6 +312,7 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
                 patterns=file_dict.get("pattern_result") or f"VirusTotal confirmed threat: {pos}/{total} engines flagged malicious",
                 imports=file_dict.get("risky_imports", "None"),
                 risk_score=current_risk,
+                filename=file_dict.get("filename", ""),
             )
             file_dict["explanation"] = _extract_ai_text(file_dict["ai_analysis"])
             updated = True
@@ -365,6 +367,56 @@ def _extract_ai_confidence(ai_data) -> int:
     if isinstance(ai_data, dict):
         return round(min(float(ai_data.get("confidence", 0.9)), 1.0) * 100)
     return 90
+
+def _get_safe_ai_content_snippet(filename: str, file_bytes: bytes) -> str:
+    """Safely extracts an in-memory static preview snippet for AI analysis without executing anything."""
+    if not file_bytes:
+        return ""
+    ext = os.path.splitext(filename)[1].lower()
+    text_extensions = {".py", ".ps1", ".bat", ".cmd", ".vbs", ".js", ".html", ".htm", ".txt", ".sh", ".json", ".xml", ".css", ".csv", ".md"}
+    
+    # 1. Script / Source Text
+    if ext in text_extensions:
+        try:
+            return file_bytes[:16000].decode("utf-8", errors="ignore")[:4000]
+        except Exception:
+            return ""
+
+    # 2. ZIP Archive / Office Container
+    if ext in {".zip", ".docx", ".xlsx", ".pptx", ".jar", ".apk"} or file_bytes[:4] == b"\x50\x4b\x03\x04":
+        try:
+            import zipfile
+            with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                infolist = zf.infolist()
+                names = [e.filename for e in infolist[:30]]
+                summary_lines = [f"Archive Manifest ({len(infolist)} total items):", ", ".join(names[:15])]
+                
+                # If script exists inside ZIP, include its text
+                script_exts = (".ps1", ".bat", ".cmd", ".vbs", ".js", ".py", ".sh")
+                for e in infolist:
+                    if any(e.filename.lower().endswith(sfx) for sfx in script_exts):
+                        inner_raw = zf.read(e.filename)[:4000]
+                        inner_txt = inner_raw.decode("utf-8", errors="ignore")[:2000]
+                        summary_lines.append(f"\nExtracted Script [{e.filename}]:\n{inner_txt}")
+                        break
+                return "\n".join(summary_lines)[:4000]
+        except Exception:
+            return "ZIP Archive (manifest unreadable)"
+
+    # 3. Executable / Binary File
+    import re
+    strings = re.findall(rb"[\x20-\x7e]{6,}", file_bytes[:32768])
+    interesting_strings = []
+    for s in strings:
+        try:
+            st = s.decode("ascii", errors="ignore").strip()
+            if any(k in st.lower() for k in ["http", "https", "c2", "cmd", "powershell", "reg", "run", "schtasks", "alloc", "inject", "hook", "socket", "key", "password"]):
+                interesting_strings.append(st)
+        except Exception:
+            pass
+    if interesting_strings:
+        return "Extracted Static Strings / API References:\n" + "\n".join(interesting_strings[:25])
+    return ""
 
 def _run_full_heuristic_scan(
     filename: str,
@@ -1104,6 +1156,7 @@ def _upload_single_file_impl():
 
     # ── Engine 3: AI analysis — AFTER VT override so risk_score is the final adjusted value ──
     ai_result = {}
+    ai_content_snip = _get_safe_ai_content_snippet(filename, file_bytes)
     try:
         try:
             _signal.signal(_signal.SIGALRM, lambda s, f: (_ for _ in ()).throw(TimeoutError("AI timeout")))
@@ -1116,6 +1169,8 @@ def _upload_single_file_impl():
                 patterns=scan_res.get("pattern_result", "None"),
                 imports=scan_res.get("risky_imports_str", "None"),
                 risk_score=risk_score,  # Uses VT-adjusted final score
+                file_content=ai_content_snip,
+                filename=filename,
             )
         finally:
             try:
@@ -1202,6 +1257,7 @@ def scan_hash_api():
             patterns=f"Hash lookup for {filename}",
             imports="None",
             risk_score=risk_score,
+            filename=filename,
         )
     except Exception as exc:
         logger.warning("Hash scan - AI analysis error: %s", exc)
@@ -1326,12 +1382,15 @@ def guest_upload_api():
 
     # ── Engine 3: AI analysis ─────────────────────────────────────────────────
     ai_result = {}
+    guest_content_snip = _get_safe_ai_content_snippet(filename, file_bytes)
     try:
         ai_result = analyze_file_ai(
             entropy=scan_res.get("entropy", 0),
             patterns=scan_res.get("pattern_result", "None"),
             imports=scan_res.get("risky_imports_str", "None"),
             risk_score=risk_score,
+            file_content=guest_content_snip,
+            filename=filename,
         )
     except Exception as exc:
         logger.warning("Guest scan - AI analysis error: %s", exc)
@@ -1664,6 +1723,7 @@ def scan(file_id):
                         patterns=file_meta.get("pattern_result", "None"),
                         imports=file_meta.get("risky_imports", "None"),
                         risk_score=file_meta.get("risk_score", 0),
+                        filename=file_meta.get("filename", ""),
                     )
                     file_meta["ai_analysis"] = _ai_data
                 _results = {
@@ -1724,6 +1784,8 @@ def scan(file_id):
                 patterns=offline_cache.get("pattern_result", "None"),
                 imports=offline_cache.get("risky_imports_str", "None"),
                 risk_score=offline_cache.get("risk_score", 0),
+                file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
+                filename=file_meta.get("filename", ""),
             )
             file_meta["ai_analysis"] = results["ai_analysis"]
 
@@ -1782,7 +1844,8 @@ def scan(file_id):
                 entropy=file_meta.get("entropy", 0),
                 patterns=file_meta.get("pattern_result", "None"),
                 imports=file_meta.get("risky_imports", "None"),
-                risk_score=file_meta.get("risk_score", 0)
+                risk_score=file_meta.get("risk_score", 0),
+                filename=file_meta.get("filename", ""),
             )
             file_meta["ai_analysis"] = ai_data
             try:
@@ -1950,6 +2013,8 @@ def multiple_scan(file_id):
                     patterns=patterns,
                     imports=imports,
                     risk_score=final_risk,
+                    file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
+                    filename=file_meta.get("filename", ""),
                 )
                 file_meta["ai_analysis"] = results["ai_analysis"]
 
@@ -2096,7 +2161,8 @@ def view_result(file_id):
             entropy=file_meta.get("entropy", 0),
             patterns=file_meta.get("pattern_result", "None"),
             imports=file_meta.get("risky_imports", "None"),
-            risk_score=file_meta.get("risk_score", 0)
+            risk_score=file_meta.get("risk_score", 0),
+            filename=file_meta.get("filename", ""),
         )
         file_meta["ai_analysis"] = ai_data
 
@@ -2572,11 +2638,14 @@ def auto_scan_api():
         # 3. AI Analysis — called AFTER VT override so it uses the correct final_risk
         patterns = heuristic_res.get("pattern_result", "None")
         imports = heuristic_res.get("risky_imports_str", "None")
+        ai_content_snip = _get_safe_ai_content_snippet(filename, file_bytes)
         ai_res = analyze_file_ai(
             entropy=heuristic_res.get("entropy", 0.0),
             patterns=patterns,
             imports=imports,
-            risk_score=final_risk
+            risk_score=final_risk,
+            file_content=ai_content_snip,
+            filename=filename,
         )
         
         return jsonify({
