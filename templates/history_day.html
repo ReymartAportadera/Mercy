@@ -287,23 +287,52 @@
     .file-card { grid-template-columns: auto 1fr; }
     .file-card-actions { flex-direction: row; flex-wrap: wrap; align-items: flex-start; grid-column: 1 / -1; }
     .modal-content { width: 90%; margin: 20% auto; }
+.dashboard-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: rgba(30, 41, 59, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.dashboard-back-btn:hover {
+    background: rgba(56, 189, 248, 0.18);
+    border-color: #38bdf8;
+    color: #38bdf8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4), 0 0 12px rgba(56, 189, 248, 0.3);
+}
+.dashboard-back-btn i {
+    transition: transform 0.22s ease;
+}
+.dashboard-back-btn:hover i {
+    transform: translateX(-3px);
 }
 </style>
 </head>
 <body>
 
 <div class="history-container glass">
-    <!-- Breadcrumb navigation -->
-    <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 18px; font-size: 0.85rem; color: #666;">
-        <a href="{{ url_for('dashboard') }}" style="color: #666; text-decoration:none;" class="dashboard-link">
-            <i class="fa-solid fa-table"></i> Dashboard
-        </a>
-        <span>/</span>
-        <a href="{{ url_for('history') }}" style="color: #666; text-decoration:none; transition:color 0.2s;" onmouseover="this.style.color='#ff1e1e'" onmouseout="this.style.color='#666'">
-            <i class="fa-solid fa-clock-rotate-left"></i> History
-        </a>
-        <span>/</span>
-        <span style="color: #ccc;">{{ day_label }}</span>
+    <!-- Breadcrumb navigation & Back to Dashboard -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; gap: 10px; align-items: center; font-size: 0.85rem;">
+            <a href="{{ url_for('dashboard') }}" class="dashboard-back-btn" title="Return to Dashboard">
+                <i class="fa-solid fa-arrow-left"></i> Dashboard
+            </a>
+            <span style="color: #475569;">/</span>
+            <a href="{{ url_for('history') }}" style="color: #94a3b8; text-decoration:none; padding:4px 10px; border-radius:6px; transition:all 0.2s;" onmouseover="this.style.color='#38bdf8'; this.style.background='rgba(56,189,248,0.1)'" onmouseout="this.style.color='#94a3b8'; this.style.background='transparent'">
+                <i class="fa-solid fa-clock-rotate-left"></i> History
+            </a>
+            <span style="color: #475569;">/</span>
+            <span style="color: #f1f5f9; font-weight:600;">{{ day_label }}</span>
+        </div>
     </div>
 
     <!-- Page heading -->
