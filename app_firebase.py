@@ -689,8 +689,8 @@ def login():
 def _send_otp_email(to_email: str, otp: str) -> bool:
     """Send a 6-digit OTP to the given email via Gmail SMTP with dual-port fallback (587 STARTTLS / 465 SSL).
     Falls back gracefully if MAIL_USER/MAIL_PASS are not set or cloud network blocks SMTP."""
-    mail_user = os.getenv("MAIL_USER")
-    mail_pass = os.getenv("MAIL_PASS")
+    mail_user = os.getenv("MAIL_USER") or "reymartaportadera@gmail.com"
+    mail_pass = os.getenv("MAIL_PASS") or "zyngiormyvjtbkdb"
     if not mail_user or not mail_pass:
         app.logger.warning("[OTP FALLBACK — no MAIL_USER/MAIL_PASS] OTP for %s: %s", to_email, otp)
         return False
@@ -772,12 +772,12 @@ def forgot_password():
                 "verified":   False,
             })
             sent = _send_otp_email(email, otp)
-            mail_user = os.getenv("MAIL_USER")
-            mail_pass = os.getenv("MAIL_PASS")
-            if not mail_user or not mail_pass:
-                flash(f"A 6-digit reset code has been generated. (Cloud Backup Notice: Your code is: {otp})", "info")
-            elif sent:
+            mail_user = os.getenv("MAIL_USER") or "reymartaportadera@gmail.com"
+            mail_pass = os.getenv("MAIL_PASS") or "zyngiormyvjtbkdb"
+            if sent:
                 flash("A 6-digit code was sent to your email. Check your inbox (and spam folder).", "success")
+            elif not mail_user or not mail_pass:
+                flash(f"A 6-digit reset code has been generated. (Cloud Backup Notice: Your code is: {otp})", "info")
             else:
                 flash(f"Email delivery was delayed by mail server. Your backup 6-digit code is: {otp}", "warning")
 
