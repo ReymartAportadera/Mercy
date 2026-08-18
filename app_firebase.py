@@ -277,6 +277,18 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
         if file_dict.get("explanation") != new_exp:
             file_dict["explanation"] = new_exp
             updated = True
+    elif pos >= 5:
+        # High confidence malware confirmed by 5+ global security vendors
+        vt_score = min(98, 80 + (pos * 2))
+        if current_risk < vt_score:
+            file_dict["risk_score"] = vt_score
+            current_risk = vt_score
+            updated = True
+        new_level, new_status = determine_threat_level(current_risk, [f"VirusTotal: {pos}/{total} engines"])
+        if file_dict.get("threat_level") != new_level or file_dict.get("status") != new_status:
+            file_dict["threat_level"] = new_level
+            file_dict["status"] = new_status
+            updated = True
 
         # Ensure AI analysis reflects the adjusted 40% Medium score
         ai_data = file_dict.get("ai_analysis")
@@ -1155,8 +1167,14 @@ def scan_hash_api():
         vt_result = vt_raw or {}
         vt_pos = vt_result.get("positives", 0)
         vt_total = vt_result.get("engine_count", 0)
-        if vt_total and vt_pos:
-            risk_score = int((vt_pos / vt_total) * 100)
+        if vt_pos >= 5:
+            risk_score = min(98, 80 + (vt_pos * 2))  # Confirmed malware outbreak -> 90-98% Critical
+        elif vt_pos >= 2:
+            risk_score = 55 + (vt_pos * 5)           # Multiple detections -> 65-75% High
+        elif vt_pos == 1:
+            risk_score = 35                           # Single detection -> 35% Medium
+        else:
+            risk_score = 0                            # Clean -> 0% Benign
     except Exception as exc:
         logger.warning("Hash scan - VirusTotal error: %s", exc)
         vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "hash_error", "scans": {}}
