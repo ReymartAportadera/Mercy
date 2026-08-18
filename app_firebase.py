@@ -1839,15 +1839,29 @@ def scan(file_id):
 
     if already_scanned:
         ai_data = file_meta.get("ai_analysis")
-        if not ai_data or (isinstance(ai_data, dict) and not ai_data) or (isinstance(ai_data, str) and not ai_data.strip()):
+        _cur_risk = int(file_meta.get("risk_score", 0))
+        _ai_v = str(ai_data.get("verdict", "") if isinstance(ai_data, dict) else ai_data or "").upper()
+        _ai_txt = str(_extract_ai_text(ai_data)).upper() if ai_data else ""
+        _ai_contradicts = (
+            (_cur_risk < 56 and any(w in _ai_v for w in ["CRITICAL", "HIGH RISK", "HIGHLY MALICIOUS"]))
+            or (_cur_risk < 56 and ("[CRITICAL RISK]" in _ai_txt or "HIGHLY MALICIOUS" in _ai_txt))
+        )
+        _needs_refresh = (
+            not ai_data
+            or (isinstance(ai_data, dict) and not ai_data)
+            or (isinstance(ai_data, str) and not ai_data.strip())
+            or _ai_contradicts
+        )
+        if _needs_refresh:
             ai_data = analyze_file_ai(
                 entropy=file_meta.get("entropy", 0),
                 patterns=file_meta.get("pattern_result", "None"),
                 imports=file_meta.get("risky_imports", "None"),
-                risk_score=file_meta.get("risk_score", 0),
+                risk_score=_cur_risk,
                 filename=file_meta.get("filename", ""),
             )
             file_meta["ai_analysis"] = ai_data
+            file_meta["explanation"] = _extract_ai_text(ai_data)
             try:
                 fb.save_uploaded_file(file_meta)
             except Exception as exc:
@@ -2156,15 +2170,47 @@ def view_result(file_id):
         flash("File not found or access denied.")
         return redirect(url_for("dashboard"))
     ai_data = file_meta.get("ai_analysis")
-    if not ai_data or (isinstance(ai_data, dict) and not ai_data) or (isinstance(ai_data, str) and not ai_data.strip()):
+    current_risk = int(file_meta.get("risk_score", 0))
+    ai_verdict_str = str(ai_data.get("verdict", "") if isinstance(ai_data, dict) else ai_data or "").upper()
+
+    # Detect contradicted verdicts: AI says CRITICAL/HIGH but score is Medium/Low, or vice-versa
+    ai_contradicts_engine = (
+        (current_risk < 56 and any(w in ai_verdict_str for w in ["CRITICAL", "HIGH RISK", "HIGHLY MALICIOUS"]))
+        or (current_risk >= 81 and any(w in ai_verdict_str for w in ["LOW", "BENIGN", "CLEAN"]))
+    )
+    # Also detect if the explanation text itself was wrongly escalated
+    ai_text_str = str(_extract_ai_text(ai_data)).upper() if ai_data else ""
+    ai_text_contradicts = (
+        current_risk < 56 and (
+            "95/100" in ai_text_str or "90/100" in ai_text_str
+            or ("[CRITICAL RISK]" in ai_text_str and current_risk < 81)
+            or ("HIGHLY MALICIOUS" in ai_text_str and current_risk < 81)
+        )
+    )
+
+    needs_ai_refresh = (
+        not ai_data
+        or (isinstance(ai_data, dict) and not ai_data)
+        or (isinstance(ai_data, str) and not ai_data.strip())
+        or ai_contradicts_engine
+        or ai_text_contradicts
+    )
+
+    if needs_ai_refresh:
         ai_data = analyze_file_ai(
             entropy=file_meta.get("entropy", 0),
             patterns=file_meta.get("pattern_result", "None"),
             imports=file_meta.get("risky_imports", "None"),
-            risk_score=file_meta.get("risk_score", 0),
+            risk_score=current_risk,
             filename=file_meta.get("filename", ""),
         )
         file_meta["ai_analysis"] = ai_data
+        file_meta["explanation"] = _extract_ai_text(ai_data)
+        # Save corrected analysis back to Firebase so it's fixed permanently
+        try:
+            fb.save_uploaded_file(file_meta)
+        except Exception as exc:
+            logger.warning("view_result: could not update stale AI analysis in Firebase: %s", exc)
 
     results = {
         "heuristic": {
