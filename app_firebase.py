@@ -718,19 +718,21 @@ def _send_otp_email(to_email: str, otp: str) -> bool:
     """
     msg.attach(MIMEText(html_body, "html"))
 
-    # Attempt 1: Port 587 STARTTLS (Most reliable on cloud serverless / AWS / Vercel)
+    # Attempt 1: Direct Port 465 SSL (Direct Gmail SSL Socket — Most Reliable)
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=6) as server:
-            server.starttls()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
             server.login(mail_user, mail_pass)
             server.sendmail(mail_user, to_email, msg.as_string())
         return True
     except Exception as exc1:
-        app.logger.warning("SMTP Port 587 STARTTLS failed (%s), attempting Port 465 SSL...", exc1)
+        app.logger.warning("SMTP Port 465 SSL failed (%s), attempting Port 587 STARTTLS...", exc1)
 
-    # Attempt 2: Port 465 SSL fallback
+    # Attempt 2: Port 587 STARTTLS with explicit EHLO negotiation
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=6) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
             server.login(mail_user, mail_pass)
             server.sendmail(mail_user, to_email, msg.as_string())
         return True
