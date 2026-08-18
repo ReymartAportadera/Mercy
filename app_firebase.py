@@ -521,6 +521,8 @@ app = Flask(__name__)
 
 # Initialize CSRF protection (adds csrf_token() globally)
 csrf = CSRFProtect(app)
+app.config["WTF_CSRF_SSL_STRICT"] = False  # Allows cryptographic token validation behind cloud reverse proxies / strict referrer policies
+app.config["WTF_CSRF_TIME_LIMIT"] = 3600   # 1 hour CSRF token validity
 
 _secret = os.environ.get("TRUSTFILE_SECRET_KEY", "")
 if not _secret:
