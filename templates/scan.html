@@ -1010,10 +1010,12 @@
                         <i class="fa-solid fa-circle-check"></i>
                         <div>No suspicious scripts detected</div>
                     </div>
-                    {% if pos > 0 %}
+                    {% set _vt_pos = (vt.get('positives', 0) if vt is mapping else (file.get('virustotal', {}).get('positives', 0) if file is mapping else 0))|int %}
+                    {% set _vt_tot = (vt.get('engine_count', 0) if vt is mapping else (file.get('virustotal', {}).get('engine_count', 0) if file is mapping else 0))|int %}
+                    {% if _vt_pos > 0 %}
                     <div style="background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.4); border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px; color:#fbbf24; font-size:0.84rem;">
                         <i class="fa-solid fa-cloud"></i>
-                        <div>VirusTotal multi-engine consensus confirmed ({{ pos }}/{{ total_engines }} engines)</div>
+                        <div>VirusTotal multi-engine consensus confirmed ({{ _vt_pos }}/{{ _vt_tot or 75 }} engines)</div>
                     </div>
                     {% endif %}
                 {% elif is_danger or is_warn %}
