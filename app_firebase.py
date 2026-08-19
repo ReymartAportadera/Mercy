@@ -466,8 +466,18 @@ def _run_full_heuristic_scan(
         norm_ext = "." + norm_ext
 
     # ── EICAR Antivirus Test Signature Inspection (Raw & In-Memory ZIP) ───────
+    # The real EICAR test file is exactly 68 bytes: X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*
+    # IMPORTANT: Only flag as EICAR when the binary payload is tiny (< 500 bytes).
+    # Python/JS/TS source code (.py, .js, .ts) may contain EICAR as a detection
+    # constant string — scanning these would cause a false positive.
+    EICAR_BINARY = b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE"
+    SOURCE_CODE_EXTS = {".py", ".js", ".ts", ".rb", ".php", ".java", ".go", ".cs",
+                        ".cpp", ".c", ".h", ".rs", ".lua", ".pl", ".r", ".swift",
+                        ".kt", ".md", ".txt", ".json", ".html", ".css", ".xml"}
+
     is_eicar_found = False
-    if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in file_bytes:
+    # Raw file check — only if file is tiny (actual EICAR = 68 bytes, allow up to 500)
+    if EICAR_BINARY in file_bytes and len(file_bytes) < 500:
         is_eicar_found = True
         heuristics.append("EICAR Antivirus Test Signature detected")
         suspicious.append("EICAR Standard AV Test Signature")
@@ -477,9 +487,16 @@ def _run_full_heuristic_scan(
             import zipfile
             with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
                 for entry in zf.infolist():
+                    entry_ext = os.path.splitext(entry.filename)[1].lower()
+                    # Skip source code files — they may contain EICAR as a detection constant
+                    if entry_ext in SOURCE_CODE_EXTS:
+                        continue
+                    # Only flag small entries (real EICAR = 68 bytes, allow up to 500)
+                    if entry.file_size > 500:
+                        continue
                     if entry.file_size < 10 * 1024 * 1024:
                         raw_entry = zf.read(entry.filename)
-                        if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in raw_entry:
+                        if EICAR_BINARY in raw_entry:
                             is_eicar_found = True
                             heuristics.append(f"EICAR Test Signature detected inside archive entry '{entry.filename}'")
                             suspicious.append(f"EICAR Test File in '{entry.filename}'")
@@ -576,7 +593,12 @@ def _run_full_heuristic_scan(
                 suspicious.append("Obfuscated Execution Routine (exec/eval + base64)")
             if "Obfuscated Loader Pattern: eval/exec combined with base64/encoding" not in heuristics:
                 heuristics.append("Obfuscated Loader Pattern: eval/exec combined with base64/encoding")
-            risk_score = max(risk_score, 95)
+            # ZIP/archive containers: cap at Medium (55) — these patterns often appear
+            # in legitimate source code inside project ZIPs. Let VT consensus override.
+            if norm_ext in {".zip", ".jar", ".apk", ".docx", ".xlsx", ".pptx"} or file_bytes[:4] == b"\x50\x4b\x03\x04":
+                risk_score = max(risk_score, 45)
+            else:
+                risk_score = max(risk_score, 95)
         elif is_passive_markup:
             has_code_exec = any("code execution" in s.lower() or "encoding" in s.lower() for s in suspicious)
             if has_code_exec and risk_score < 15:
