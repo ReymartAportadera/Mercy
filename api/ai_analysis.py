@@ -21,14 +21,21 @@ def _get_gemini_api_key() -> str:
 
 GEMINI_API_KEY = _get_gemini_api_key()
 
-def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = "", filename: str = ""):
+def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = "", filename: str = "", is_eicar: bool = False):
     """
     Analyze a file using Google Gemini API. Falls back to local rules if not set or offline.
     Accepts safe static file content / manifest snippets for deep explainability.
+
+    is_eicar: Set to True ONLY when the heuristic engine confirmed the actual EICAR binary
+              test signature (X5O!P%@AP...) was found — NOT just because 'eicar' appears
+              in Python source code patterns or filenames.
     """
     api_key = _get_gemini_api_key() or GEMINI_API_KEY
     pat_str = str(patterns or "").lower()
-    if "eicar" in pat_str or "av test signature" in pat_str:
+
+    # EICAR shortcut: only fire when the heuristic engine explicitly confirmed actual EICAR
+    # binary signature — not just a mention of 'eicar' found in source code patterns.
+    if is_eicar:
         txt = (
             "[CRITICAL TEST DETECTION] This file contains the EICAR antivirus test signature. "
             "The signature is intentionally used to test antivirus and malware-detection systems and is not actual malware. "

@@ -608,6 +608,7 @@ def _run_full_heuristic_scan(
         "risky_imports_str":    imports_str,
         "all_detections":       heuristics + suspicious,
         "advanced":             adv,
+        "is_eicar":             is_eicar_found,  # Explicit confirmed binary EICAR flag
     }
 
 
@@ -1191,6 +1192,7 @@ def _upload_single_file_impl():
                 risk_score=risk_score,  # Uses VT-adjusted final score
                 file_content=ai_content_snip,
                 filename=filename,
+                is_eicar=scan_res.get("is_eicar", False),
             )
         finally:
             try:
