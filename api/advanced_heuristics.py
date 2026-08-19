@@ -989,7 +989,13 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         text = ""
 
     iocs: dict = {}
+    _CODE_AND_ARCHIVE_EXTS = {".py", ".js", ".ts", ".rb", ".php", ".java", ".go", ".cs",
+                              ".cpp", ".c", ".h", ".rs", ".md", ".txt", ".json", ".html",
+                              ".css", ".xml", ".zip", ".jar", ".apk", ".docx", ".xlsx", ".pptx"}
     for category, pattern in IOC_PATTERNS.items():
+        if category == "AV Test Signature":
+            if (result.claimed_extension or "").lower() in _CODE_AND_ARCHIVE_EXTS or len(file_bytes) > 500:
+                continue
         matches = list(set(pattern.findall(text)))
         if matches:
             iocs[category] = matches[:20]
@@ -1744,8 +1750,12 @@ def analyze_archive(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
 
                 try:
                     inner = zf.read(entry.filename)
-                    # 1. Check for EICAR test signature inside archive entry
-                    if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in inner or b"X5O!P%@AP[4\\PZX54" in inner:
+                    entry_ext = os.path.splitext(entry.filename)[1].lower()
+                    _SOURCE_EXTS = {".py", ".js", ".ts", ".rb", ".php", ".java", ".go", ".cs",
+                                    ".cpp", ".c", ".h", ".rs", ".md", ".txt", ".json", ".html",
+                                    ".css", ".xml", ".yml", ".yaml"}
+                    # 1. Check for EICAR test signature inside archive entry (real EICAR is 68 bytes, max 500)
+                    if entry_ext not in _SOURCE_EXTS and entry.file_size <= 500 and (b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in inner or b"X5O!P%@AP[4\\PZX54" in inner):
                         has_suspicious_entry = True
                         if "AV Test Signature" not in result.iocs:
                             result.iocs["AV Test Signature"] = ["EICAR test signature in " + name]

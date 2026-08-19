@@ -476,8 +476,9 @@ def _run_full_heuristic_scan(
                         ".kt", ".md", ".txt", ".json", ".html", ".css", ".xml"}
 
     is_eicar_found = False
-    # Raw file check — only if file is tiny (actual EICAR = 68 bytes, allow up to 500)
-    if EICAR_BINARY in file_bytes and len(file_bytes) < 500:
+    ARCHIVE_EXTS = {".zip", ".jar", ".apk", ".rar", ".7z", ".docx", ".xlsx", ".pptx", ".tar", ".gz"}
+    # Raw file check — only for non-archive raw files (eicar.com, eicar.txt) that are tiny (actual EICAR = 68 bytes, allow up to 500)
+    if norm_ext not in ARCHIVE_EXTS and file_bytes[:4] != b"\x50\x4b\x03\x04" and EICAR_BINARY in file_bytes and len(file_bytes) < 500:
         is_eicar_found = True
         heuristics.append("EICAR Antivirus Test Signature detected")
         suspicious.append("EICAR Standard AV Test Signature")
