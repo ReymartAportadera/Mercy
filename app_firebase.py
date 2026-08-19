@@ -465,6 +465,28 @@ def _run_full_heuristic_scan(
     if not norm_ext.startswith("."):
         norm_ext = "." + norm_ext
 
+    # ── EICAR Antivirus Test Signature Inspection (Raw & In-Memory ZIP) ───────
+    is_eicar_found = False
+    if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in file_bytes:
+        is_eicar_found = True
+        heuristics.append("EICAR Antivirus Test Signature detected")
+        suspicious.append("EICAR Standard AV Test Signature")
+
+    if (norm_ext in {".zip", ".jar", ".apk"} or file_bytes[:4] == b"\x50\x4b\x03\x04") and not is_eicar_found:
+        try:
+            import zipfile
+            with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as zf:
+                for entry in zf.infolist():
+                    if entry.file_size < 10 * 1024 * 1024:
+                        raw_entry = zf.read(entry.filename)
+                        if b"EICAR-STANDARD-ANTIVIRUS-TEST-FILE" in raw_entry:
+                            is_eicar_found = True
+                            heuristics.append(f"EICAR Test Signature detected inside archive entry '{entry.filename}'")
+                            suspicious.append(f"EICAR Test File in '{entry.filename}'")
+                            break
+        except Exception:
+            pass
+
     # Check for active persistence commands in non-commented code
     has_persistence_lotl = bool(re.search(
         r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU|HKEY_LOCAL_MACHINE|HKEY_CURRENT_USER)\\[^\r\n]*\\Run\b|\bcertutil.*-(urlcache|decode)|\bwmic.*process|\bbitsadmin|\bnet\s+(user|localgroup)",
@@ -519,6 +541,8 @@ def _run_full_heuristic_scan(
 
     total = len(heuristics) + len(suspicious) + len(risky_imports)
     risk_score += 15 if total >= 5 else (8 if total >= 3 else (3 if total >= 1 else 0))
+    if is_eicar_found:
+        risk_score = max(risk_score, 85)
     risk_score  = min(risk_score, 100)
 
     if not is_binary:
