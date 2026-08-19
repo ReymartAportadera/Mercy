@@ -162,7 +162,7 @@
                 {% if files %}
                 <div class="file-cards" id="fileCards">
                     {% for file in files %}
-                    <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}" onclick="if(!event.target.closest('.file-card-actions form') && !event.target.closest('.btn-delete') && !event.target.closest('.btn-rescan')) window.location.href='{{ url_for('scan_page', file_id=file.id) }}';" title="Click to view detailed scan results for {{ file.filename }}">
+                    <div class="file-card" data-level="{{ file.threat_level|lower if file.threat_level else 'safe' }}" data-name="{{ file.filename|lower }}" onclick="if(!event.target.closest('.file-card-actions form') && !event.target.closest('.btn-delete')) window.location.href='{{ url_for('scan_page', file_id=file.id) }}';" title="Click to view detailed scan results for {{ file.filename }}">
                         <div class="file-card-icon">
                             {% set ext = file.filename.rsplit('.', 1)[-1]|lower if '.' in file.filename else 'file' %}
                             {% if ext in ['pdf'] %}<i class="fa-solid fa-file-pdf"></i>
@@ -202,14 +202,6 @@
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <span>Results</span>
                             </a>
-                            <form method="POST" action="{{ url_for('rescan_page', file_id=file.id) }}"
-                                  onsubmit="return confirm('Re-scan this file with the latest engine? This will clear the old result.');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button class="action-btn btn-rescan" title="Re-scan File" type="submit">
-                                    <i class="fa-solid fa-rotate"></i>
-                                    <span>Re-scan</span>
-                                </button>
-                            </form>
                             <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}"
                                   onsubmit="return confirm('Are you sure you want to remove this file?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
