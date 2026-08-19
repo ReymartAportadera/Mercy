@@ -1070,7 +1070,7 @@ def _upload_single_file_impl():
     else:
         source_location = f"Uploaded File / {raw_filename}"
 
-    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
+    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".html", ".htm", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".msi", ".hta", ".scr", ".wsf", ".sh", ".elf"} | MEDIA_EXTENSIONS
 
     if ext not in allowed:
         return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
@@ -1081,17 +1081,13 @@ def _upload_single_file_impl():
 
     file_hash = hashlib.sha256(file_bytes).hexdigest()
 
-    user_folder = os.path.join(app.config["UPLOAD_FOLDER"], str(current_user.uid))
-    os.makedirs(user_folder, exist_ok=True)
-
-    path = os.path.abspath(os.path.join(user_folder, filename))
-    if len(path) > 255:
-        filename = uuid.uuid4().hex + ext
-        path = os.path.abspath(os.path.join(user_folder, filename))
-
-    # Proceed with full scan on every upload to ensure latest threat rules and overrides are applied
-
     try:
+        user_folder = os.path.join(app.config.get("UPLOAD_FOLDER", "/tmp/uploads"), str(current_user.uid))
+        os.makedirs(user_folder, exist_ok=True)
+        path = os.path.abspath(os.path.join(user_folder, filename))
+        if len(path) > 255:
+            filename = uuid.uuid4().hex + ext
+            path = os.path.abspath(os.path.join(user_folder, filename))
         with open(path, "wb") as out:
             out.write(file_bytes)
     except OSError:
@@ -1334,7 +1330,7 @@ def guest_upload_api():
     filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
     ext = os.path.splitext(filename)[1].lower()
 
-    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
+    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".html", ".htm", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".msi", ".hta", ".scr", ".wsf", ".sh", ".elf"} | MEDIA_EXTENSIONS
 
     if ext not in allowed:
         return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
@@ -1351,13 +1347,24 @@ def guest_upload_api():
 
     # ── Engine 2: VirusTotal (hash lookup first, then file upload) ────────────
     vt_result = {}
-    temp_dir = os.path.join(app.config["UPLOAD_FOLDER"], "guest_scans")
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_path = os.path.abspath(os.path.join(temp_dir, f"{uuid.uuid4().hex}_{filename}"))
     try:
+        temp_dir = os.path.join(app.config.get("UPLOAD_FOLDER", "/tmp/uploads"), "guest_scans")
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.abspath(os.path.join(temp_dir, f"{uuid.uuid4().hex}_{filename}"))
         with open(temp_path, "wb") as out:
             out.write(file_bytes)
-        vt_raw = smart_virustotal_scan(temp_path, file_hash)
+    except OSError:
+        temp_dir = os.path.join("/tmp/uploads", "guest_scans")
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.abspath(os.path.join(temp_dir, f"{uuid.uuid4().hex}_{filename}"))
+        try:
+            with open(temp_path, "wb") as out:
+                out.write(file_bytes)
+        except Exception:
+            temp_path = None
+
+    try:
+        vt_raw = smart_virustotal_scan(temp_path, file_hash) if temp_path else {"positives": 0, "engine_count": 0, "scans": {}}
         if vt_raw and "scans" not in vt_raw:
             vt_raw["scans"] = {}
         vt_result = vt_raw or {}
@@ -1452,7 +1459,7 @@ def uploadfiles():
             flash("No files selected.", "warning")
             return redirect(request.url)
 
-        allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".exe", ".dll", ".bin", ".dat", ".html", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar"} | MEDIA_EXTENSIONS
+        allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".html", ".htm", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".msi", ".hta", ".scr", ".wsf", ".sh", ".elf"} | MEDIA_EXTENSIONS
 
         saved_count = 0
         duplicate_count = 0
