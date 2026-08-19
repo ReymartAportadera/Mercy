@@ -1877,11 +1877,17 @@ def scan(file_id):
             (_cur_risk < 56 and any(w in _ai_v for w in ["CRITICAL", "HIGH RISK", "HIGHLY MALICIOUS"]))
             or (_cur_risk < 56 and ("[CRITICAL RISK]" in _ai_txt or "HIGHLY MALICIOUS" in _ai_txt))
         )
+        _is_generic_placeholder = (
+            "SCAN COMPLETED." in _ai_txt
+            or "INSTANT SHA-256 HASH SCAN COMPLETED" in _ai_txt
+            or len(_ai_txt.strip()) < 45
+        )
         _needs_refresh = (
             not ai_data
             or (isinstance(ai_data, dict) and not ai_data)
             or (isinstance(ai_data, str) and not ai_data.strip())
             or _ai_contradicts
+            or _is_generic_placeholder
         )
         if _needs_refresh:
             ai_data = analyze_file_ai(

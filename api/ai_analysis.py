@@ -11,13 +11,22 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+def _get_gemini_api_key() -> str:
+    """Retrieve Gemini API key from all standard environment variable aliases."""
+    return (
+        os.getenv("GEMINI_API_KEY", "").strip()
+        or os.getenv("GOOGLE_API_KEY", "").strip()
+        or os.getenv("GOOGLE_GEMINI_API_KEY", "").strip()
+    )
+
+GEMINI_API_KEY = _get_gemini_api_key()
 
 def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = "", filename: str = ""):
     """
     Analyze a file using Google Gemini API. Falls back to local rules if not set or offline.
     Accepts safe static file content / manifest snippets for deep explainability.
     """
+    api_key = _get_gemini_api_key() or GEMINI_API_KEY
     pat_str = str(patterns or "").lower()
     if "eicar" in pat_str or "av test signature" in pat_str:
         txt = (
@@ -38,7 +47,7 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
             "summary": txt
         }
 
-    if GEMINI_API_KEY:
+    if api_key:
         try:
             ent_val = float(entropy or 0)
             risk_val = int(risk_score or 0)
@@ -47,7 +56,7 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
 
             verdict_label = "Critical Threat" if risk_val >= 81 else "High Risk" if risk_val >= 56 else "Medium Risk" if risk_val >= 36 else "Low Risk" if risk_val >= 16 else "Benign"
 
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
             # Entropy context note — tell AI explicitly not to cite entropy for compressed containers
             entropy_note = (
