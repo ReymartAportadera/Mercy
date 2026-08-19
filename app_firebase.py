@@ -265,10 +265,10 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
 
     current_risk = file_dict.get("risk_score", 0) or 0
 
-    if total >= 20 and pos == 0:
-        if current_risk > 40:
-            file_dict["risk_score"] = 40
-            current_risk = 40
+    if (total >= 20 or len(vt.get("scans", {})) >= 20) and pos == 0:
+        if current_risk > 30:
+            file_dict["risk_score"] = 30
+            current_risk = 30
             updated = True
         elif current_risk > 0 and current_risk == file_dict.get("raw_heuristic_score"):
             current_risk = max(0, current_risk - 15)
@@ -1172,12 +1172,12 @@ def _upload_single_file_impl():
             vt_total = vt_result.get("engine_count", 0)
             if vt_total and vt_pos:
                 risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
-            elif vt_total >= 20 and vt_pos == 0:
+            elif (vt_total >= 20 or len(vt_result.get("scans", {})) >= 20) and vt_pos == 0:
                 # ── Global Industry Consensus Hard Override Rule ─────────────
                 # When VirusTotal reports 0 detections across 20+ engines,
-                # cap internal heuristic risk score at maximum of MEDIUM (40%).
-                if risk_score > 40:
-                    risk_score = 40
+                # cap internal heuristic risk score at maximum of LOW (30%).
+                if risk_score > 30:
+                    risk_score = 30
                 else:
                     risk_score = max(0, risk_score - 15)
         finally:
@@ -1421,10 +1421,12 @@ def guest_upload_api():
         vt_total = vt_result.get("engine_count", 0)
         if vt_total and vt_pos:
             risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
-        elif vt_total >= 20 and vt_pos == 0:
+        elif (vt_total >= 20 or len(vt_result.get("scans", {})) >= 20) and vt_pos == 0:
             # ── Global Industry Consensus Hard Override Rule ─────────────
-            if risk_score > 40:
-                risk_score = 40
+            # When VirusTotal reports 0 detections across 20+ engines,
+            # cap internal heuristic risk score at maximum of LOW (30%).
+            if risk_score > 30:
+                risk_score = 30
             else:
                 risk_score = max(0, risk_score - 15)
     except Exception as exc:

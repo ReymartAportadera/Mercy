@@ -992,10 +992,14 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
     _CODE_AND_ARCHIVE_EXTS = {".py", ".js", ".ts", ".rb", ".php", ".java", ".go", ".cs",
                               ".cpp", ".c", ".h", ".rs", ".md", ".txt", ".json", ".html",
                               ".css", ".xml", ".zip", ".jar", ".apk", ".docx", ".xlsx", ".pptx"}
+    _is_archive_format = (result.claimed_extension or "").lower() in {".zip", ".jar", ".apk", ".tar", ".gz", ".7z", ".rar", ".docx", ".xlsx", ".pptx"}
     for category, pattern in IOC_PATTERNS.items():
         if category == "AV Test Signature":
             if (result.claimed_extension or "").lower() in _CODE_AND_ARCHIVE_EXTS or len(file_bytes) > 500:
                 continue
+        # Raw compressed archive streams produce random byte combinations that trigger false IP/Wallet matches
+        if _is_archive_format and category in {"Crypto Wallet", "IP Addresses", "IPv6"}:
+            continue
         matches = list(set(pattern.findall(text)))
         if matches:
             iocs[category] = matches[:20]
@@ -1727,8 +1731,16 @@ def analyze_archive(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
 
             entries = zf.infolist()
             has_suspicious_entry = False
+            _IGNORED_DEV_DIRS = (".git/", "/.git/", ".github/", "/.github/", ".venv/", "/.venv/",
+                                 "node_modules/", "/node_modules/", "__pycache__/", "/__pycache__/",
+                                 ".idea/", "/.idea/", ".vscode/", "/.vscode/", ".pytest_cache/")
             for entry in entries:
                 name = entry.filename
+                normalized_name = name.replace("\\", "/")
+                # Skip version control databases and package build artifacts
+                if any(ignored in normalized_name or normalized_name.startswith(ignored.lstrip("/")) for ignored in _IGNORED_DEV_DIRS):
+                    continue
+
                 low_name = name.lower()
 
                 if _SUSPICIOUS_ARCHIVE_NAMES.search(name):
@@ -1791,13 +1803,44 @@ def analyze_archive(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
                                 result.ps_download_contextual = True
                                 result.detections.append(f"PowerShell download cradle with execution in archive: {name}")
                                 result._co_indicators.append("powershell_download")
+
+                            # Filter out regex rule definitions and test dictionaries in source code files
+                            lines_to_check = []
+                            for line in inner_active.splitlines():
+                                stripped = line.strip()
+                                if not stripped:
+                                    continue
+                                if entry_ext in {".py", ".js", ".ts"} and (
+                                    "re.compile" in stripped
+                                    or stripped.startswith('r"') or stripped.startswith("r'")
+                                    or "pattern" in stripped.lower()
+                                    or "regex" in stripped.lower()
+                                    or "rule" in stripped.lower()
+                                    or "signature" in stripped.lower()
+                                    or (stripped.startswith('"') and (stripped.endswith('",') or stripped.endswith('":')))
+                                    or (stripped.startswith("'") and (stripped.endswith("',") or stripped.endswith("':")))
+                                ):
+                                    continue
+                                lines_to_check.append(line)
+                            active_code_to_scan = "\n".join(lines_to_check)
+
+                            # Check for Obfuscated Loader Pattern in script
+                            has_exec_call = bool(re.search(r"\b(eval|exec|Invoke-Expression|iex)\b", active_code_to_scan, re.I))
+                            has_b64_decode = bool(re.search(r"\b(FromBase64String|base64_decode|b64decode|base64\.b64decode)\b|-enc(odedcommand)?\b", active_code_to_scan, re.I))
+                            if has_exec_call and has_b64_decode:
+                                has_suspicious_entry = True
+                                result.script_findings.append(f"[{name}] Obfuscated Loader Pattern (exec/eval + base64)")
+                                result.detections.append(f"Obfuscated loader pattern detected in archive script: {name}")
+                                result._co_indicators.append("obfuscated_loader_exec_pattern")
+                                result._hc_indicators.append("obfuscated_loader_exec_pattern")
+
                             for s_name, s_pat in DANGEROUS_SCRIPT_PATTERNS.items():
-                                if s_pat.search(inner_active):
+                                if s_pat.search(active_code_to_scan):
                                     has_suspicious_entry = True
                                     result.script_findings.append(f"[{name}] {s_name}")
                                     result.detections.append(f"Script threat in {name}: {s_name}")
                                     result._co_indicators.append(s_name)
-                            if re.search(r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU)\\[^\r\n]*\\Run\b", inner_active, re.I):
+                            if re.search(r"\breg(\.exe)?\s+add\b|\bschtasks(\.exe)?\b|\b(HKLM|HKCU)\\[^\r\n]*\\Run\b", active_code_to_scan, re.I):
                                 has_suspicious_entry = True
                                 result.script_findings.append(f"[{name}] Windows Persistence Mechanism")
                                 result.detections.append(f"Persistence commands detected in {name}")
@@ -2157,12 +2200,13 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
 
     # ── Script findings ───────────────────────────────────────────────────────
     sf = result.script_findings
-    if "Invoke-Expression"   in sf: score += add("iex_usage",   high_confidence=True)
-    if "AMSI Bypass"         in sf: score += add("amsi_bypass", high_confidence=True)
-    if "UAC Bypass"          in sf: score += add("uac_bypass",  high_confidence=True)
-    if "Scheduled Task"      in sf: score += add("scheduled_task")
-    if "WMI Execution"       in sf: score += add("wmi_execution")
-    if "AMSI Bypass"         in sf: score += add("registry_persistence")
+    if any(s == "Invoke-Expression" or s.endswith("] Invoke-Expression") for s in sf): score += add("iex_usage",   high_confidence=True)
+    if any("Obfuscated Loader Pattern" in s for s in sf): score += add("obfuscated_loader_exec_pattern", high_confidence=True)
+    if any(s == "AMSI Bypass" or s.endswith("] AMSI Bypass") for s in sf): score += add("amsi_bypass", high_confidence=True)
+    if any(s == "UAC Bypass" or s.endswith("] UAC Bypass") for s in sf): score += add("uac_bypass",  high_confidence=True)
+    if any(s == "Scheduled Task" or s.endswith("] Scheduled Task") for s in sf): score += add("scheduled_task")
+    if any(s == "WMI Execution" or s.endswith("] WMI Execution") for s in sf): score += add("wmi_execution")
+    if any(s == "Windows Persistence Mechanism" or s.endswith("] Windows Persistence Mechanism") for s in sf): score += add("windows_persistence_lotl", high_confidence=True)
 
     # ── VBA / OLE ─────────────────────────────────────────────────────────────
     _seen_office_keys: set = set()
