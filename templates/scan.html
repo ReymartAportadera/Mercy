@@ -790,6 +790,9 @@
         {#-- parse pattern_result string into list items if no other IOC source --#}
         {%- set _pr = file.get('pattern_result') or '' %}
         {%- set _pr_items = _pr.split(', ') if (_pr and _pr not in ['No suspicious patterns', 'None', '']) else [] %}
+        {%- set _cur_score = (file.get('risk_score', 0) if file else 0)|int %}
+        {%- set _threat_lvl = (file.get('threat_level', '') if file else '')|lower %}
+        {%- set is_elevated_risk = is_eicar_test or _cur_score > 15 or (_threat_lvl in ['medium', 'high', 'critical', 'threat']) %}
 
         {% if is_eicar_test %}
         <!-- IOC Extraction Card (EICAR Specific) -->
@@ -811,7 +814,7 @@
                 </ul>
             </div>
         </div>
-        {% elif raw_iocs and (raw_iocs is mapping) %}
+        {% elif is_elevated_risk and raw_iocs and (raw_iocs is mapping) %}
         <!-- IOC Extraction Card (Dictionary of Categories) -->
         <div class="audit-card">
             <div class="audit-card-head">
@@ -836,7 +839,7 @@
             {% endif %}
             {% endfor %}
         </div>
-        {% elif raw_iocs and (raw_iocs is sequence and raw_iocs|length > 0) %}
+        {% elif is_elevated_risk and raw_iocs and (raw_iocs is sequence and raw_iocs|length > 0) %}
         <!-- IOC Extraction Card (List of IOC Strings) -->
         <div class="audit-card">
             <div class="audit-card-head">
@@ -857,7 +860,7 @@
                 </ul>
             </div>
         </div>
-        {% elif pattern_iocs and pattern_iocs|length > 0 %}
+        {% elif is_elevated_risk and pattern_iocs and pattern_iocs|length > 0 %}
         <!-- IOC Extraction Card (Pattern Findings Fallback) -->
         <div class="audit-card">
             <div class="audit-card-head">
@@ -878,7 +881,7 @@
                 </ul>
             </div>
         </div>
-        {% elif _pr_items|length > 0 %}
+        {% elif is_elevated_risk and _pr_items|length > 0 %}
         <!-- IOC Extraction Card (Pattern Result String Fallback for legacy records) -->
         <div class="audit-card">
             <div class="audit-card-head">
