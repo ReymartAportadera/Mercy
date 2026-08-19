@@ -680,6 +680,16 @@ body {
     transform: translateY(-1px);
 }
 .btn-delete:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-rescan {
+    background: rgba(255,160,0,0.10);
+    border-color: rgba(255,160,0,0.30);
+    color: #ffaa00;
+}
+.btn-rescan:hover {
+    background: rgba(255,160,0,0.22);
+    transform: translateY(-1px);
+}
+.btn-rescan:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 /* ── Empty / No Results ── */
 .empty-state {
