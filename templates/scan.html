@@ -556,18 +556,26 @@
         <!-- ═══════════════════════════════════════════════════════════ -->
         <!-- SCREENSHOT 1: HEADER STATUS CARD & SUMMARY LINE             -->
         <!-- ═══════════════════════════════════════════════════════════ -->
-        {% set is_danger = file.risk_score|int >= 50 or file.threat_level|lower in ['high','critical','malware','threat'] %}
-        {% set is_warn   = (file.risk_score|int >= 30 and file.risk_score|int < 50) or file.threat_level|lower == 'medium' %}
+        {% set risk_score_val = (file.risk_score or 0)|int %}
+        {% set threat_lvl_clean = (file.threat_level or '')|lower %}
+        {% set is_critical = risk_score_val >= 81 or threat_lvl_clean in ['critical', 'malware'] %}
+        {% set is_high     = (risk_score_val >= 56 and risk_score_val < 81) or threat_lvl_clean == 'high' %}
+        {% set is_medium   = (risk_score_val >= 36 and risk_score_val < 56) or threat_lvl_clean == 'medium' %}
+        {% set is_low      = (risk_score_val >= 16 and risk_score_val < 36) or threat_lvl_clean == 'low' %}
+        {% set is_benign   = risk_score_val < 16 or threat_lvl_clean == 'benign' %}
+        {% set is_danger   = is_critical or is_high %}
+        {% set is_warn     = is_medium %}
+        {% set is_info     = is_low %}
 
         <div class="status-hero-card">
-            <div class="status-circle-large {{ 'danger' if is_danger else ('warning' if is_warn else 'safe') }}">
-                <i class="fa-solid fa-{{ 'triangle-exclamation' if is_danger else ('triangle-exclamation' if is_warn else 'check') }}"></i>
+            <div class="status-circle-large {{ 'danger' if (is_critical or is_high) else ('warning' if is_medium else ('low' if is_low else 'safe')) }}">
+                <i class="fa-solid fa-{{ 'triangle-exclamation' if (is_critical or is_high or is_medium) else ('circle-exclamation' if is_low else 'check') }}"></i>
             </div>
             <div class="status-content-wrap">
                 <div class="status-head-line">
-                    <div class="status-head-text">FILE {{ 'THREAT' if is_danger else ('MEDIUM' if is_warn else 'BENIGN') }}</div>
-                    <span class="status-pill-badge {{ 'danger' if is_danger else ('warning' if is_warn else 'benign') }}">
-                        {{ file.threat_level or 'BENIGN' }}
+                    <div class="status-head-text">FILE {{ 'CRITICAL THREAT' if is_critical else ('HIGH RISK' if is_high else ('MEDIUM RISK' if is_medium else ('LOW RISK' if is_low else 'BENIGN'))) }}</div>
+                    <span class="status-pill-badge {{ 'danger' if (is_critical or is_high) else ('warning' if is_medium else ('low' if is_low else 'benign')) }}">
+                        {{ file.threat_level|upper if file.threat_level else 'BENIGN' }}
                     </span>
                 </div>
                 <div class="status-sub-filename">{{ file.filename }}</div>
