@@ -49,6 +49,19 @@ BINARY_EXTENSIONS = {
     ".zip", ".tar", ".gz", ".exe", ".dll", ".bin", ".dat", ".pdf", ".doc",
     ".docx", ".xls", ".xlsx"
 } | MEDIA_EXTENSIONS
+
+ALLOWED_SCAN_EXTENSIONS = {
+    # Scripts & Executables
+    ".txt", ".py", ".js", ".ts", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", 
+    ".bin", ".dat", ".sh", ".bash", ".elf", ".msi", ".hta", ".scr", ".wsf",
+    # Web & Server Scripts
+    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps", ".jsp", ".jspx", ".asp", ".aspx", ".cgi", ".pl", ".rb", ".go", ".java",
+    # Markup & Documents
+    ".html", ".htm", ".css", ".xml", ".json", ".yaml", ".yml", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".rtf",
+    # Archives & Packages
+    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img"
+} | MEDIA_EXTENSIONS
+
 ALL_SCAN_TYPES = ["heuristic", "virustotal", "ai_analysis"]
 
 # ── In-memory byte cache (LRU, max 50 entries to prevent memory bloat) ───────
@@ -1124,7 +1137,7 @@ def _upload_single_file_impl():
     else:
         source_location = f"Uploaded File / {raw_filename}"
 
-    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".html", ".htm", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".msi", ".hta", ".scr", ".wsf", ".sh", ".elf"} | MEDIA_EXTENSIONS
+    allowed = ALLOWED_SCAN_EXTENSIONS
 
     if ext not in allowed:
         return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
@@ -1389,7 +1402,7 @@ def guest_upload_api():
     filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
     ext = os.path.splitext(filename)[1].lower()
 
-    allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".html", ".htm", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".msi", ".hta", ".scr", ".wsf", ".sh", ".elf"} | MEDIA_EXTENSIONS
+    allowed = ALLOWED_SCAN_EXTENSIONS
 
     if ext not in allowed:
         return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
@@ -1524,7 +1537,7 @@ def uploadfiles():
             flash("No files selected.", "warning")
             return redirect(request.url)
 
-        allowed = {".txt", ".py", ".js", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".html", ".htm", ".css", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".tar", ".gz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".msi", ".hta", ".scr", ".wsf", ".sh", ".elf"} | MEDIA_EXTENSIONS
+        allowed = ALLOWED_SCAN_EXTENSIONS
 
         saved_count = 0
         duplicate_count = 0
