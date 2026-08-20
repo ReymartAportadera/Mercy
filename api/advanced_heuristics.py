@@ -1003,7 +1003,8 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         # Raw compressed archive streams produce random byte combinations that trigger false IP/Wallet matches
         if _is_archive_format and category in {"Crypto Wallet", "IP Addresses", "IPv6"}:
             continue
-        matches = list(set(pattern.findall(text)))
+        # Use finditer to get full matched string rather than capture group tuples
+        matches = list(dict.fromkeys(m.group(0).strip() for m in pattern.finditer(text) if m.group(0).strip()))
         if matches:
             iocs[category] = matches[:20]
 

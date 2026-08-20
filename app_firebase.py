@@ -265,15 +265,21 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
 
     current_risk = file_dict.get("risk_score", 0) or 0
 
+    has_active_threat = any(k in str(file_dict.get("pattern_result") or "").lower() or k in str(file_dict.get("suspicious_signatures") or "").lower() or k in str(file_dict.get("heuristics") or "").lower() for k in [
+        "persistence mechanism", "invoke-expression", "obfuscated loader", "obfuscated execution",
+        "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
+    ])
+
     if (total >= 20 or len(vt.get("scans", {})) >= 20) and pos == 0:
-        if current_risk > 30:
-            file_dict["risk_score"] = 30
-            current_risk = 30
-            updated = True
-        elif current_risk > 0 and current_risk == file_dict.get("raw_heuristic_score"):
-            current_risk = max(0, current_risk - 15)
-            file_dict["risk_score"] = current_risk
-            updated = True
+        if not has_active_threat:
+            if current_risk > 30:
+                file_dict["risk_score"] = 30
+                current_risk = 30
+                updated = True
+            elif current_risk > 0 and current_risk == file_dict.get("raw_heuristic_score"):
+                current_risk = max(0, current_risk - 15)
+                file_dict["risk_score"] = current_risk
+                updated = True
 
         new_level, new_status = determine_threat_level(current_risk, [])
         if file_dict.get("threat_level") != new_level or file_dict.get("status") != new_status:
@@ -1173,13 +1179,17 @@ def _upload_single_file_impl():
             if vt_total and vt_pos:
                 risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
             elif (vt_total >= 20 or len(vt_result.get("scans", {})) >= 20) and vt_pos == 0:
-                # ── Global Industry Consensus Hard Override Rule ─────────────
-                # When VirusTotal reports 0 detections across 20+ engines,
-                # cap internal heuristic risk score at maximum of LOW (30%).
-                if risk_score > 30:
-                    risk_score = 30
-                else:
-                    risk_score = max(0, risk_score - 15)
+                has_active_threat = any(k in str(pattern_result).lower() or k in str(heuristics).lower() for k in [
+                    "persistence mechanism", "invoke-expression", "obfuscated loader", "obfuscated execution",
+                    "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
+                ])
+                if not has_active_threat:
+                    # When VirusTotal reports 0 detections across 20+ engines for clean software/documents,
+                    # cap internal heuristic risk score at maximum of LOW (30%).
+                    if risk_score > 30:
+                        risk_score = 30
+                    else:
+                        risk_score = max(0, risk_score - 15)
         finally:
             try:
                 _signal.alarm(0)
@@ -1422,13 +1432,17 @@ def guest_upload_api():
         if vt_total and vt_pos:
             risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
         elif (vt_total >= 20 or len(vt_result.get("scans", {})) >= 20) and vt_pos == 0:
-            # ── Global Industry Consensus Hard Override Rule ─────────────
-            # When VirusTotal reports 0 detections across 20+ engines,
-            # cap internal heuristic risk score at maximum of LOW (30%).
-            if risk_score > 30:
-                risk_score = 30
-            else:
-                risk_score = max(0, risk_score - 15)
+            has_active_threat = any(k in str(pattern_result).lower() or k in str(heuristics).lower() for k in [
+                "persistence mechanism", "invoke-expression", "obfuscated loader", "obfuscated execution",
+                "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
+            ])
+            if not has_active_threat:
+                # When VirusTotal reports 0 detections across 20+ engines for clean software/documents,
+                # cap internal heuristic risk score at maximum of LOW (30%).
+                if risk_score > 30:
+                    risk_score = 30
+                else:
+                    risk_score = max(0, risk_score - 15)
     except Exception as exc:
         logger.warning("Guest scan - VirusTotal error: %s", exc)
         vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
