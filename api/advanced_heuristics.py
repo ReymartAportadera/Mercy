@@ -345,6 +345,9 @@ DANGEROUS_SCRIPT_PATTERNS: dict[str, re.Pattern] = {
     "PHP Dynamic Callback": re.compile(
         r"assert\s*\(\s*(base64_decode|\$_)|create_function\s*\(|preg_replace\s*\(\s*['\"].*\/e['\"]", re.I
     ),
+    "Shadow Copy Deletion": re.compile(
+        r"vssadmin(\.exe)?\s+delete\s+shadows|wmic\s+shadowcopy\s+delete|bcdedit(\.exe)?\s+/set\s+[^\r\n]*recoveryenabled\s+no", re.I
+    ),
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2207,6 +2210,9 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     if any(s == "Scheduled Task" or s.endswith("] Scheduled Task") for s in sf): score += add("scheduled_task")
     if any(s == "WMI Execution" or s.endswith("] WMI Execution") for s in sf): score += add("wmi_execution")
     if any(s == "Windows Persistence Mechanism" or s.endswith("] Windows Persistence Mechanism") for s in sf): score += add("windows_persistence_lotl", high_confidence=True)
+    if any("PHP Shell Execution" in s for s in sf): score += add("obfuscated_loader_exec_pattern", high_confidence=True)
+    if any("PHP Eval Obfuscation" in s for s in sf): score += add("obfuscated_loader_exec_pattern", high_confidence=True)
+    if any("Shadow Copy Deletion" in s for s in sf): score += add("ransomware_api", high_confidence=True)
 
     # ── VBA / OLE ─────────────────────────────────────────────────────────────
     _seen_office_keys: set = set()
