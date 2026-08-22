@@ -54,6 +54,19 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
             "summary": txt
         }
 
+    def _compute_conf(r_val: int, f_count: int = 0) -> float:
+        s = max(0, min(int(r_val or 0), 100))
+        if s >= 81:
+            return round(min(0.92 + (f_count * 0.02), 0.99), 2)
+        elif s >= 56:
+            return round(min(0.82 + (f_count * 0.02), 0.92), 2)
+        elif s >= 36:
+            return round(min(0.65 + (f_count * 0.02), 0.75), 2)
+        elif s >= 16:
+            return round(0.85, 2)
+        else:
+            return round(max(0.92 - (s * 0.01), 0.88), 2)
+
     if api_key:
         try:
             ent_val = float(entropy or 0)
@@ -149,7 +162,7 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                         return {
                             "verdict": verdict_label,   # Always engine verdict
                             "label": verdict_label,
-                            "confidence": round(min(0.70 + (risk_val / 300.0), 0.99), 2),
+                            "confidence": _compute_conf(risk_val, len(re.findall(r"\b(found|detected|suspicious|indicator)\b", txt, re.I))),
                             "reason": txt,
                             "explanation": txt,
                             "text": txt
@@ -378,10 +391,23 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
             lines.append("Recommendation: file appears SAFE. No action required.")
 
         summary_text = " ".join(lines)
+        def _calc_local_conf(s_val, f_cnt):
+            s = max(0, min(int(s_val or 0), 100))
+            if s >= 81:
+                return round(min(0.92 + (f_cnt * 0.02), 0.99), 2)
+            elif s >= 56:
+                return round(min(0.82 + (f_cnt * 0.02), 0.92), 2)
+            elif s >= 36:
+                return round(min(0.65 + (f_cnt * 0.02), 0.75), 2)
+            elif s >= 16:
+                return round(0.85, 2)
+            else:
+                return round(max(0.92 - (s * 0.01), 0.88), 2)
+
         return {
             "verdict": risk_label,
             "label": risk_label,
-            "confidence": round(min(0.60 + (risk_score / 250.0), 0.98), 2),
+            "confidence": _calc_local_conf(risk_score, len(findings)),
             "reason": summary_text,
             "explanation": summary_text,
             "text": summary_text

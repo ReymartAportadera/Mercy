@@ -1136,20 +1136,17 @@ def dashboard():
                 pass
 
         risk = f.get("risk_score", 0) or 0
-        if risk >= 70:
-            f["threat_level"] = "Critical"
+        lvl, _ = determine_threat_level(risk, f.get("all_detections", []))
+        f["threat_level"] = lvl
+        if lvl == "Critical":
             counters["critical_threat"] += 1
-        elif risk >= 50:
-            f["threat_level"] = "High"
+        elif lvl == "High":
             counters["high_threat"] += 1
-        elif risk >= 30:
-            f["threat_level"] = "Medium"
+        elif lvl == "Medium":
             counters["medium_threat"] += 1
-        elif risk > 0:
-            f["threat_level"] = "Low"
+        elif lvl == "Low":
             counters["low_threat"] += 1
         else:
-            f["threat_level"] = "Benign"
             counters["safe_files"] += 1
 
         try:
@@ -2266,14 +2263,16 @@ def _get_all_scanned_files():
 
                         h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
                         
+                        _score = entry.get("risk_score", 0) or 0
+                        _tl, _st = determine_threat_level(_score, [])
                         local_entry = {
                             "id": f"local_{h}",
                             "filename": os.path.basename(path_str),
                             "filepath": path_str,
                             "upload_time": time_str,
-                            "status": entry.get("status", "Safe"),
-                            "threat_level": entry.get("threat_level", "Low"),
-                            "risk_score": entry.get("risk_score", 0),
+                            "status": entry.get("status", _st),
+                            "threat_level": entry.get("threat_level", _tl),
+                            "risk_score": _score,
                             "entropy": entry.get("entropy", 0.0),
                             "hash": file_hash,
                             "pattern_result": ", ".join(entry.get("patterns", [])[:3]) if isinstance(entry.get("patterns"), list) else entry.get("pattern_result", ""),
@@ -2310,14 +2309,16 @@ def view_result(file_id):
                                 time_str = entry.get("timestamp", "") or ""
                                 h = hashlib.sha256(f"{path_str}{time_str}".encode("utf-8")).hexdigest()
                                 if f"local_{h}" == str(file_id):
+                                    _score = entry.get("risk_score", 0) or 0
+                                    _tl, _st = determine_threat_level(_score, [])
                                     local_meta = {
                                         "id": f"local_{h}",
                                         "filename": os.path.basename(path_str),
                                         "filepath": path_str,
                                         "upload_time": time_str,
-                                        "status": entry.get("status", "Safe"),
-                                        "threat_level": entry.get("threat_level", "Low"),
-                                        "risk_score": entry.get("risk_score", 0),
+                                        "status": entry.get("status", _st),
+                                        "threat_level": entry.get("threat_level", _tl),
+                                        "risk_score": _score,
                                         "entropy": entry.get("entropy", 0.0),
                                         "hash": entry.get("hash", ""),
                                         "pattern_result": ", ".join(entry.get("patterns", [])[:3]) if isinstance(entry.get("patterns"), list) else entry.get("pattern_result", ""),
@@ -2766,14 +2767,16 @@ def save_scan_to_db(
             size_str = "0 KB"
 
         adv = scan_result.get("advanced", {})
+        _rep_score = scan_result.get("risk_score", 0) or 0
+        _rep_tl, _rep_st = determine_threat_level(_rep_score, [])
         file_record = {
             "id": str(uuid.uuid4()),
             "filename": filename,
             "filepath": filepath,
             "upload_time": datetime.now(timezone.utc).isoformat(),
-            "status": scan_result.get("status", "Safe"),
-            "threat_level": scan_result.get("threat_level", "Low"),
-            "risk_score": scan_result.get("risk_score", 0),
+            "status": scan_result.get("status", _rep_st),
+            "threat_level": scan_result.get("threat_level", _rep_tl),
+            "risk_score": _rep_score,
             "entropy": scan_result.get("entropy", 0),
             "hash": scan_result.get("hash", ""),
             "pattern_result": ", ".join(scan_result.get("patterns", [])[:3]),
@@ -2964,15 +2967,15 @@ def realtime_detections_api():
         recent_data = []
         for scan in files[:10]:
             # Skip Pending entries only
-            if scan.get("status") == "Pending":
-                continue
+            _r_score = scan.get("risk_score", 0) or 0
+            _r_tl, _r_st = determine_threat_level(_r_score, [])
             recent_data.append({
                 "id":           scan.get("id"),
                 "timestamp":    scan.get("upload_time"),
                 "filename":     scan.get("filename"),
-                "threat_level": scan.get("threat_level", "Low"),
-                "risk_score":   scan.get("risk_score", 0),
-                "status":       scan.get("status", "Safe"),
+                "threat_level": scan.get("threat_level", _r_tl),
+                "risk_score":   _r_score,
+                "status":       scan.get("status", _r_st),
                 "ai_analysis":  (scan.get("ai_analysis")[:100] + "...") if scan.get("ai_analysis") else None,
             })
     except Exception as exc:
