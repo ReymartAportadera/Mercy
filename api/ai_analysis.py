@@ -327,77 +327,89 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 "this file uses built-in capabilities that " + " and ".join(found_imports[:2])
             )
 
-        # ── Classify malware family ───────────────────────────────────────────
-        malware_family = _classify_malware_family(threat_classes, risk_score, entropy)
-
-
-        # ── Verdict sentence — plain English ──────────────────────────────────
-        lines = []
-        if findings:
-            count = len(findings)
-            lines.append(
-                f"[{risk_label}] TrustFile found {count} warning{'s' if count > 1 else ''} in this file (Threat Score: {risk_score}/100). "
-                f"Here is what this file can do:"
-            )
-        else:
-            lines.append(
-                f"[{risk_label}] This file looks safe (Threat Score: {risk_score}/100). "
-                f"No harmful behavior was found."
-            )
-
-        # ── Key findings in plain bullet style ────────────────────────────────
-        security_findings = [f for f in findings if not f.lower().startswith("[info]")]
-        if security_findings:
-            for f in security_findings[:3]:
-                lines.append(f"• {f.capitalize()}.")
-
-        # ── Grayware / Prank note ──────────────────────────────────────────────
-        grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p]
+        # ── Grayware / Prank Detection ─────────────────────────────────────────
+        grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p or "grayware" in p.lower() or "prank" in p.lower()]
         if not grayware_hits:
             import re as _re
             grayware_hits = _re.findall(r"\[GRAYWARE\][^\n;]+", patterns)
+        
+        # Check file_content directly as fallback for pranks
+        if not grayware_hits and file_content:
+            fc_prank = file_content.lower()
+            if ext in [".vbs", ".vbe"] and ("msgbox" in fc_prank or "inputbox" in fc_prank) and any(k in fc_prank for k in ["for ", "while ", "do "]):
+                grayware_hits = ["[GRAYWARE] VBScript repeated popup loop detected (prank/nuisance)"]
+            elif ext in [".bat", ".cmd"] and ("start " in fc_prank or "echo " in fc_prank) and any(k in fc_prank for k in ["goto ", ":loop"]):
+                grayware_hits = ["[GRAYWARE] Batch infinite loop with disruptive display commands (prank pattern)"]
+            elif "fork bomb" in fc_prank or "%0|%0" in fc_prank:
+                grayware_hits = ["[GRAYWARE] Fork bomb process replication loop detected"]
+
+        # ── Compose the analysis report ───────────────────────────────────────
+        lines = []
+
         if grayware_hits:
-            gw_label = grayware_hits[0].replace("[GRAYWARE]", "").strip().split("(")[0].strip()
-            lines.append(
-                f"Note: This file contains a prank or nuisance behavior ({gw_label.rstrip('.')}). "
-                f"It is annoying but it cannot steal your data, damage your files, or harm your computer."
-            )
+            import re as _re_tag
+            gw_clean = _re_tag.sub(r"(?i)\[grayware\]", "", grayware_hits[0]).strip().split("(")[0].strip()
+            gw_clean = gw_clean[0].upper() + gw_clean[1:] if gw_clean else "Repeated popup dialog loop"
+            lines.append(f"[{risk_label} — NUISANCE SCRIPT] TrustFile identified a harmless prank or nuisance pattern in this file (Threat Score: {risk_score}/100).")
+            lines.append(f"What does it do? This script contains a nuisance behavior ({gw_clean.rstrip('.')}) that will repeatedly pop up dialog boxes or spam messages on your screen if opened.")
+            lines.append("Is it dangerous? No. It does NOT steal your passwords, damage your files, or install viruses — it is only designed to be annoying.")
+            lines.append("Recommended Action: This file is not a virus and poses no security threat to your computer, but opening it will cause annoying popups on your screen. You can safely delete it if you do not want to see the prank.")
 
-        # ── Content-aware explanation — plain English ──────────────────────────
-        ext = os.path.splitext(filename or "")[1].lower()
-        fc_lower = (file_content or "").lower()
+        else:
+            # ── Verdict sentence — plain English ──────────────────────────────────
+            if findings:
+                count = len(findings)
+                lines.append(
+                    f"[{risk_label}] TrustFile found {count} warning{'s' if count > 1 else ''} in this file (Threat Score: {risk_score}/100). "
+                    f"Here is what this file can do:"
+                )
+            else:
+                lines.append(
+                    f"[{risk_label}] This file looks safe (Threat Score: {risk_score}/100). "
+                    f"No harmful behavior was found."
+                )
 
-        if malware_family:
-            lines.append(f"What is this? {malware_family.capitalize()}.")
-            # Plain mechanics detail
-            if any(k in fc_lower for k in ["invoke-expression", "iex"]):
-                lines.append(
-                    "How it works: When run, this file connects to the internet and secretly downloads "
-                    "another harmful program directly into your computer's memory — nothing is saved to your "
-                    "hard drive, which makes it very hard to detect."
-                )
-            elif any(k in fc_lower for k in ["reg add", "schtasks"]):
-                lines.append(
-                    "How it works: This file quietly adds itself to your computer's startup list so it runs "
-                    "every time you turn your PC on, even if you think you have removed it."
-                )
-            elif any(k in fc_lower for k in ["certutil", "bitsadmin"]):
-                lines.append(
-                    "How it works: This file uses trusted Windows built-in tools (programs that come with "
-                    "Windows by default) to download a harmful program — making it look like a normal "
-                    "Windows activity to bypass security checks."
-                )
-            elif any(k in fc_lower for k in ["eval(", "base64_decode", "shell_exec", "passthru"]):
-                lines.append(
-                    "How it works: This is a web backdoor — if uploaded to a website server, anyone who "
-                    "knows the secret URL can send commands to the server and control it completely."
-                )
-        elif risk_score <= 15:
-            if ext in [".vbs", ".vbe", ".bas"]:
-                lines.append(
-                    "This is a script file. TrustFile checked every line and confirmed it does not try to "
-                    "run hidden programs, change your settings, connect to the internet, or do anything harmful."
-                )
+            # ── Key findings in plain bullet style ────────────────────────────────
+            security_findings = [f for f in findings if not f.lower().startswith("[info]")]
+            if security_findings:
+                for f in security_findings[:3]:
+                    lines.append(f"• {f.capitalize()}.")
+
+            # ── Content-aware explanation — plain English ──────────────────────────
+            fc_lower = (file_content or "").lower()
+
+            if malware_family:
+                lines.append(f"What is this? {malware_family.capitalize()}.")
+                # Plain mechanics detail
+                if any(k in fc_lower for k in ["invoke-expression", "iex"]):
+                    lines.append(
+                        "How it works: When run, this file connects to the internet and secretly downloads "
+                        "another harmful program directly into your computer's memory — nothing is saved to your "
+                        "hard drive, which makes it very hard to detect."
+                    )
+                elif any(k in fc_lower for k in ["reg add", "schtasks"]):
+                    lines.append(
+                        "How it works: This file quietly adds itself to your computer's startup list so it runs "
+                        "every time you turn your PC on, even if you think you have removed it."
+                    )
+                elif any(k in fc_lower for k in ["certutil", "bitsadmin"]):
+                    lines.append(
+                        "How it works: This file uses trusted Windows built-in tools (programs that come with "
+                        "Windows by default) to download a harmful program — making it look like a normal "
+                        "Windows activity to bypass security checks."
+                    )
+                elif any(k in fc_lower for k in ["eval(", "base64_decode", "shell_exec", "passthru"]):
+                    lines.append(
+                        "How it works: This is a web backdoor — if uploaded to a website server, anyone who "
+                        "knows the secret URL can send commands to the server and control it completely."
+                    )
+            elif risk_score <= 15:
+                if ext in [".vbs", ".vbe", ".bas"]:
+                    lines.append(
+                        "This is a script file. TrustFile checked every line and confirmed it does not try to "
+                        "run hidden programs, change your settings, connect to the internet, or do anything harmful."
+                    )
+
             elif ext in [".ps1", ".psm1"]:
                 lines.append(
                     "This is a PowerShell script (a type of automation file for Windows). "
@@ -480,36 +492,38 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 )
 
         # ── Solution for Users (Paragraph format) ─────────────────────────────
-        if risk_score >= 81:
-            lines.append(
-                "Recommended Action: We strongly advise you not to open, run, or share this file under any circumstances. "
-                "Please delete it permanently right away by pressing Shift + Delete on Windows or by emptying your Trash on Mac. "
-                "If you already opened this file prior to scanning, immediately disconnect your device from the internet, run a full "
-                "system scan with your antivirus or Windows Security, and update your sensitive passwords from a separate device."
-            )
-        elif risk_score >= 56:
-            lines.append(
-                "Recommended Action: Do not open or execute this file, as it demonstrates strong signs of harmful behavior. "
-                "You should remove this file from your computer immediately unless you explicitly downloaded it from a trusted and "
-                "verified official developer. If you already opened the file, disconnect from Wi-Fi and perform a thorough security scan."
-            )
-        elif risk_score >= 36:
-            lines.append(
-                "Recommended Action: Exercise caution before opening this file because it exhibits unusual characteristics, even though "
-                "harmful intent is not fully confirmed. If this file came from an unexpected email, stranger, or unfamiliar website, "
-                "the safest choice is to delete it. If it was sent by a coworker or friend, verify with them directly before opening, and "
-                "never enable macros or run unknown scripts if asked."
-            )
-        elif risk_score >= 16:
-            lines.append(
-                "Recommended Action: This file is mostly safe with only minor observations, such as simple scripts or harmless prank dialogs "
-                "that do not pose a serious virus risk. If you downloaded or created this file intentionally, it is safe to use, but you may "
-                "remove it if it is unfamiliar."
-            )
-        else:
-            lines.append(
-                "Recommended Action: This file is verified safe and clean. You can open, edit, and share it normally without any security concerns."
-            )
+        if not grayware_hits:
+            if risk_score >= 81:
+                lines.append(
+                    "Recommended Action: We strongly advise you not to open, run, or share this file under any circumstances. "
+                    "Please delete it permanently right away by pressing Shift + Delete on Windows or by emptying your Trash on Mac. "
+                    "If you already opened this file prior to scanning, immediately disconnect your device from the internet, run a full "
+                    "system scan with your antivirus or Windows Security, and update your sensitive passwords from a separate device."
+                )
+            elif risk_score >= 56:
+                lines.append(
+                    "Recommended Action: Do not open or execute this file, as it demonstrates strong signs of harmful behavior. "
+                    "You should remove this file from your computer immediately unless you explicitly downloaded it from a trusted and "
+                    "verified official developer. If you already opened the file, disconnect from Wi-Fi and perform a thorough security scan."
+                )
+            elif risk_score >= 36:
+                lines.append(
+                    "Recommended Action: Exercise caution before opening this file because it exhibits unusual characteristics, even though "
+                    "harmful intent is not fully confirmed. If this file came from an unexpected email, stranger, or unfamiliar website, "
+                    "the safest choice is to delete it. If it was sent by a coworker or friend, verify with them directly before opening, and "
+                    "never enable macros or run unknown scripts if asked."
+                )
+            elif risk_score >= 16:
+                lines.append(
+                    "Recommended Action: This file is mostly safe with only minor observations, such as simple scripts or harmless prank dialogs "
+                    "that do not pose a serious virus risk. If you downloaded or created this file intentionally, it is safe to use, but you may "
+                    "remove it if it is unfamiliar."
+                )
+            else:
+                lines.append(
+                    "Recommended Action: This file is verified safe and clean. You can open, edit, and share it normally without any security concerns."
+                )
+
 
 
 

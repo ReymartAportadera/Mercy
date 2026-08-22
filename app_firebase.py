@@ -731,7 +731,8 @@ def _run_full_heuristic_scan(
         logger.warning("Advanced heuristics failed in _run_full_heuristic_scan: %s", exc)
 
 
-    pattern_str = ", ".join(suspicious[:3]) or "No suspicious patterns"
+    all_patterns_combined = suspicious + [h for h in heuristics if h not in suspicious]
+    pattern_str = ", ".join(all_patterns_combined[:3]) or "No suspicious patterns"
     imports_str = ", ".join(risky_imports)  or "None"
     sig_str     = ", ".join(heuristics[:3]) or "No signatures detected"
 
