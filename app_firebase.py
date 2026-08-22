@@ -540,6 +540,55 @@ def _run_full_heuristic_scan(
         suppress_labels = {"file access", "network", "script engine", "system command", "process spawn", "batch abuse"}
         suspicious = [s for s in suspicious if not any(lbl in s.lower() for lbl in suppress_labels)]
 
+    # ── Grayware / Prank Informational Detector (ZERO score impact) ───────────
+    # Detects intentionally disruptive-but-harmless patterns across script types.
+    # Adds an [INFO] note to heuristics only — does NOT change the risk score.
+    _grayware_notes = []
+    _text_lower = active_text.lower()
+
+    # 1. VBScript: Repeated MsgBox / InputBox popup loop (classic prank)
+    if norm_ext in {".vbs", ".vbe"} and re.search(r"\bfor\b.{0,30}\bto\b.{0,10}\d+", active_text, re.I):
+        if re.search(r"\bmsgbox\b|\binputbox\b", active_text, re.I):
+            _grayware_notes.append("[INFO] Grayware: VBScript repeated popup loop detected (prank/nuisance pattern — no system-level threat)")
+
+    # 2. Batch: Infinite loop opening windows / color flashing / echo spam
+    if norm_ext in {".bat", ".cmd"}:
+        if re.search(r":(loop|start)\b.*\n.*goto\s+(loop|start)", active_text, re.I | re.S):
+            if re.search(r"\bstart\b|\bcolor\b|\becho\b|\bpause\b", active_text, re.I):
+                _grayware_notes.append("[INFO] Grayware: Batch infinite loop with disruptive display commands detected (prank pattern)")
+        if re.search(r"\bshutdown\s+/[sra]\s+/t\s+\d+", active_text, re.I):
+            _grayware_notes.append("[INFO] Grayware: Timed shutdown/restart command detected (prank/annoyance — no malicious payload)")
+
+    # 3. PowerShell: MessageBox spam via Windows Forms
+    if norm_ext in {".ps1"}:
+        if re.search(r"windows\.forms\.messagebox|system\.windows\.forms", active_text, re.I):
+            if re.search(r"\bfor\b|\bwhile\b|\bdo\b", active_text, re.I):
+                _grayware_notes.append("[INFO] Grayware: PowerShell repeated Windows Forms dialog loop detected (prank pattern)")
+        if re.search(r"\[console\]::beep\s*\(", active_text, re.I):
+            _grayware_notes.append("[INFO] Grayware: PowerShell repeated console beep loop detected (audio prank pattern)")
+
+    # 4. Python: Repeated print / input / tk messagebox loops
+    if norm_ext in {".py"}:
+        if re.search(r"(while\s+true|for\s+\w+\s+in\s+range\s*\(\s*\d{3,})", active_text, re.I):
+            if re.search(r"\bprint\s*\(|\binput\s*\(|\btkinter\b|\bshowinfo\b|\bshowerror\b", active_text, re.I):
+                _grayware_notes.append("[INFO] Grayware: Python repeated dialog/print loop detected (prank/nuisance pattern)")
+
+    # 5. Universal: Fork bomb patterns (self-replicating processes — disruptive but detectable)
+    if re.search(r"start\s+%0\s*%\*|:\s*\(\s*\)\s*\{\s*:\s*\|", active_text, re.I):
+        _grayware_notes.append("[INFO] Grayware: Fork bomb pattern detected (process replication loop — system resource abuse, not data theft)")
+
+    # 6. Universal: Fake error / BSOD screen mimicry (social engineering prank)
+    if re.search(r"(blue\s*screen|bsod|critical\s*error|your\s*pc\s*(has\s+a\s+virus|is\s+infected))", _text_lower):
+        _grayware_notes.append("[INFO] Grayware: Fake system error / BSOD mimicry text detected (social engineering prank — not actual system damage)")
+
+    # 7. VBScript/Batch: Repeated CD-ROM tray open/close (hardware prank)
+    if re.search(r"MediaPlayer\.openPlayer|mc\s+open\s+type\s+cdaudio|Set\s+oWMP\s*=.*MediaPlayer", active_text, re.I):
+        _grayware_notes.append("[INFO] Grayware: CD-ROM drive tray loop command detected (hardware prank pattern)")
+
+    if _grayware_notes:
+        heuristics = list(dict.fromkeys(heuristics + _grayware_notes))
+    # ── End Grayware Detector ─────────────────────────────────────────────────
+
     threshold  = get_file_type_entropy_threshold("x" + ext)
     risk_score = 0
 

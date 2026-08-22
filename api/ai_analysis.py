@@ -296,10 +296,24 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 f"with no significant behavioral indicators detected."
             )
 
-        # Sentence 2: Key findings
-        if findings:
-            key = findings[:3]  # Top 3 most important findings
+        # Sentence 2: Key findings (exclude [INFO] grayware notes from security findings)
+        security_findings = [f for f in findings if not f.lower().startswith("[info]")]
+        if security_findings:
+            key = security_findings[:3]  # Top 3 most important findings
             lines.append("Key findings: " + "; ".join(key) + ".")
+
+        # Grayware / Prank informational note (no score — purely descriptive)
+        grayware_hits = [p for p in patterns.split(";") if "[INFO] Grayware" in p]
+        if not grayware_hits:
+            # Also check the raw patterns string directly
+            import re as _re
+            grayware_hits = _re.findall(r"\[INFO\] Grayware:[^\n;]+", patterns)
+        if grayware_hits:
+            gw_label = grayware_hits[0].replace("[INFO] Grayware:", "").strip().split("(")[0].strip()
+            lines.append(
+                f"Note: {gw_label.rstrip('.')}. "
+                f"This is a nuisance/prank pattern — it is disruptive but does not pose a security risk to your system."
+            )
 
         # Sentence 3: Malware classification
         if malware_family:
