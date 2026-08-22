@@ -272,6 +272,48 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
         if "file access" in patterns or "delete" in patterns or "remove" in patterns:
             findings.append("aggressive file system operations detected")
 
+        # ── New universal-extension pattern detections ────────────────────────
+        if "autorun inf dropper" in patterns or "autorun" in patterns:
+            findings.append("AutoRun INF dropper detected — file attempts to auto-execute a payload when media is inserted")
+            threat_classes.append("command execution")
+
+        if "sql injection" in patterns:
+            findings.append("SQL injection pattern detected — destructive or unauthorized database commands found (DROP TABLE, INSERT INTO admin)")
+            threat_classes.append("code injection")
+
+        if "lolbin abuse" in patterns:
+            findings.append("Living-off-the-land binary (LOLBin) abuse detected — uses trusted Windows tools as attack vectors")
+            threat_classes.append("command execution")
+
+        if "shadow copy deletion" in patterns or "vssadmin" in patterns:
+            findings.append("shadow copy deletion command detected — ransomware hallmark that prevents system recovery")
+            threat_classes.append("system disruption")
+
+        if "iex_usage" in patterns or "invoke-expression" in patterns or "iex" in patterns:
+            findings.append("PowerShell Invoke-Expression (IEX) detected — executes downloaded payloads directly in memory")
+            threat_classes.append("command execution")
+
+        if "vbe encoded" in patterns or "vbe" in patterns:
+            findings.append("VBScript encoded (VBE) obfuscation signature detected — script content is deliberately concealed")
+            threat_classes.append("obfuscation")
+
+        if "wmi execution" in patterns:
+            findings.append("WMI-based execution detected — uses Windows Management Instrumentation for stealthy process launch")
+            threat_classes.append("command execution")
+
+        if "uac bypass" in patterns or "fodhelper" in patterns or "eventvwr" in patterns:
+            findings.append("UAC bypass technique detected — attempts to escalate privileges silently without user prompt")
+            threat_classes.append("command execution")
+
+        if "amsi bypass" in patterns:
+            findings.append("AMSI bypass detected — attempts to disable Windows Antimalware Scan Interface before executing payload")
+            threat_classes.append("command execution")
+
+        if "php eval" in patterns or "php shell" in patterns or "php dynamic" in patterns:
+            findings.append("PHP web shell pattern detected — server-side script accepts and executes arbitrary commands from HTTP requests")
+            threat_classes.append("code injection")
+
+
         # ── Import-based detections ───────────────────────────────────────────
         risky_import_map = {
             "subprocess": ("subprocess module", "process spawning and command execution"),
