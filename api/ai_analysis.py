@@ -183,6 +183,7 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
         risk_score = int(risk_score or 0)
         patterns   = str(patterns or "").lower()
         imports    = str(imports or "").lower()
+        ext        = os.path.splitext(filename or "")[1].lower()
 
         findings       = []
         threat_classes = []
@@ -342,6 +343,9 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 grayware_hits = ["[GRAYWARE] Batch infinite loop with disruptive display commands (prank pattern)"]
             elif "fork bomb" in fc_prank or "%0|%0" in fc_prank:
                 grayware_hits = ["[GRAYWARE] Fork bomb process replication loop detected"]
+
+        # ── Classify malware family ───────────────────────────────────────────
+        malware_family = _classify_malware_family(threat_classes, risk_score, entropy)
 
         # ── Compose the analysis report ───────────────────────────────────────
         lines = []
