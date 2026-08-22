@@ -640,7 +640,7 @@ SCORE_WEIGHTS: dict[str, int] = {
 HIGH_CONFIDENCE_INDICATORS: set[str] = {
     "obfuscated_loader_exec_pattern", "windows_persistence_lotl", "validated_embedded_pe", "polyglot_file",
     "appended_payload", "powershell_encoded", "amsi_bypass", "process_injection_api",
-    "ransomware_api", "credential_api", "uac_bypass",
+    "ransomware_api", "credential_api", "uac_bypass", "iex_usage",
     "vba_auto_exec", "vba_shell", "vba_download", "vba_powershell", "vba_dde",
     "renamed_executable", "fake_extension", "av_test_signature",
     "ngrok_tunnel", "powershell_download",
@@ -657,6 +657,7 @@ ACTIVE_THREAT_GATE_INDICATORS: set[str] = {
     "taint_staging_flow",
     "amsi_bypass",
     "uac_bypass",
+    "iex_usage",
     "process_injection_api",
     "polyglot_file",
     "appended_payload",
@@ -2510,7 +2511,7 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     SINGLE_INDICATOR_CRITICAL = {
         "av_test_signature", "polyglot_file", "appended_payload",
         "obfuscated_loader_exec_pattern", "windows_persistence_lotl",
-        "dynamic_exec_var", "lolbin_abuse", "taint_staging_flow"
+        "dynamic_exec_var", "lolbin_abuse", "taint_staging_flow", "iex_usage"
     }
     is_single_critical = bool(set(result._hc_indicators) & SINGLE_INDICATOR_CRITICAL)
 
@@ -2521,6 +2522,11 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
         score = max(score, 85)
 
     if "dynamic_exec_var" in result._hc_indicators or "lolbin_abuse" in result._hc_indicators or "taint_staging_flow" in result._hc_indicators:
+        score = max(score, 85)
+
+    if "iex_usage" in result._hc_indicators and "powershell_download" in result._hc_indicators:
+        score = max(score, 95)
+    elif "iex_usage" in result._hc_indicators:
         score = max(score, 85)
 
     raw_score = max(0, min(score, 100))
