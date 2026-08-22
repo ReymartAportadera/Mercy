@@ -127,12 +127,9 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"'shellcode', 'obfuscation', 'base64', 'regex', 'API', or programming terms. Explain what happens to the user's computer in plain, simple everyday words.\n"
                 f"RULE 3: If clean (0–15 score), clearly explain that the file is safe and cannot harm their computer (e.g. text/docs have no virus code).\n"
                 f"RULE 4: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 top security programs all confirmed this file is safe.\n"
-                f"RULE 5: If the file is dangerous or suspicious, clearly explain the danger in 1-2 simple sentences (e.g. 'This file can allow someone to remotely control your PC' or 'This file tries to erase backup copies of your files').\n"
-                f"RULE 6: YOU MUST ALWAYS PROVIDE A STEP-BY-STEP SOLUTION for the user with simple, numbered steps under the heading '🛡️ Step-by-Step Solution for You:'.\n"
-                f"   - For Critical/High threats: Tell them (1) Do NOT open or double-click the file, (2) Delete it permanently using Shift + Delete (or empty Trash), (3) If already opened, disconnect Wi-Fi and run an antivirus scan, (4) Change passwords from another device.\n"
-                f"   - For Medium risk: Tell them (1) Don't enable macros/scripts, (2) Verify with the sender if expected, (3) Delete if from an unknown source.\n"
-                f"   - For Low risk/Clean: Tell them the file is safe to use and no action is required.\n\n"
-                f"Write a friendly, clear, and reassuring explanation that anyone without technical background can immediately understand and follow."
+                f"RULE 5: If the file is dangerous or suspicious, clearly explain the danger in 1-2 simple sentences.\n"
+                f"RULE 6: PROVIDE THE SOLUTION AS A NATURAL PARAGRAPH (do NOT use numbered lists or bullet points). Start the solution with 'Recommended Action:' and clearly explain what the user should do in smooth conversational sentences (e.g. delete the file permanently, disconnect Wi-Fi and run an antivirus scan if opened, verify the sender, or safely use the file).\n\n"
+                f"Write a friendly, clear, and reassuring explanation in natural paragraphs that anyone without technical background can immediately understand and follow."
             )
 
             payload = {
@@ -482,43 +479,38 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                     "It appears safe based on its content and structure."
                 )
 
-        # ── Step-by-Step Solution for Users ────────────────────────────────────
+        # ── Solution for Users (Paragraph format) ─────────────────────────────
         if risk_score >= 81:
             lines.append(
-                "🛡️ Step-by-Step Solution for You: "
-                "(1) Do NOT double-click, open, or run this file under any circumstances. "
-                "(2) Delete it permanently right now: On Windows, click the file and press Shift + Delete (or drag it to your Recycle Bin/Trash and empty it). "
-                "(3) If you already opened or clicked this file before scanning: Disconnect your computer from Wi-Fi immediately, run a full scan with Windows Security (or your antivirus), and change your important passwords (email, banking) from your phone or another safe device. "
-                "(4) If you received this file in an email or chat message, let the sender know their account may have been compromised."
+                "Recommended Action: We strongly advise you not to open, run, or share this file under any circumstances. "
+                "Please delete it permanently right away by pressing Shift + Delete on Windows or by emptying your Trash on Mac. "
+                "If you already opened this file prior to scanning, immediately disconnect your device from the internet, run a full "
+                "system scan with your antivirus or Windows Security, and update your sensitive passwords from a separate device."
             )
         elif risk_score >= 56:
             lines.append(
-                "🛡️ Step-by-Step Solution for You: "
-                "(1) Do NOT open or execute this file — it contains strong signs of harmful activity. "
-                "(2) Delete this file permanently from your computer using Shift + Delete (or empty your Recycle Bin). "
-                "(3) If you already opened this file, disconnect from Wi-Fi and run a full antivirus scan. "
-                "(4) Only keep this file if it came from an official, verified software developer that you completely trust."
+                "Recommended Action: Do not open or execute this file, as it demonstrates strong signs of harmful behavior. "
+                "You should remove this file from your computer immediately unless you explicitly downloaded it from a trusted and "
+                "verified official developer. If you already opened the file, disconnect from Wi-Fi and perform a thorough security scan."
             )
         elif risk_score >= 36:
             lines.append(
-                "🛡️ Step-by-Step Solution for You: "
-                "(1) Pause before opening — this file shows unusual characteristics, though harmful intent is not fully confirmed. "
-                "(2) Verify the source: If you got this from an unexpected email, stranger, or download link, delete it immediately. "
-                "(3) If it is from a trusted coworker or friend, contact them directly to confirm they meant to send it. "
-                "(4) Do NOT click 'Enable Editing', 'Enable Macros', or run any scripts if prompted."
+                "Recommended Action: Exercise caution before opening this file because it exhibits unusual characteristics, even though "
+                "harmful intent is not fully confirmed. If this file came from an unexpected email, stranger, or unfamiliar website, "
+                "the safest choice is to delete it. If it was sent by a coworker or friend, verify with them directly before opening, and "
+                "never enable macros or run unknown scripts if asked."
             )
         elif risk_score >= 16:
             lines.append(
-                "🛡️ Step-by-Step Solution for You: "
-                "(1) This file is low-risk with minor observations (e.g. a prank popup or standard script). It is not a dangerous virus. "
-                "(2) If you downloaded or created this file intentionally, it is safe to use. "
-                "(3) If you do not recognize this file, you can safely delete it."
+                "Recommended Action: This file is mostly safe with only minor observations, such as simple scripts or harmless prank dialogs "
+                "that do not pose a serious virus risk. If you downloaded or created this file intentionally, it is safe to use, but you may "
+                "remove it if it is unfamiliar."
             )
         else:
             lines.append(
-                "🛡️ Step-by-Step Solution for You: "
-                "✅ This file is clean and safe to use. You can open, edit, and share it normally without any security concerns."
+                "Recommended Action: This file is verified safe and clean. You can open, edit, and share it normally without any security concerns."
             )
+
 
 
         summary_text = " ".join(lines)
