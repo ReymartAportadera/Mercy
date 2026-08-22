@@ -392,7 +392,11 @@ def _get_safe_ai_content_snippet(filename: str, file_bytes: bytes) -> str:
     if not file_bytes:
         return ""
     ext = os.path.splitext(filename)[1].lower()
-    text_extensions = {".py", ".ps1", ".bat", ".cmd", ".vbs", ".js", ".html", ".htm", ".txt", ".sh", ".json", ".xml", ".css", ".csv", ".md"}
+    text_extensions = {
+        ".py", ".pyw", ".ps1", ".psm1", ".bat", ".cmd", ".vbs", ".vbe", ".bas",
+        ".js", ".ts", ".html", ".htm", ".txt", ".sh", ".json", ".xml", ".css",
+        ".csv", ".md", ".php", ".phtml", ".jsp", ".asp", ".aspx", ".rb", ".pl", ".log"
+    }
     
     # 1. Script / Source Text
     if ext in text_extensions:
