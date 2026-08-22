@@ -308,10 +308,37 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 f"with {malware_family}."
             )
         elif risk_score <= 15:
-            lines.append(
-                "No malicious patterns, suspicious imports, or anomalous executable structures were "
-                "detected. Compressed container entropy is normal and safe."
-            )
+            ext = os.path.splitext(filename or "")[1].lower()
+            if ext in [".vbs", ".vbe", ".bas"]:
+                lines.append(
+                    "VBScript syntax and structure are verified benign. No unauthorized COM objects (WScript.Shell, FileSystemObject), "
+                    "registry tampering, or dynamic code execution were detected."
+                )
+            elif ext in [".ps1", ".bat", ".cmd", ".sh", ".py", ".js"]:
+                lines.append(
+                    "Script syntax and entropy are normal for source code. No hidden process execution, downloader cradle, "
+                    "or persistence commands were detected."
+                )
+            elif ext in [".doc", ".docx", ".xls", ".xlsx", ".pdf"]:
+                lines.append(
+                    "Document structure is standard. No embedded macros, malicious XML relationships, or exploit payloads were detected."
+                )
+            elif ext in [".zip", ".rar", ".7z", ".tar", ".gz"]:
+                lines.append(
+                    "Archive container structure and internal files are normal. No hidden malicious executables or scripts were detected."
+                )
+            elif ext in [".exe", ".dll", ".bin"]:
+                lines.append(
+                    "Binary header structure and section entropy are within normal thresholds. No malicious API imports or code injection mechanisms were detected."
+                )
+            elif ext in [".txt"]:
+                lines.append(
+                    "Standard text format verified. No executable instructions or embedded script commands found."
+                )
+            else:
+                lines.append(
+                    "File structure and entropy are within the normal range for this format. No malicious patterns or behavioral indicators were detected."
+                )
 
         # Sentence 4: Recommendation per Risk Level Policy
         if risk_score >= 81:

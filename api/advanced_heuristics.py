@@ -145,22 +145,104 @@ INHERENTLY_COMPRESSED_EXTENSIONS: set[str] = {
     ".avi", ".mkv", ".aac", ".ogg", ".flac",
 }
 
-def strip_comments_and_docstrings(text: str) -> str:
+def strip_comments_and_docstrings(text: str, ext: str = "") -> str:
     """Strip docstrings and single/multiline comments from text to avoid false positives on comments."""
     if not text:
         return ""
+    ext = ext.lower()
     # Strip python multiline docstrings
     cleaned = re.sub(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'', '', text)
     # Strip C-style block comments
     cleaned = re.sub(r'/\*[\s\S]*?\*/', '', cleaned)
-    # Filter out single-line comment lines (#, //, ;, --, rem)
+    # Strip HTML/XML comments
+    cleaned = re.sub(r'<!--[\s\S]*?-->', '', cleaned)
+    # Filter out comment lines
     active_lines = []
     for line in cleaned.splitlines():
         s = line.strip()
-        if s.startswith("#") or s.startswith("//") or s.startswith(";") or s.startswith("--") or s.lower().startswith("rem "):
+        # VBScript / VB comment check
+        if s.startswith("'") or s.lower().startswith("rem ") or s.lower().startswith("rem\t"):
             continue
+        # Batch comment check
+        if s.startswith("::") or (ext in [".bat", ".cmd"] and s.lower().startswith("rem")):
+            continue
+        # Shell / Python / C / JS comments
+        if s.startswith("#") or s.startswith("//") or s.startswith(";") or s.startswith("--"):
+            continue
+        # Inline comment stripping for VBScript (' outside quotes)
+        if ext in [".vbs", ".vbe", ".bas", ".cls"] and "'" in line:
+            parts = line.split("'")
+            prefix = parts[0]
+            if prefix.count('"') % 2 == 0:
+                line = prefix
+        elif "//" in line and ext in [".js", ".ts", ".php", ".c", ".cpp", ".cs"]:
+            parts = line.split("//")
+            prefix = parts[0]
+            if prefix.count('"') % 2 == 0 and prefix.count("'") % 2 == 0:
+                line = prefix
         active_lines.append(line)
     return "\n".join(active_lines)
+
+
+def normalize_and_deobfuscate(text: str, ext: str = "") -> tuple[str, int]:
+    """
+    Phase 2 Pre-Scan Normalization & Static Deobfuscation Pass.
+    Strips comments, folds string concatenations, and resolves Chr() / [char] chains
+    without executing code. Returns (normalized_text, fold_count).
+    """
+    if not text:
+        return "", 0
+        
+    ext = ext.lower()
+    fold_count = 0
+    
+    # 1. First strip all comments and docstrings
+    normalized = strip_comments_and_docstrings(text, ext)
+    
+    # 2. Deobfuscation Pass: Resolve Chr() and ChrW() chains (VBScript / VB)
+    def _chr_repl(m):
+        nonlocal fold_count
+        try:
+            val = int(m.group(1))
+            if 32 <= val <= 126 or val in (9, 10, 13):
+                fold_count += 1
+                return f'"{chr(val)}"'
+        except Exception:
+            pass
+        return m.group(0)
+        
+    normalized = re.sub(r'\bChr[WB]?\s*\(\s*(\d+)\s*\)', _chr_repl, normalized, flags=re.I)
+    
+    # PowerShell [char] chains
+    def _ps_char_repl(m):
+        nonlocal fold_count
+        try:
+            raw = m.group(1)
+            val = int(raw, 16) if raw.lower().startswith("0x") else int(raw)
+            if 32 <= val <= 126 or val in (9, 10, 13):
+                fold_count += 1
+                return f'"{chr(val)}"'
+        except Exception:
+            pass
+        return m.group(0)
+        
+    normalized = re.sub(r'\[char\]\s*(0x[0-9a-fA-F]+|\d+)', _ps_char_repl, normalized, flags=re.I)
+    
+    # 3. String Concatenation Folding: "foo" & "bar" or "foo" + "bar"
+    # Run multiple passes to fold chained concatenations: "a" & "b" & "c" -> "abc"
+    for _ in range(5):
+        def _concat_repl(m):
+            nonlocal fold_count
+            fold_count += 1
+            return f'"{m.group(1)}{m.group(2)}"'
+            
+        new_norm = re.sub(r'"([^"\r\n]*)"\s*&\s*"([^"\r\n]*)"', _concat_repl, normalized)
+        new_norm = re.sub(r'"([^"\r\n]*)"\s*\+\s*"([^"\r\n]*)"', _concat_repl, new_norm)
+        if new_norm == normalized:
+            break
+        normalized = new_norm
+
+    return normalized, fold_count
 
 
 def is_executable_or_malicious_payload(decoded_bytes: bytes, decoded_str: str) -> bool:
@@ -531,10 +613,15 @@ SCORE_WEIGHTS: dict[str, int] = {
     "vba_dde":                     48,
     "vba_external_template":       38,
     "appended_payload":            50,
+    "dangerous_com_objects":       65,   # WScript.Shell, Scripting.FileSystemObject
+    "obfuscation_reconstructed":   40,   # Deobfuscation pass folded hidden string/char primitives
 
     # ── CRITICAL (70–100) ────────────────────────────────────────────────────
     "obfuscated_loader_exec_pattern": 95,   # exec/eval + base64/encoding routine
     "windows_persistence_lotl":    85,   # reg add / schtasks / HKLM Run persistence / LotL commands
+    "dynamic_exec_var":            85,   # Execute(var), Eval(var), IEX $var
+    "lolbin_abuse":                85,   # certutil -decode, regsvr32, mshta, bitsadmin
+    "taint_staging_flow":          85,   # Input/Read -> Execution sink flow
     "ransomware_api":              72,
     "validated_embedded_pe":       68,
     "polyglot_file":               75,
@@ -557,6 +644,23 @@ HIGH_CONFIDENCE_INDICATORS: set[str] = {
     "vba_auto_exec", "vba_shell", "vba_download", "vba_powershell", "vba_dde",
     "renamed_executable", "fake_extension", "av_test_signature",
     "ngrok_tunnel", "powershell_download",
+    "dynamic_exec_var", "lolbin_abuse", "taint_staging_flow", "dangerous_com_objects", "obfuscation_reconstructed"
+}
+
+# Explicit Named Subset for Active Threat Gate Zero-Day Override Path
+ACTIVE_THREAT_GATE_INDICATORS: set[str] = {
+    "windows_persistence_lotl",
+    "obfuscated_loader_exec_pattern",
+    "ransomware_api",
+    "dynamic_exec_var",
+    "lolbin_abuse",
+    "taint_staging_flow",
+    "amsi_bypass",
+    "uac_bypass",
+    "process_injection_api",
+    "polyglot_file",
+    "appended_payload",
+    "av_test_signature"
 }
 
 # Trusted vendor strings for reputation scoring (req. 6)
@@ -991,6 +1095,7 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
     except Exception:
         text = ""
 
+    active_text, _ = normalize_and_deobfuscate(text, result.claimed_extension)
     iocs: dict = {}
     _CODE_AND_ARCHIVE_EXTS = {".py", ".js", ".ts", ".rb", ".php", ".java", ".go", ".cs",
                               ".cpp", ".c", ".h", ".rs", ".md", ".txt", ".json", ".html",
@@ -1003,13 +1108,11 @@ def analyze_strings(file_bytes: bytes, result: AdvancedHeuristicResult) -> None:
         # Raw compressed archive streams produce random byte combinations that trigger false IP/Wallet matches
         if _is_archive_format and category in {"Crypto Wallet", "IP Addresses", "IPv6"}:
             continue
-        # Use finditer to get full matched string rather than capture group tuples
-        matches = list(dict.fromkeys(m.group(0).strip() for m in pattern.finditer(text) if m.group(0).strip()))
+        # Run IOC pattern matching on active normalized text for scripts/code to prevent comment false positives
+        scan_target = active_text if (result.claimed_extension or "").lower() in SCRIPT_EXTENSIONS | _CODE_AND_ARCHIVE_EXTS else text
+        matches = list(dict.fromkeys(m.group(0).strip() for m in pattern.finditer(scan_target) if m.group(0).strip()))
         if matches:
             iocs[category] = matches[:20]
-
-    # ── Active Text (Strip Comments & Docstrings) ────────────────────────────
-    active_text = strip_comments_and_docstrings(text)
 
     # ── Multi-Layer Controlled Decoding & Base64 Payload Inspection ─────────
     import base64
@@ -1348,7 +1451,13 @@ def analyze_script(
     except Exception:
         return
 
-    active_text = strip_comments_and_docstrings(text)
+    active_text, fold_count = normalize_and_deobfuscate(text, ext)
+
+    if fold_count > 0:
+        result.script_findings.append("Deobfuscation: Statically folded obfuscated string/char primitives")
+        result.detections.append(f"Deobfuscation Reconstruction: {fold_count} string/char primitive(s) folded")
+        result._hc_indicators.append("obfuscation_reconstructed")
+        result._co_indicators.append("obfuscation_reconstructed")
 
     # RULE 8 — check each pattern with context on active (non-comment) code
     for name, pattern in DANGEROUS_SCRIPT_PATTERNS.items():
@@ -1356,6 +1465,43 @@ def analyze_script(
             result.script_findings.append(name)
             result.detections.append(f"Script: {name} detected")
             result._co_indicators.append(name)
+
+    # Dynamic Execution via Variable argument (Execute(var), Eval(var), IEX $var)
+    if re.search(r'\b(Execute|ExecuteGlobal|Eval)\s*\(\s*([a-zA-Z_]\w*)\s*\)', active_text, re.I):
+        result.script_findings.append("Dynamic Execution via Variable (Execute/Eval)")
+        result.detections.append("Script: Dynamic code execution via variable argument detected")
+        result._hc_indicators.append("dynamic_exec_var")
+        result._co_indicators.append("dynamic_exec_var")
+
+    if re.search(r'\b(Invoke-Expression|IEX)\s+([\$a-zA-Z_]\w*)', active_text, re.I):
+        result.script_findings.append("Dynamic Execution via Variable (IEX $var)")
+        result.detections.append("PowerShell: Dynamic code execution via variable argument detected")
+        result._hc_indicators.append("dynamic_exec_var")
+        result._co_indicators.append("dynamic_exec_var")
+
+    # Dangerous COM Object instantiation / reference
+    com_match = re.search(r'\b(WScript\.Shell|Scripting\.FileSystemObject|MSXML2\.XMLHTTP|MSXML2\.ServerXMLHTTP|WinHttp\.WinHttpRequest|ADODB\.Stream|Shell\.Application|WScript\.Network)\b', active_text, re.I)
+    if com_match:
+        com_name = com_match.group(0)
+        result.script_findings.append(f"Dangerous COM Object ({com_name})")
+        result.detections.append(f"Script: Reference/instantiation of dangerous COM object '{com_name}'")
+        result._hc_indicators.append("dangerous_com_objects")
+        result._co_indicators.append("dangerous_com_objects")
+
+    # LOLBins Abuse
+    lolbin_match = re.search(r'\b(certutil(\.exe)?\s+(-urlcache|-decode|-f)|regsvr32(\.exe)?\s+/[snu]|mshta(\.exe)?\s+(http|javascript|vbscript)|bitsadmin(\.exe)?\s+/transfer|cscript(\.exe)?\s+//[be]|rundll32(\.exe)?\s+javascript)\b', active_text, re.I)
+    if lolbin_match:
+        result.script_findings.append(f"LOLBin Abuse ({lolbin_match.group(0)})")
+        result.detections.append(f"Script: Living-off-the-land binary abuse detected ({lolbin_match.group(0)})")
+        result._hc_indicators.append("lolbin_abuse")
+        result._co_indicators.append("lolbin_abuse")
+
+    # Taint / Staging Flow (Input / Read -> Execution sink within proximity)
+    if re.search(r'\b(InputBox|ReadAll|ReadLine|RegRead|DownloadString|DownloadData|GetResponse)\b[\s\S]{1,300}\b(Execute|ExecuteGlobal|Invoke-Expression|IEX|eval|system|shell_exec)\b', active_text, re.I):
+        result.script_findings.append("Taint Flow: Input/Read to Execution Sink")
+        result.detections.append("Script: Tainted data flow from input/read source directly into execution sink")
+        result._hc_indicators.append("taint_staging_flow")
+        result._co_indicators.append("taint_staging_flow")
 
     # Heavy character-ratio obfuscation check (ignore very short files)
     if len(text) > 200:
@@ -2214,6 +2360,11 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     if any("PHP Shell Execution" in s for s in sf): score += add("obfuscated_loader_exec_pattern", high_confidence=True)
     if any("PHP Eval Obfuscation" in s for s in sf): score += add("obfuscated_loader_exec_pattern", high_confidence=True)
     if any("Shadow Copy Deletion" in s for s in sf): score += add("ransomware_api", high_confidence=True)
+    if any("Dynamic Execution via Variable" in s for s in sf): score += add("dynamic_exec_var", high_confidence=True)
+    if any("Dangerous COM Object" in s for s in sf): score += add("dangerous_com_objects", high_confidence=True)
+    if any("LOLBin Abuse" in s for s in sf): score += add("lolbin_abuse", high_confidence=True)
+    if any("Taint Flow" in s for s in sf): score += add("taint_staging_flow", high_confidence=True)
+    if any("Deobfuscation" in s for s in sf): score += add("obfuscation_reconstructed", high_confidence=True)
 
     # ── VBA / OLE ─────────────────────────────────────────────────────────────
     _seen_office_keys: set = set()
@@ -2351,7 +2502,11 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     #   • appended_payload                    — data after EOF is never accidental
     #   • obfuscated_loader_exec_pattern      — exec/eval + base64/encoding loader routine
     # These bypass the ≥2 gate and always reach Malicious.
-    SINGLE_INDICATOR_CRITICAL = {"av_test_signature", "polyglot_file", "appended_payload", "obfuscated_loader_exec_pattern", "windows_persistence_lotl"}
+    SINGLE_INDICATOR_CRITICAL = {
+        "av_test_signature", "polyglot_file", "appended_payload",
+        "obfuscated_loader_exec_pattern", "windows_persistence_lotl",
+        "dynamic_exec_var", "lolbin_abuse", "taint_staging_flow"
+    }
     is_single_critical = bool(set(result._hc_indicators) & SINGLE_INDICATOR_CRITICAL)
 
     if "obfuscated_loader_exec_pattern" in result._hc_indicators:
@@ -2360,7 +2515,10 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     if "windows_persistence_lotl" in result._hc_indicators:
         score = max(score, 85)
 
-    raw_score = min(score, 100)
+    if "dynamic_exec_var" in result._hc_indicators or "lolbin_abuse" in result._hc_indicators or "taint_staging_flow" in result._hc_indicators:
+        score = max(score, 85)
+
+    raw_score = max(0, min(score, 100))
     if raw_score >= 75 and hc_count < 2 and not is_single_critical:
         score = max(raw_score - 15, 60)
         breakdown["insufficient_evidence"] = -(raw_score - score)
@@ -2369,7 +2527,7 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
             "preventing false-positive Malicious verdict."
         )
 
-    result.score           = min(max(score, 0), 100)
+    result.score           = max(0, min(score, 100))
     result.score_breakdown = breakdown
 
     # ── 5-Tier Classification thresholds ───────────────────────────────────

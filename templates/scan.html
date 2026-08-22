@@ -954,7 +954,7 @@
                 {% endif %}
                 <div class="kv-row-item" style="border-top:1px solid rgba(255,255,255,0.06); padding-top:8px; margin-top:4px;">
                     <span class="kv-lbl">Detection Confidence</span>
-                    <span class="kv-val" style="color:#10b981; font-weight:700;">{{ adv.get('confidence', '92') }}% ({{ adv.get('confidence_tier', 'HIGH') }})</span>
+                    <span class="kv-val" style="color:#10b981; font-weight:700;">{{ unified_conf_pct }}% ({{ unified_conf_tier }})</span>
                 </div>
             </div>
         </div>

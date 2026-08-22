@@ -628,9 +628,14 @@ def _run_full_heuristic_scan(
     adv: dict = {}
     try:
         adv = run_advanced_heuristics(filename, file_bytes)
-        risk_score = max(risk_score, adv.get("score", 0))
+        adv_score = adv.get("score", 0)
         adv_detections = adv.get("detections", [])
         heuristics = list(dict.fromkeys(heuristics + adv_detections))
+        # If advanced heuristics has verified clean evidence (score <= 15 and no critical indicators)
+        if adv_score <= 15 and not any("obfuscated" in d.lower() or "persistence" in d.lower() or "injection" in d.lower() or "dynamic code execution" in d.lower() or "lolbin" in d.lower() for d in adv_detections):
+            risk_score = adv_score
+        else:
+            risk_score = max(risk_score, adv_score)
     except Exception as exc:
         logger.warning("Advanced heuristics failed in _run_full_heuristic_scan: %s", exc)
 
