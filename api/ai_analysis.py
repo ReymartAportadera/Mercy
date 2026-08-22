@@ -110,7 +110,7 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 vt_note = f"VirusTotal context: {pat_val}\n"
 
             prompt = (
-                f"You are a security assistant explaining a file scan result to a regular person who is NOT an IT expert.\n\n"
+                f"You are a helpful and reassuring cybersecurity assistant explaining a file scan result to an everyday computer user who is NOT an IT expert.\n\n"
                 f"=== DETERMINISTIC ENGINE VERDICT (AUTHORITATIVE — DO NOT OVERRIDE) ===\n"
                 f"- Filename       : {filename or 'Uploaded File'}\n"
                 f"- Threat Score   : {risk_val}/100  ← THIS IS THE FINAL SCORE. DO NOT CHANGE IT.\n"
@@ -120,20 +120,19 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"- Risky Imports / APIs: {imp_val}\n"
                 f"{vt_note}"
                 f"{content_section}\n"
-                f"=== ABSOLUTE RULES (VIOLATIONS ARE FORBIDDEN) ===\n"
+                f"=== RULES (STRICTLY ENFORCED) ===\n"
                 f"RULE 1: Your response MUST reflect the engine verdict '{verdict_label}' and score {risk_val}/100 exactly. "
                 f"NEVER say 'Critical' if the score is below 81. NEVER say 'High Risk' if the score is below 56.\n"
-                f"RULE 2: Do NOT use technical words like entropy, heuristic, LOLBin, IEX, AMSI, UAC, COM object, payload, "
-                f"shellcode, obfuscation, base64, regex, API, or any programming terms. Write as if explaining to your grandmother.\n"
-                f"RULE 3: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 professional security programs all agreed this file is safe.\n"
-                f"RULE 4: For Medium Risk: tell the user 'this file has some suspicious signs but we are not 100% sure it is harmful — "
-                f"only open it if you trust where it came from.'\n"
-                f"RULE 5: If you found dangerous behavior, explain WHAT WILL HAPPEN to the user's computer in simple words "
-                f"(e.g. 'this file can give a hacker remote control of your computer' not 'reverse shell detected').\n"
-                f"RULE 6: If the file is a text/document that only mentions virus names as notes, explain it like this: "
-                f"'This file just talks about viruses in text — the same way a book about crime is not itself dangerous.'\n"
-                f"RULE 7: End every response with one simple sentence starting with 'What should you do?' that tells the user exactly what action to take.\n\n"
-                f"Write a clear 3–4 sentence explanation that any normal person can understand. No jargon. No technical terms."
+                f"RULE 2: NO IT JARGON. Never use words like 'entropy', 'heuristic', 'LOLBin', 'IEX', 'AMSI', 'UAC', 'COM object', 'payload', "
+                f"'shellcode', 'obfuscation', 'base64', 'regex', 'API', or programming terms. Explain what happens to the user's computer in plain, simple everyday words.\n"
+                f"RULE 3: If clean (0–15 score), clearly explain that the file is safe and cannot harm their computer (e.g. text/docs have no virus code).\n"
+                f"RULE 4: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 top security programs all confirmed this file is safe.\n"
+                f"RULE 5: If the file is dangerous or suspicious, clearly explain the danger in 1-2 simple sentences (e.g. 'This file can allow someone to remotely control your PC' or 'This file tries to erase backup copies of your files').\n"
+                f"RULE 6: YOU MUST ALWAYS PROVIDE A STEP-BY-STEP SOLUTION for the user with simple, numbered steps under the heading '🛡️ Step-by-Step Solution for You:'.\n"
+                f"   - For Critical/High threats: Tell them (1) Do NOT open or double-click the file, (2) Delete it permanently using Shift + Delete (or empty Trash), (3) If already opened, disconnect Wi-Fi and run an antivirus scan, (4) Change passwords from another device.\n"
+                f"   - For Medium risk: Tell them (1) Don't enable macros/scripts, (2) Verify with the sender if expected, (3) Delete if from an unknown source.\n"
+                f"   - For Low risk/Clean: Tell them the file is safe to use and no action is required.\n\n"
+                f"Write a friendly, clear, and reassuring explanation that anyone without technical background can immediately understand and follow."
             )
 
             payload = {
@@ -483,30 +482,43 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                     "It appears safe based on its content and structure."
                 )
 
-        # ── Recommendation — plain English ─────────────────────────────────────
+        # ── Step-by-Step Solution for Users ────────────────────────────────────
         if risk_score >= 81:
             lines.append(
-                "⚠️ What should you do? DELETE or move this file to quarantine right away. "
-                "Do NOT open it, run it, or send it to anyone."
+                "🛡️ Step-by-Step Solution for You: "
+                "(1) Do NOT double-click, open, or run this file under any circumstances. "
+                "(2) Delete it permanently right now: On Windows, click the file and press Shift + Delete (or drag it to your Recycle Bin/Trash and empty it). "
+                "(3) If you already opened or clicked this file before scanning: Disconnect your computer from Wi-Fi immediately, run a full scan with Windows Security (or your antivirus), and change your important passwords (email, banking) from your phone or another safe device. "
+                "(4) If you received this file in an email or chat message, let the sender know their account may have been compromised."
             )
         elif risk_score >= 56:
             lines.append(
-                "⚠️ What should you do? Do NOT open or run this file. "
-                "It shows strong signs of being harmful. If you did not expect this file, delete it immediately."
+                "🛡️ Step-by-Step Solution for You: "
+                "(1) Do NOT open or execute this file — it contains strong signs of harmful activity. "
+                "(2) Delete this file permanently from your computer using Shift + Delete (or empty your Recycle Bin). "
+                "(3) If you already opened this file, disconnect from Wi-Fi and run a full antivirus scan. "
+                "(4) Only keep this file if it came from an official, verified software developer that you completely trust."
             )
         elif risk_score >= 36:
             lines.append(
-                "⚠️ What should you do? Be careful with this file. "
-                "It has some suspicious signs but nothing was fully confirmed. "
-                "Only open it if you trust where it came from."
+                "🛡️ Step-by-Step Solution for You: "
+                "(1) Pause before opening — this file shows unusual characteristics, though harmful intent is not fully confirmed. "
+                "(2) Verify the source: If you got this from an unexpected email, stranger, or download link, delete it immediately. "
+                "(3) If it is from a trusted coworker or friend, contact them directly to confirm they meant to send it. "
+                "(4) Do NOT click 'Enable Editing', 'Enable Macros', or run any scripts if prompted."
             )
         elif risk_score >= 16:
             lines.append(
-                "ℹ️ What should you do? This file is probably fine, but it has one or two minor observations. "
-                "If you do not recognize where it came from, it is okay to double-check before opening."
+                "🛡️ Step-by-Step Solution for You: "
+                "(1) This file is low-risk with minor observations (e.g. a prank popup or standard script). It is not a dangerous virus. "
+                "(2) If you downloaded or created this file intentionally, it is safe to use. "
+                "(3) If you do not recognize this file, you can safely delete it."
             )
         else:
-            lines.append("✅ What should you do? Nothing — this file is safe to use.")
+            lines.append(
+                "🛡️ Step-by-Step Solution for You: "
+                "✅ This file is clean and safe to use. You can open, edit, and share it normally without any security concerns."
+            )
 
 
         summary_text = " ".join(lines)
@@ -545,28 +557,28 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
 
 
 def _classify_malware_family(threat_classes: list, risk_score: int, entropy: float) -> str:
-    """Infer the most likely malware category from collected threat indicators."""
+    """Infer the most likely malware category in plain English for non-IT users."""
     tc = set(threat_classes)
 
     if "remote access trojan (RAT)" in tc:
-        return "a Remote Access Trojan (RAT) capable of full system compromise"
+        return "a Remote Spy Trojan (a dangerous tool that gives a hacker full remote access to your screen, files, webcam, and keyboard)"
     if "data exfiltration" in tc and "network communication" in tc:
-        return "an information stealer or spyware designed to exfiltrate sensitive data"
+        return "Spyware or Info-Stealer (a hidden program designed to secretly steal your passwords, credit cards, or personal documents)"
     if "persistence" in tc and "command execution" in tc:
-        return "a backdoor or dropper with persistent access capabilities"
+        return "a Malware Dropper (a hidden installer that secretly downloads and plants dangerous viruses on your computer)"
     if "obfuscation" in tc and entropy >= 7.0 and risk_score >= 50:
-        return "a packed or crypted malware sample designed to evade antivirus detection"
+        return "a Disguised Virus (harmful code wrapped in layers of scrambling so normal antivirus won't notice it)"
     if "process injection" in tc and "command execution" in tc:
-        return "a process injector or trojan loader"
+        return "a Trojan Loader (a file that sneaks dangerous code inside normal programs running on your computer)"
     if "system disruption" in tc:
-        return "a potentially destructive tool (wiper, killswitch, or sabotage script)"
+        return "Destructive Ransomware or Wiper (a harmful program that erases your files, deletes backups, or locks your computer)"
     if "command execution" in tc and risk_score >= 40:
-        return "a command-and-control (C2) agent or exploitation script"
+        return "a Remote Control Script (used by hackers to send silent commands to your computer over the internet)"
     if "network communication" in tc and risk_score >= 30:
-        return "a network-aware script that may be used for scanning or C2 beaconing"
+        return "a Suspicious Network Tool (silently connects to outside internet addresses without your knowledge)"
     if "code injection" in tc:
-        return "a script with dynamic code execution, often used in droppers or loaders"
+        return "a Hidden Script Installer (runs unseen code to download other files onto your system)"
     if risk_score >= 60:
-        return "an unclassified high-risk threat requiring immediate investigation"
+        return "a Dangerous File with multiple critical warning signs"
 
-    return ""
+    return ""
