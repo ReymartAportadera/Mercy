@@ -110,10 +110,10 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 vt_note = f"VirusTotal context: {pat_val}\n"
 
             prompt = (
-                f"You are a Senior Security Analyst synthesizing static malware engine analysis results.\n\n"
+                f"You are a security assistant explaining a file scan result to a regular person who is NOT an IT expert.\n\n"
                 f"=== DETERMINISTIC ENGINE VERDICT (AUTHORITATIVE — DO NOT OVERRIDE) ===\n"
                 f"- Filename       : {filename or 'Uploaded File'}\n"
-                f"- Risk Score     : {risk_val}/100  ← THIS IS THE FINAL SCORE. DO NOT CHANGE IT.\n"
+                f"- Threat Score   : {risk_val}/100  ← THIS IS THE FINAL SCORE. DO NOT CHANGE IT.\n"
                 f"- Engine Verdict : {verdict_label}  ← THIS IS THE FINAL VERDICT. DO NOT CHANGE IT.\n"
                 f"- {entropy_note}\n"
                 f"- Detected Patterns: {pat_val}\n"
@@ -123,14 +123,17 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"=== ABSOLUTE RULES (VIOLATIONS ARE FORBIDDEN) ===\n"
                 f"RULE 1: Your response MUST reflect the engine verdict '{verdict_label}' and score {risk_val}/100 exactly. "
                 f"NEVER say 'Critical' if the score is below 81. NEVER say 'High Risk' if the score is below 56.\n"
-                f"RULE 2: Do NOT cite high entropy as malicious if the file is a ZIP, DOCX, or compressed archive.\n"
-                f"RULE 3: If VirusTotal shows 0 detections from 75 engines, acknowledge this as strong evidence of safety.\n"
-                f"RULE 4: For Medium Risk (36–55): you MUST include the phrase "
-                f"'This file contains suspicious characteristics, but malware was not confirmed. "
-                f"Review the detected indicators and verify the file source before opening.'\n"
-                f"RULE 5: Cite specific evidence from the snippet (URLs, commands, function names, text content) if available.\n"
-                f"RULE 6: If the file is a text/document containing security keywords, virus names, or notes (e.g. mentions of 'love bug', 'Jerusalem', 'Lehigh', or generic virus names), explicitly explain to the user that these are passive text references/notes, not executable malware, and confirm the file is harmless.\n\n"
-                f"Write a thorough 3–4 sentence professional security assessment that strictly follows all rules above."
+                f"RULE 2: Do NOT use technical words like entropy, heuristic, LOLBin, IEX, AMSI, UAC, COM object, payload, "
+                f"shellcode, obfuscation, base64, regex, API, or any programming terms. Write as if explaining to your grandmother.\n"
+                f"RULE 3: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 professional security programs all agreed this file is safe.\n"
+                f"RULE 4: For Medium Risk: tell the user 'this file has some suspicious signs but we are not 100% sure it is harmful — "
+                f"only open it if you trust where it came from.'\n"
+                f"RULE 5: If you found dangerous behavior, explain WHAT WILL HAPPEN to the user's computer in simple words "
+                f"(e.g. 'this file can give a hacker remote control of your computer' not 'reverse shell detected').\n"
+                f"RULE 6: If the file is a text/document that only mentions virus names as notes, explain it like this: "
+                f"'This file just talks about viruses in text — the same way a book about crime is not itself dangerous.'\n"
+                f"RULE 7: End every response with one simple sentence starting with 'What should you do?' that tells the user exactly what action to take.\n\n"
+                f"Write a clear 3–4 sentence explanation that any normal person can understand. No jargon. No technical terms."
             )
 
             payload = {
@@ -217,148 +220,142 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
             verdict     = "likely safe"
             risk_label  = "CLEAN"
 
-        # ── Entropy analysis (Container & context-aware) ──────────────────────
-        # Only cite elevated entropy as suspicious if other indicators exist (risk >= 56).
-        # For clean/normal files, high entropy is normal compression.
+        # ── Entropy analysis (plain language, only when truly suspicious) ─────
         if risk_score >= 56:
             if entropy >= 7.5:
                 findings.append(
-                    f"very high entropy ({entropy:.2f}/8.0) indicates packed, "
-                    "encrypted, or obfuscated content corroborating detected threats"
+                    "the file's contents appear to be intentionally scrambled or hidden, "
+                    "which is a common trick used to hide harmful code from security tools"
                 )
             elif entropy >= 7.0:
                 findings.append(
-                    f"elevated entropy ({entropy:.2f}/8.0) suggests obfuscation "
-                    "used to conceal executable code"
+                    "parts of this file appear to be encoded or hidden, "
+                    "which may be used to disguise what it actually does"
                 )
 
-        # ── Pattern-based detections ──────────────────────────────────────────
+        # ── Pattern-based detections — plain English ──────────────────────────
         if "code execution" in patterns or "eval" in patterns or "exec" in patterns:
-            findings.append("dynamic code execution patterns detected (eval/exec)")
+            findings.append("this file can run hidden commands on your computer without you seeing them")
             threat_classes.append("code injection")
 
         if "system command" in patterns or "cmd" in patterns or "powershell" in patterns:
-            findings.append("system command execution capability found")
+            findings.append("this file can silently run system commands in the background, similar to how a hacker would control a computer remotely")
             threat_classes.append("command execution")
 
         if "process spawn" in patterns or "subprocess" in patterns:
-            findings.append("process spawning behavior identified")
+            findings.append("this file can secretly open and run other programs on your computer")
             threat_classes.append("process injection")
 
         if "network" in patterns or "socket" in patterns or "http" in patterns:
-            findings.append("network communication capability present")
+            findings.append("this file tries to connect to the internet without your permission")
             threat_classes.append("network communication")
 
         if "exfiltration" in patterns or "webhook" in patterns or "pastebin" in patterns:
-            findings.append("data exfiltration indicators found (webhook/pastebin/remote upload)")
+            findings.append("this file appears designed to secretly send your files or data to an outside server controlled by someone else")
             threat_classes.append("data exfiltration")
 
         if "reverse shell" in patterns:
-            findings.append("reverse shell pattern detected — critical indicator of remote access trojan (RAT)")
+            findings.append("this file can give a hacker full remote control of your computer, allowing them to see your screen, read your files, and type commands as if they were sitting in front of it")
             threat_classes.append("remote access trojan (RAT)")
 
         if "persistence" in patterns or "startup" in patterns or "registry" in patterns or "schtasks" in patterns:
-            findings.append("persistence mechanism detected (registry/scheduled task/startup)")
+            findings.append("this file modifies your computer's startup settings so it runs automatically every time you turn on your PC, even after you delete it from its original location")
             threat_classes.append("persistence")
 
         if "obfuscated" in patterns or "base64" in patterns or "encoding" in patterns:
-            findings.append("obfuscation/encoding routines detected, suggesting payload concealment")
+            findings.append("the harmful content of this file is intentionally disguised to avoid being caught by antivirus programs")
             threat_classes.append("obfuscation")
 
         if "batch abuse" in patterns or "taskkill" in patterns or "shutdown" in patterns:
-            findings.append("system disruption commands found (taskkill/shutdown/del)")
+            findings.append("this file contains commands that can force-close programs or shut down your computer without warning")
             threat_classes.append("system disruption")
 
         if "file access" in patterns or "delete" in patterns or "remove" in patterns:
-            findings.append("aggressive file system operations detected")
+            findings.append("this file can delete or overwrite files on your computer")
 
-        # ── New universal-extension pattern detections ────────────────────────
+        # ── New pattern detections — plain English ────────────────────────────
         if "autorun inf dropper" in patterns or "autorun" in patterns:
-            findings.append("AutoRun INF dropper detected — file attempts to auto-execute a payload when media is inserted")
+            findings.append("this file is designed to run automatically the moment a USB drive or disc is inserted into a computer, without any action from you")
             threat_classes.append("command execution")
 
         if "sql injection" in patterns:
-            findings.append("SQL injection pattern detected — destructive or unauthorized database commands found (DROP TABLE, INSERT INTO admin)")
+            findings.append("this file contains commands that can destroy or steal data from a database — for example, it can delete entire tables or add fake admin accounts")
             threat_classes.append("code injection")
 
         if "lolbin abuse" in patterns:
-            findings.append("Living-off-the-land binary (LOLBin) abuse detected — uses trusted Windows tools as attack vectors")
+            findings.append("this file abuses trusted Windows tools (like certutil or bitsadmin) that are already on your computer to download or run harmful programs, so they look normal to antivirus software")
             threat_classes.append("command execution")
 
         if "shadow copy deletion" in patterns or "vssadmin" in patterns:
-            findings.append("shadow copy deletion command detected — ransomware hallmark that prevents system recovery")
+            findings.append("this file deletes your Windows backup copies (System Restore points), which means if it damages your files, you will not be able to recover them — this is a classic ransomware behavior")
             threat_classes.append("system disruption")
 
         if "iex_usage" in patterns or "invoke-expression" in patterns or "iex" in patterns:
-            findings.append("PowerShell Invoke-Expression (IEX) detected — executes downloaded payloads directly in memory")
+            findings.append("this file secretly downloads and runs another harmful program from the internet directly into memory, so no file is saved to your computer for antivirus to find")
             threat_classes.append("command execution")
 
         if "vbe encoded" in patterns or "vbe" in patterns:
-            findings.append("VBScript encoded (VBE) obfuscation signature detected — script content is deliberately concealed")
+            findings.append("this script file has its contents deliberately scrambled so you cannot read what it does — this is a common hiding technique used in email-based malware")
             threat_classes.append("obfuscation")
 
         if "wmi execution" in patterns:
-            findings.append("WMI-based execution detected — uses Windows Management Instrumentation for stealthy process launch")
+            findings.append("this file uses a hidden Windows feature to run programs in the background without opening any visible window, making it very hard to detect")
             threat_classes.append("command execution")
 
         if "uac bypass" in patterns or "fodhelper" in patterns or "eventvwr" in patterns:
-            findings.append("UAC bypass technique detected — attempts to escalate privileges silently without user prompt")
+            findings.append("this file tries to gain administrator-level access to your computer without asking for your password or showing the usual permission pop-up")
             threat_classes.append("command execution")
 
         if "amsi bypass" in patterns:
-            findings.append("AMSI bypass detected — attempts to disable Windows Antimalware Scan Interface before executing payload")
+            findings.append("this file attempts to turn off Windows' built-in malware protection before running, so it can operate without being blocked or detected")
             threat_classes.append("command execution")
 
         if "php eval" in patterns or "php shell" in patterns or "php dynamic" in patterns:
-            findings.append("PHP web shell pattern detected — server-side script accepts and executes arbitrary commands from HTTP requests")
+            findings.append("this is a web shell — a hidden backdoor planted on a website server that lets an attacker send commands to the server through a normal web browser")
             threat_classes.append("code injection")
 
-
-        # ── Import-based detections ───────────────────────────────────────────
+        # ── Import-based detections — plain English ───────────────────────────
         risky_import_map = {
-            "subprocess": ("subprocess module", "process spawning and command execution"),
-            "socket":     ("socket module",     "raw network communication"),
-            "os":         ("os module",          "operating system access and file manipulation"),
-            "sys":        ("sys module",          "interpreter-level system access"),
-            "requests":   ("requests module",    "HTTP-based network communication"),
-            "ctypes":     ("ctypes module",      "low-level Windows API calls"),
-            "winreg":     ("winreg module",      "Windows registry manipulation"),
-            "shutil":     ("shutil module",      "file copying and deletion"),
+            "subprocess": "can open and run other programs or system commands in the background",
+            "socket":     "can make direct internet connections without using your browser",
+            "ctypes":     "can call deep Windows system functions, often used to manipulate memory or inject code",
+            "winreg":     "can read and modify Windows Registry settings (controls how programs and the OS behave)",
+            "shutil":     "can copy, move, or delete files and folders on your computer",
         }
         found_imports = []
-        for key, (label, desc) in risky_import_map.items():
+        for key, plain_desc in risky_import_map.items():
             if key in imports:
-                found_imports.append(f"{label} ({desc})")
+                found_imports.append(plain_desc)
         if found_imports:
             findings.append(
-                f"uses potentially dangerous modules: {', '.join(found_imports)}"
+                "this file uses built-in capabilities that " + " and ".join(found_imports[:2])
             )
 
         # ── Classify malware family ───────────────────────────────────────────
         malware_family = _classify_malware_family(threat_classes, risk_score, entropy)
 
-        # ── Compose the analysis report ───────────────────────────────────────
-        lines = []
 
-        # Sentence 1: Verdict
+        # ── Verdict sentence — plain English ──────────────────────────────────
+        lines = []
         if findings:
+            count = len(findings)
             lines.append(
-                f"[{risk_label}] This file is {verdict} (risk score: {risk_score}/100). "
-                f"The analysis identified {len(findings)} indicator(s) of compromise."
+                f"[{risk_label}] TrustFile found {count} warning{'s' if count > 1 else ''} in this file (Threat Score: {risk_score}/100). "
+                f"Here is what this file can do:"
             )
         else:
             lines.append(
-                f"[{risk_label}] This file appears {verdict} (risk score: {risk_score}/100) "
-                f"with no significant behavioral indicators detected."
+                f"[{risk_label}] This file looks safe (Threat Score: {risk_score}/100). "
+                f"No harmful behavior was found."
             )
 
-        # Sentence 2: Key findings (exclude [INFO] grayware notes from security findings)
+        # ── Key findings in plain bullet style ────────────────────────────────
         security_findings = [f for f in findings if not f.lower().startswith("[info]")]
         if security_findings:
-            key = security_findings[:3]  # Top 3 most important findings
-            lines.append("Key findings: " + "; ".join(key) + ".")
+            for f in security_findings[:3]:
+                lines.append(f"• {f.capitalize()}.")
 
-        # Grayware / Prank note — surfaces confirmed disruptive pattern at Low Risk
+        # ── Grayware / Prank note ──────────────────────────────────────────────
         grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p]
         if not grayware_hits:
             import re as _re
@@ -366,74 +363,89 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
         if grayware_hits:
             gw_label = grayware_hits[0].replace("[GRAYWARE]", "").strip().split("(")[0].strip()
             lines.append(
-                f"Note: {gw_label.rstrip('.')}. "
-                f"This is a Grayware/PUA pattern — disruptive but does not steal data or damage the system."
+                f"Note: This file contains a prank or nuisance behavior ({gw_label.rstrip('.')}). "
+                f"It is annoying but it cannot steal your data, damage your files, or harm your computer."
             )
 
-        # Sentence 3: Deep Content-Aware Analysis & Malware Classification
+        # ── Content-aware explanation — plain English ──────────────────────────
         ext = os.path.splitext(filename or "")[1].lower()
         fc_lower = (file_content or "").lower()
 
         if malware_family:
-            lines.append(
-                f"Threat classification: this file exhibits characteristics consistent with {malware_family}."
-            )
-            # Add specific mechanics detail if available from file_content
+            lines.append(f"What is this? {malware_family.capitalize()}.")
+            # Plain mechanics detail
             if any(k in fc_lower for k in ["invoke-expression", "iex"]):
-                lines.append("Mechanics: Executes remote payload directly in memory via PowerShell Invoke-Expression (IEX).")
+                lines.append(
+                    "How it works: When run, this file connects to the internet and secretly downloads "
+                    "another harmful program directly into your computer's memory — nothing is saved to your "
+                    "hard drive, which makes it very hard to detect."
+                )
             elif any(k in fc_lower for k in ["reg add", "schtasks"]):
-                lines.append("Mechanics: Installs persistence hooks via Windows Registry Run keys or Scheduled Tasks.")
+                lines.append(
+                    "How it works: This file quietly adds itself to your computer's startup list so it runs "
+                    "every time you turn your PC on, even if you think you have removed it."
+                )
             elif any(k in fc_lower for k in ["certutil", "bitsadmin"]):
-                lines.append("Mechanics: Abuses built-in Windows LOLBin utilities to download or decode external staging payloads.")
+                lines.append(
+                    "How it works: This file uses trusted Windows built-in tools (programs that come with "
+                    "Windows by default) to download a harmful program — making it look like a normal "
+                    "Windows activity to bypass security checks."
+                )
             elif any(k in fc_lower for k in ["eval(", "base64_decode", "shell_exec", "passthru"]):
-                lines.append("Mechanics: Employs dynamic evaluation wrappers to execute concealed web shell commands.")
+                lines.append(
+                    "How it works: This is a web backdoor — if uploaded to a website server, anyone who "
+                    "knows the secret URL can send commands to the server and control it completely."
+                )
         elif risk_score <= 15:
             if ext in [".vbs", ".vbe", ".bas"]:
                 lines.append(
-                    "VBScript syntax and structure are verified benign. Detailed code review confirms no unauthorized COM objects "
-                    "(WScript.Shell, FileSystemObject), no registry manipulation, and no dynamic code execution (Execute/Eval)."
+                    "This is a script file. TrustFile checked every line and confirmed it does not try to "
+                    "run hidden programs, change your settings, connect to the internet, or do anything harmful."
                 )
             elif ext in [".ps1", ".psm1"]:
                 lines.append(
-                    "PowerShell script structure is clean. Static analysis verified no obfuscated base64 commands, "
-                    "no memory injection, no WebClient download cradles, and no AMSI/UAC bypass routines."
+                    "This is a PowerShell script (a type of automation file for Windows). "
+                    "TrustFile confirmed it does not download anything, does not hide its content, "
+                    "and does not try to take control of your computer."
                 )
             elif ext in [".bat", ".cmd"]:
                 lines.append(
-                    "Batch script contains standard command syntax. No persistence hooks (reg add/schtasks), "
-                    "no LOLBin downloader abuse (certutil/bitsadmin), and no destructive file commands were detected."
+                    "This is a Windows command script. TrustFile checked it and found no attempts to "
+                    "change startup settings, delete files, or download harmful programs."
                 )
             elif ext in [".py", ".pyw"]:
                 lines.append(
-                    "Python source code structure is benign. No suspicious dynamic imports, raw socket listeners, "
-                    "subprocesses executing shell commands, or obfuscated bytecode routines were found."
+                    "This is a Python script file. TrustFile confirmed it does not try to open internet "
+                    "connections, run hidden commands, or do anything suspicious on your computer."
                 )
             elif ext in [".php", ".phtml"]:
                 lines.append(
-                    "PHP script contains standard web application logic. No web shell execution wrappers (eval, shell_exec, "
-                    "system, passthru) or obfuscated base64 payloads were detected."
+                    "This is a web server script. TrustFile confirmed it does not contain any web backdoor "
+                    "code or commands that would let someone remotely control a web server."
                 )
             elif ext in [".js", ".ts", ".html", ".htm"]:
                 lines.append(
-                    "Web/JavaScript code structure is normal. No malicious redirection scripts, obfuscated eval routines, "
-                    "or unauthorized DOM manipulation payloads were found."
+                    "This is a web page or web script file. TrustFile confirmed it does not redirect you "
+                    "to harmful websites, hide any malicious code, or try to take over your browser."
                 )
-            elif ext in [".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".pdf"]:
+            elif ext in [".doc", ".docx", ".docm", ".xls", ".xlsx", ".xlsm", ".ppt", ".pptx", ".pptm", ".pdf"]:
                 lines.append(
-                    "Document structure is validated. XML relationships and streams were inspected: no embedded VBA macros, "
-                    "no external DDE relationships, no JavaScript execution streams, and no exploit payloads were detected."
+                    "This is a document file. TrustFile confirmed it does not contain hidden scripts, "
+                    "auto-run macros, or any code that would execute when you open it."
                 )
-            elif ext in [".zip", ".rar", ".7z", ".tar", ".gz"]:
+            elif ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".cab"]:
                 lines.append(
-                    "Archive container structure and internal files are normal. Internal entries consist of standard non-executable "
-                    "project/data assets with no hidden executables, autorun scripts, or nested malicious payloads."
+                    "This is a compressed archive (like a ZIP file). TrustFile scanned the contents inside "
+                    "and confirmed there are no hidden executable files, no auto-run scripts, and no malware "
+                    "inside the package."
                 )
-            elif ext in [".exe", ".dll", ".bin", ".sys"]:
+            elif ext in [".exe", ".dll", ".bin", ".sys", ".elf"]:
                 lines.append(
-                    "Binary header structure and section entropy are within normal thresholds. Import table analysis confirms "
-                    "standard application runtime APIs with no process injection, anti-debugging, or ransomware API signatures."
+                    "This is a program file. TrustFile scanned its internal structure and confirmed it does "
+                    "not contain any virus signatures, does not try to inject itself into other programs, "
+                    "and behaves like a normal application."
                 )
-            elif ext in [".txt", ".md", ".csv", ".json", ".xml", ".log", ".rst"]:
+            elif ext in [".txt", ".md", ".csv", ".json", ".xml", ".log", ".rst", ".svg"]:
                 virus_mentions = []
                 for vname in ["love bug", "lehigh", "jerusalem", "eicar", "trojan", "virus", "worm", "malware", "ransomware", "payload"]:
                     if vname in fc_lower:
@@ -441,43 +453,61 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 if virus_mentions:
                     vm_str = ", ".join(f"'{v}'" for v in virus_mentions[:3])
                     lines.append(
-                        f"Content analysis: this document contains text references to malware names ({vm_str}), but these exist purely as "
-                        f"inert plain-text notes. Plain text files (.txt) have no execution runtime and cannot execute code or compromise your system."
+                        f"This file mentions some virus names ({vm_str}) but that is completely fine — "
+                        f"it is just text. A plain text file cannot run any code and cannot harm your computer, "
+                        f"the same way a book about diseases cannot make you sick."
                     )
                 else:
                     lines.append(
-                        "Standard plain-text format verified. Content consists of passive text characters with no executable code, "
-                        "macro instructions, or hidden script commands."
+                        "This is a plain text or data file. It cannot run code, open programs, or change "
+                        "anything on your computer. It is safe to open."
                     )
+            elif ext in [".reg"]:
+                lines.append(
+                    "This is a Windows Registry file. TrustFile confirmed it does not try to add malicious "
+                    "startup entries or change critical system settings that would harm your computer."
+                )
+            elif ext in [".inf"]:
+                lines.append(
+                    "This is a Windows setup or driver configuration file. TrustFile confirmed it does not "
+                    "include any auto-run commands that would execute a harmful program."
+                )
+            elif ext in [".sql"]:
+                lines.append(
+                    "This is a database script file. TrustFile confirmed it does not contain destructive "
+                    "commands that would delete or steal data from a database."
+                )
             else:
                 lines.append(
-                    "File structure and entropy are within the normal range for this format. Static signature scanning and "
-                    "structural heuristics identified no malicious patterns or behavioral indicators."
+                    "TrustFile inspected this file and found no signs of harmful behavior. "
+                    "It appears safe based on its content and structure."
                 )
 
-        # Sentence 4: Recommendation per Risk Level Policy
+        # ── Recommendation — plain English ─────────────────────────────────────
         if risk_score >= 81:
             lines.append(
-                "Recommendation: QUARANTINE or DELETE this file immediately. "
-                "Do not execute it on any system."
+                "⚠️ What should you do? DELETE or move this file to quarantine right away. "
+                "Do NOT open it, run it, or send it to anyone."
             )
         elif risk_score >= 56:
             lines.append(
-                "Recommendation: HIGH RISK — strong suspicious evidence detected. "
-                "Exercise extreme caution. Do not open or execute without thorough verification."
+                "⚠️ What should you do? Do NOT open or run this file. "
+                "It shows strong signs of being harmful. If you did not expect this file, delete it immediately."
             )
         elif risk_score >= 36:
             lines.append(
-                "Recommendation: MEDIUM RISK — this file contains suspicious characteristics, "
-                "but malware was not confirmed. Review the detected indicators and verify the file source before opening."
+                "⚠️ What should you do? Be careful with this file. "
+                "It has some suspicious signs but nothing was fully confirmed. "
+                "Only open it if you trust where it came from."
             )
         elif risk_score >= 16:
             lines.append(
-                "Recommendation: this file appears low-risk with minor observations. "
-                "Review manually if it originated from an untrusted source."
+                "ℹ️ What should you do? This file is probably fine, but it has one or two minor observations. "
+                "If you do not recognize where it came from, it is okay to double-check before opening."
             )
         else:
-            lines.append("Recommendation: file appears SAFE. No action required.")
+            lines.append("✅ What should you do? Nothing — this file is safe to use.")
+
 
         summary_text = " ".join(lines)
         def _calc_local_conf(s_val, f_cnt):
