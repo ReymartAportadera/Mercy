@@ -52,14 +52,20 @@ BINARY_EXTENSIONS = {
 
 ALLOWED_SCAN_EXTENSIONS = {
     # Scripts & Executables
-    ".txt", ".py", ".js", ".ts", ".vbs", ".ps1", ".bat", ".cmd", ".com", ".exe", ".dll", 
-    ".bin", ".dat", ".sh", ".bash", ".elf", ".msi", ".hta", ".scr", ".wsf",
+    ".txt", ".py", ".pyw", ".js", ".ts", ".vbs", ".vbe", ".bas", ".cls", ".frm", ".ps1", ".psm1", ".psd1",
+    ".bat", ".cmd", ".com", ".exe", ".dll", ".bin", ".dat", ".sh", ".bash", ".elf", ".msi", ".hta", ".scr", ".wsf", ".wsh", ".reg", ".inf", ".sys",
     # Web & Server Scripts
-    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps", ".jsp", ".jspx", ".asp", ".aspx", ".cgi", ".pl", ".rb", ".go", ".java",
-    # Markup & Documents
-    ".html", ".htm", ".css", ".xml", ".json", ".yaml", ".yml", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".rtf",
-    # Archives & Packages
-    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img"
+    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps", ".jsp", ".jspx", ".asp", ".aspx", ".cgi", ".pl", ".rb", ".go", ".java", ".class", ".dex", ".wasm",
+    # Source Code
+    ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".cs", ".rs", ".swift", ".kt", ".kts", ".lua", ".sql", ".r", ".scala", ".dart",
+    # Markup, Documents & Macro-Enabled Office Files
+    ".html", ".htm", ".css", ".xml", ".json", ".yaml", ".yml", ".pdf", ".doc", ".docx", ".docm", ".dotm", ".dotx", ".xls", ".xlsx", ".xlsm", ".xltm", ".xltx", ".ppt", ".pptx", ".pptm", ".potm", ".potx", ".odt", ".ods", ".odp", ".rtf", ".csv", ".tsv", ".log", ".svg",
+    # Shortcuts, Packages & Email
+    ".lnk", ".url", ".chm", ".msg", ".eml", ".crx", ".xpi", ".swf",
+    # Archives & Disk Images
+    ".zip", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".xz", ".7z", ".rar", ".jar", ".apk", ".iso", ".img", ".cab", ".vhd", ".vhdx",
+    # Raw samples & arbitrary payloads
+    ".sample", ".malware", ".payload", ".dump", ".raw", ".out", ".so", ".dylib", ".tmp", ".bak", ".old"
 } | MEDIA_EXTENSIONS
 
 ALL_SCAN_TYPES = ["heuristic", "virustotal", "ai_analysis"]
@@ -1225,11 +1231,6 @@ def _upload_single_file_impl():
     else:
         source_location = f"Uploaded File / {raw_filename}"
 
-    allowed = ALLOWED_SCAN_EXTENSIONS
-
-    if ext not in allowed:
-        return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
-
     file_bytes = f.read()
     if not file_bytes:
         return jsonify({"skipped": True, "reason": "Empty file"}), 200
@@ -1490,11 +1491,6 @@ def guest_upload_api():
     filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
     ext = os.path.splitext(filename)[1].lower()
 
-    allowed = ALLOWED_SCAN_EXTENSIONS
-
-    if ext not in allowed:
-        return jsonify({"skipped": True, "reason": f"File type '{ext}' not permitted"}), 200
-
     file_bytes = f.read()
     if not file_bytes:
         return jsonify({"skipped": True, "reason": "Empty file"}), 200
@@ -1642,9 +1638,6 @@ def uploadfiles():
             raw_filename = os.path.basename(f.filename)
             filename = secure_filename(raw_filename) or f"file_{uuid.uuid4().hex[:8]}"
             ext = os.path.splitext(filename)[1].lower()
-
-            if ext not in allowed:
-                continue
 
             file_bytes = f.read()
             if not file_bytes:
