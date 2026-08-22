@@ -128,8 +128,9 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"RULE 4: For Medium Risk (36–55): you MUST include the phrase "
                 f"'This file contains suspicious characteristics, but malware was not confirmed. "
                 f"Review the detected indicators and verify the file source before opening.'\n"
-                f"RULE 5: Cite specific evidence from the snippet (URLs, commands, function names) if available.\n\n"
-                f"Write a concise 3–4 sentence professional security assessment that strictly follows all 5 rules above."
+                f"RULE 5: Cite specific evidence from the snippet (URLs, commands, function names, text content) if available.\n"
+                f"RULE 6: If the file is a text/document containing security keywords, virus names, or notes (e.g. mentions of 'love bug', 'Jerusalem', 'Lehigh', or generic virus names), explicitly explain to the user that these are passive text references/notes, not executable malware, and confirm the file is harmless.\n\n"
+                f"Write a thorough 3–4 sentence professional security assessment that strictly follows all rules above."
             )
 
             payload = {
@@ -358,9 +359,22 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                     "Binary header structure and section entropy are within normal thresholds. No malicious API imports or code injection mechanisms were detected."
                 )
             elif ext in [".txt"]:
-                lines.append(
-                    "Standard text format verified. No executable instructions or embedded script commands found."
-                )
+                fc_lower = (file_content or "").lower()
+                virus_mentions = []
+                for vname in ["love bug", "lehigh", "jerusalem", "eicar", "trojan", "virus", "worm", "malware", "ransomware", "payload"]:
+                    if vname in fc_lower:
+                        virus_mentions.append(vname)
+                if virus_mentions:
+                    vm_str = ", ".join(f"'{v}'" for v in virus_mentions[:3])
+                    lines.append(
+                        f"Content analysis: this document contains text references to malware names ({vm_str}), but these exist purely as "
+                        f"inert plain-text notes. Plain text files (.txt) have no execution runtime and cannot execute code or compromise your system."
+                    )
+                else:
+                    lines.append(
+                        "Standard plain-text format verified. Content consists of passive text characters with no executable code, "
+                        "macro instructions, or hidden script commands."
+                    )
             else:
                 lines.append(
                     "File structure and entropy are within the normal range for this format. No malicious patterns or behavioral indicators were detected."

@@ -1029,10 +1029,15 @@ def analyze_embedded_content(
                 f"{len(result.candidate_pes)} raw MZ byte sequence(s) found "
                 "but none passed PE structure validation — likely false positives."
             )
-    else:
+    elif result.is_office_container:
         result.fp_notes.append(
             "Embedded PE scan skipped: Office XML container — "
             "internal binary streams do not imply executable content."
+        )
+    elif is_passive_text:
+        result.fp_notes.append(
+            "Embedded PE scan skipped: Plain text/markup format — "
+            "cannot contain executable PE binary structures."
         )
 
     # ── Embedded ZIP archives (skip Office containers, ZIP containers themselves & passive text) ────────
