@@ -114,8 +114,9 @@ EXTENSION_TO_EXPECTED_MAGIC: dict[str, list[bytes]] = {
 
 # RULE 2 — ZIP-based containers: these are ZIP files by design.
 OFFICE_XML_EXTENSIONS: set[str] = {
-    ".docx", ".xlsx", ".pptx", ".dotx", ".xltx",
-    ".potx", ".odt", ".ods", ".odp", ".jar", ".apk",
+    ".docx", ".xlsx", ".pptx", ".dotx", ".xltx", ".potx",
+    ".docm", ".xlsm", ".pptm", ".dotm", ".xltm", ".potm",
+    ".odt", ".ods", ".odp", ".jar", ".apk",
 }
 
 OFFICE_OLE_EXTENSIONS: set[str] = {
@@ -132,15 +133,20 @@ OFFICE_XML_CONTENT_PREFIXES: tuple[str, ...] = (
 )
 
 SCRIPT_EXTENSIONS: set[str] = {
-    ".js", ".vbs", ".bat", ".cmd", ".ps1", ".py", ".sh",
-    ".hta", ".wsf", ".jse", ".vbe", ".php", ".phtml", ".phps",
+    ".js", ".jse", ".vbs", ".vbe", ".bas", ".cls", ".frm",
+    ".bat", ".cmd", ".ps1", ".psm1", ".psd1", ".py", ".pyw",
+    ".sh", ".bash", ".hta", ".wsf", ".wsh",
+    ".php", ".phtml", ".php3", ".php4", ".php5", ".php7", ".phps",
+    ".pl", ".rb", ".lua", ".reg", ".inf", ".sql",
 }
 
-# Media types whose high entropy is structurally expected (RULE 4 whitelist)
+# Media & container types whose high entropy is structurally expected (RULE 4 whitelist)
 INHERENTLY_COMPRESSED_EXTENSIONS: set[str] = {
     ".docx", ".xlsx", ".pptx", ".dotx", ".xltx", ".potx",
+    ".docm", ".xlsm", ".pptm", ".dotm", ".xltm", ".potm",
     ".odt", ".ods", ".odp", ".jar", ".apk", ".pdf",
-    ".zip", ".gz", ".bz2", ".7z", ".rar", ".xz",
+    ".zip", ".gz", ".tgz", ".bz2", ".tbz2", ".7z", ".rar", ".xz",
+    ".iso", ".img", ".cab", ".vhd", ".vhdx",
     ".png", ".jpg", ".jpeg", ".gif", ".mp3", ".mp4",
     ".avi", ".mkv", ".aac", ".ogg", ".flac",
 }
@@ -429,6 +435,21 @@ DANGEROUS_SCRIPT_PATTERNS: dict[str, re.Pattern] = {
     ),
     "Shadow Copy Deletion": re.compile(
         r"vssadmin(\.exe)?\s+delete\s+shadows|wmic\s+shadowcopy\s+delete|bcdedit(\.exe)?\s+/set\s+[^\r\n]*recoveryenabled\s+no", re.I
+    ),
+    "AutoRun INF Dropper": re.compile(
+        r"\[AutoRun\][\s\S]{0,200}(?:Open|ShellExecute)\s*=\s*\S+\.(exe|bat|cmd|com|scr|pif|vbs|ps1)", re.I
+    ),
+    "SQL Injection Pattern": re.compile(
+        r"(?:DROP\s+TABLE|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\w+\s*;|INSERT\s+INTO\s+\w+\s*VALUES\s*\(['\"]?\w+['\"]?\s*,\s*['\"]?\w+['\"]?\))\s*;", re.I
+    ),
+    "VBE Encoded Script": re.compile(
+        r"#@~\^[A-Za-z0-9+/=]{6,}==", re.I
+    ),
+    "Persistence Registry Run Key": re.compile(
+        r"(?:HKEY_CURRENT_USER|HKCU)\\Software\\Microsoft\\Windows\\CurrentVersion\\Run", re.I
+    ),
+    "PowerShell Download Cradle": re.compile(
+        r"(?:IEX|Invoke-Expression)\s*\(?(?:\s*\(?\s*New-Object\s+Net\.WebClient\s*\))?\s*\.DownloadString\s*\(", re.I
     ),
 }
 
@@ -2310,7 +2331,7 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     # Passive markup formats (HTML/CSS/TXT/JSON/XML/SVG) treat URLs as structural content,
     # not as IOCs. Suppressing URL/IP scoring for these file types prevents false positives
     # on files that legitimately link to CDN resources, stylesheets, or documentation.
-    _PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst"}
+    _PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst", ".csv", ".tsv", ".log"}
     _is_passive_markup = result.claimed_extension in _PASSIVE_MARKUP_EXTS
 
     # Req. 4 — URL scoring: only add points when NOT all-trusted-domain AND not passive markup
@@ -2371,6 +2392,13 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     if any("LOLBin Abuse" in s for s in sf): score += add("lolbin_abuse", high_confidence=True)
     if any("Taint Flow" in s for s in sf): score += add("taint_staging_flow", high_confidence=True)
     if any("Deobfuscation" in s for s in sf): score += add("obfuscation_reconstructed", high_confidence=True)
+    # ── New patterns added for universal extension support ─────────────────────
+    if any("AutoRun INF Dropper" in s for s in sf): score += add("lolbin_abuse", high_confidence=True)
+    if any("SQL Injection Pattern" in s for s in sf): score += add("suspicious_keyword", high_confidence=True)
+    if any("VBE Encoded Script" in s for s in sf): score += add("obfuscation_reconstructed", high_confidence=True)
+    if any("Persistence Registry Run Key" in s for s in sf): score += add("windows_persistence_lotl", high_confidence=True)
+    if any("PowerShell Download Cradle" in s for s in sf): score += add("powershell_download", high_confidence=True)
+
 
     # ── VBA / OLE ─────────────────────────────────────────────────────────────
     _seen_office_keys: set = set()
