@@ -540,57 +540,87 @@ def _run_full_heuristic_scan(
         suppress_labels = {"file access", "network", "script engine", "system command", "process spawn", "batch abuse"}
         suspicious = [s for s in suspicious if not any(lbl in s.lower() for lbl in suppress_labels)]
 
-    # ── Grayware / Prank Informational Detector (ZERO score impact) ───────────
-    # Detects intentionally disruptive-but-harmless patterns across script types.
-    # Adds an [INFO] note to heuristics only — does NOT change the risk score.
+    # ── Grayware / Prank Detector (Low Risk — content-based, NOT extension-based) ──
+    # Every CONFIRMED disruptive/prank pattern adds a score contribution.
+    # Score is based on actual detected behavior inside the file, never on filename/ext alone.
+    # Cap: grayware alone cannot exceed 30 — it can never falsely trigger Medium/High/Critical.
     _grayware_notes = []
+    _grayware_score = 0
     _text_lower = active_text.lower()
 
     # 1. VBScript: Repeated MsgBox / InputBox popup loop (classic prank)
     if norm_ext in {".vbs", ".vbe"} and re.search(r"\bfor\b.{0,30}\bto\b.{0,10}\d+", active_text, re.I):
         if re.search(r"\bmsgbox\b|\binputbox\b", active_text, re.I):
-            _grayware_notes.append("[INFO] Grayware: VBScript repeated popup loop detected (prank/nuisance pattern — no system-level threat)")
+            _grayware_notes.append("[GRAYWARE] VBScript repeated popup loop detected (prank/nuisance — no system-level threat)")
+            _grayware_score += 15
 
-    # 2. Batch: Infinite loop opening windows / color flashing / echo spam
+    # 2. Batch: Infinite loop with disruptive display commands
     if norm_ext in {".bat", ".cmd"}:
         if re.search(r":(loop|start)\b.*\n.*goto\s+(loop|start)", active_text, re.I | re.S):
             if re.search(r"\bstart\b|\bcolor\b|\becho\b|\bpause\b", active_text, re.I):
-                _grayware_notes.append("[INFO] Grayware: Batch infinite loop with disruptive display commands detected (prank pattern)")
+                _grayware_notes.append("[GRAYWARE] Batch infinite loop with disruptive display commands (prank pattern)")
+                _grayware_score += 15
+        # Batch: timed shutdown/restart (annoying but no data theft)
         if re.search(r"\bshutdown\s+/[sra]\s+/t\s+\d+", active_text, re.I):
-            _grayware_notes.append("[INFO] Grayware: Timed shutdown/restart command detected (prank/annoyance — no malicious payload)")
+            _grayware_notes.append("[GRAYWARE] Timed shutdown/restart command detected (prank/annoyance — no malicious payload)")
+            _grayware_score += 15
 
     # 3. PowerShell: MessageBox spam via Windows Forms
     if norm_ext in {".ps1"}:
         if re.search(r"windows\.forms\.messagebox|system\.windows\.forms", active_text, re.I):
             if re.search(r"\bfor\b|\bwhile\b|\bdo\b", active_text, re.I):
-                _grayware_notes.append("[INFO] Grayware: PowerShell repeated Windows Forms dialog loop detected (prank pattern)")
+                _grayware_notes.append("[GRAYWARE] PowerShell repeated Windows Forms dialog loop (prank pattern)")
+                _grayware_score += 15
+        # PowerShell: audio beep loop prank
         if re.search(r"\[console\]::beep\s*\(", active_text, re.I):
-            _grayware_notes.append("[INFO] Grayware: PowerShell repeated console beep loop detected (audio prank pattern)")
+            _grayware_notes.append("[GRAYWARE] PowerShell repeated console beep loop (audio prank pattern)")
+            _grayware_score += 15
 
-    # 4. Python: Repeated print / input / tk messagebox loops
+    # 4. Python: Repeated print / input / tkinter messagebox in large loop
     if norm_ext in {".py"}:
         if re.search(r"(while\s+true|for\s+\w+\s+in\s+range\s*\(\s*\d{3,})", active_text, re.I):
             if re.search(r"\bprint\s*\(|\binput\s*\(|\btkinter\b|\bshowinfo\b|\bshowerror\b", active_text, re.I):
-                _grayware_notes.append("[INFO] Grayware: Python repeated dialog/print loop detected (prank/nuisance pattern)")
+                _grayware_notes.append("[GRAYWARE] Python repeated dialog/print loop (prank/nuisance pattern)")
+                _grayware_score += 15
 
-    # 5. Universal: Fork bomb patterns (self-replicating processes — disruptive but detectable)
+    # 5. Universal: Fork bomb — self-replicating process (resource exhaustion, more disruptive)
     if re.search(r"start\s+%0\s*%\*|:\s*\(\s*\)\s*\{\s*:\s*\|", active_text, re.I):
-        _grayware_notes.append("[INFO] Grayware: Fork bomb pattern detected (process replication loop — system resource abuse, not data theft)")
+        _grayware_notes.append("[GRAYWARE] Fork bomb pattern detected (process replication loop — system resource abuse)")
+        _grayware_score += 25  # More disruptive than a simple popup
 
-    # 6. Universal: Fake error / BSOD screen mimicry (social engineering prank)
+    # 6. Universal: Fake error / BSOD / "your PC is infected" mimicry (social engineering)
     if re.search(r"(blue\s*screen|bsod|critical\s*error|your\s*pc\s*(has\s+a\s+virus|is\s+infected))", _text_lower):
-        _grayware_notes.append("[INFO] Grayware: Fake system error / BSOD mimicry text detected (social engineering prank — not actual system damage)")
+        _grayware_notes.append("[GRAYWARE] Fake system error / BSOD mimicry text (social engineering prank — no actual damage)")
+        _grayware_score += 15
 
-    # 7. VBScript/Batch: Repeated CD-ROM tray open/close (hardware prank)
+    # 7. VBScript/Batch: CD-ROM tray open/close prank (hardware disruption)
     if re.search(r"MediaPlayer\.openPlayer|mc\s+open\s+type\s+cdaudio|Set\s+oWMP\s*=.*MediaPlayer", active_text, re.I):
-        _grayware_notes.append("[INFO] Grayware: CD-ROM drive tray loop command detected (hardware prank pattern)")
+        _grayware_notes.append("[GRAYWARE] CD-ROM drive tray loop command (hardware prank pattern)")
+        _grayware_score += 15
+
+    # 8. Universal: Repeated desktop wallpaper change / taskbar hide (UI disruption)
+    if re.search(r"SystemParametersInfo|SPI_SETDESKWALLPAPER|ShowWindow.*SW_HIDE", active_text, re.I):
+        _grayware_notes.append("[GRAYWARE] Desktop/UI disruption command detected (wallpaper/taskbar prank pattern)")
+        _grayware_score += 15
+
+    # 9. Batch/VBScript: Delete Recycle Bin / temp files disruption (non-destructive cleaning prank)
+    if re.search(r"rd\s+/s\s+/q\s+%temp%|rd\s+/s\s+/q.*recycle", active_text, re.I):
+        _grayware_notes.append("[GRAYWARE] Disruptive temp/recycle bin deletion loop (nuisance prank — targets temp files only)")
+        _grayware_score += 15
 
     if _grayware_notes:
+        # Cap: grayware alone cannot push into Medium (36+) — max contribution is 30
+        _grayware_score = min(_grayware_score, 30)
         heuristics = list(dict.fromkeys(heuristics + _grayware_notes))
+        # Note: _grayware_score is applied after risk_score is initialized below
     # ── End Grayware Detector ─────────────────────────────────────────────────
 
     threshold  = get_file_type_entropy_threshold("x" + ext)
     risk_score = 0
+
+    # Apply confirmed grayware score (content-based Low Risk contribution)
+    if _grayware_notes:
+        risk_score += _grayware_score
 
     norm_ext = ext.lower().strip()
     if not norm_ext.startswith("."):
@@ -681,12 +711,15 @@ def _run_full_heuristic_scan(
         adv_detections = adv.get("detections", [])
         heuristics = list(dict.fromkeys(heuristics + adv_detections))
         # If advanced heuristics has verified clean evidence (score <= 15 and no critical indicators)
+        # preserve any grayware score already calculated — don't reset it to 0
         if adv_score <= 15 and not any("obfuscated" in d.lower() or "persistence" in d.lower() or "injection" in d.lower() or "dynamic code execution" in d.lower() or "lolbin" in d.lower() for d in adv_detections):
-            risk_score = adv_score
+            # Keep whichever is higher: the grayware-based score or the advanced score
+            risk_score = max(_grayware_score, adv_score)
         else:
             risk_score = max(risk_score, adv_score)
     except Exception as exc:
         logger.warning("Advanced heuristics failed in _run_full_heuristic_scan: %s", exc)
+
 
     pattern_str = ", ".join(suspicious[:3]) or "No suspicious patterns"
     imports_str = ", ".join(risky_imports)  or "None"

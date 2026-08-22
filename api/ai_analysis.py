@@ -302,17 +302,16 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
             key = security_findings[:3]  # Top 3 most important findings
             lines.append("Key findings: " + "; ".join(key) + ".")
 
-        # Grayware / Prank informational note (no score — purely descriptive)
-        grayware_hits = [p for p in patterns.split(";") if "[INFO] Grayware" in p]
+        # Grayware / Prank note — surfaces confirmed disruptive pattern at Low Risk
+        grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p]
         if not grayware_hits:
-            # Also check the raw patterns string directly
             import re as _re
-            grayware_hits = _re.findall(r"\[INFO\] Grayware:[^\n;]+", patterns)
+            grayware_hits = _re.findall(r"\[GRAYWARE\][^\n;]+", patterns)
         if grayware_hits:
-            gw_label = grayware_hits[0].replace("[INFO] Grayware:", "").strip().split("(")[0].strip()
+            gw_label = grayware_hits[0].replace("[GRAYWARE]", "").strip().split("(")[0].strip()
             lines.append(
                 f"Note: {gw_label.rstrip('.')}. "
-                f"This is a nuisance/prank pattern — it is disruptive but does not pose a security risk to your system."
+                f"This is a Grayware/PUA pattern — disruptive but does not steal data or damage the system."
             )
 
         # Sentence 3: Malware classification
