@@ -650,6 +650,8 @@ def _run_full_heuristic_scan(
     HEURISTIC_SCORES = {"Exfiltration": 25, "Reverse Shell": 30,
                         "Persistence": 20,  "Obfuscated":    15}
     for h in heuristics:
+        if any(h == gw for gw in _grayware_notes):
+            continue  # Already accounted for in _grayware_score
         risk_score += next((v for k, v in HEURISTIC_SCORES.items() if k in h), 10)
 
     SIG_SCORES = {"Code Execution": 15, "Process Spawn": 15, "System Command": 12,
@@ -669,7 +671,16 @@ def _run_full_heuristic_scan(
     risk_score += 15 if total >= 5 else (8 if total >= 3 else (3 if total >= 1 else 0))
     if is_eicar_found:
         risk_score = max(risk_score, 85)
+
+    # For pure grayware/prank scripts with no confirmed malware indicators, cap at _grayware_score (max 30)
+    has_active_malware = bool(
+        any("obfuscated" in d.lower() or "persistence" in d.lower() or "reverse shell" in d.lower() or "cradle" in d.lower() or "shadow copy" in d.lower() or "autorun" in d.lower() for d in heuristics + suspicious)
+    )
+    if _grayware_notes and not has_active_malware:
+        risk_score = min(risk_score, _grayware_score)
+
     risk_score  = min(risk_score, 100)
+
 
     if not is_binary:
         if not is_passive_markup:
@@ -720,13 +731,10 @@ def _run_full_heuristic_scan(
         adv_score = adv.get("score", 0)
         adv_detections = adv.get("detections", [])
         heuristics = list(dict.fromkeys(heuristics + adv_detections))
-        # If advanced heuristics has verified clean evidence (score <= 15 and no critical indicators)
-        # preserve any grayware score already calculated — don't reset it to 0
-        if adv_score <= 15 and not any("obfuscated" in d.lower() or "persistence" in d.lower() or "injection" in d.lower() or "dynamic code execution" in d.lower() or "lolbin" in d.lower() for d in adv_detections):
-            # Keep whichever is higher: the grayware-based score or the advanced score
-            risk_score = max(_grayware_score, adv_score)
-        else:
-            risk_score = max(risk_score, adv_score)
+        # Merge scores cleanly: highest confirmed threat score wins
+        risk_score = max(risk_score, adv_score)
+        if is_eicar_found:
+            risk_score = max(risk_score, 85)
     except Exception as exc:
         logger.warning("Advanced heuristics failed in _run_full_heuristic_scan: %s", exc)
 

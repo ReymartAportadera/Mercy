@@ -173,11 +173,30 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
     return analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content=file_content, filename=filename)
 
 
-def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: str = "", filename: str = ""):
+def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: str = "", filename: str = "", is_eicar: bool = False):
     """
     Analyze a file using local rule-based intelligence.
     Returns a multi-sentence assessment string.
     """
+    if is_eicar:
+        txt = (
+            "[CRITICAL TEST DETECTION] This file contains the EICAR antivirus test signature. "
+            "The signature is intentionally used to test antivirus and malware-detection systems and is not actual malware. "
+            "TrustFile correctly detected the test signature and classified the file as a critical threat for testing purposes. "
+            "Recommended Action: Do not execute or distribute the extracted test file outside a controlled testing environment."
+        )
+        return {
+            "verdict": "CRITICAL TEST DETECTION",
+            "label": "CRITICAL TEST DETECTION",
+            "threat_level": "CRITICAL TEST DETECTION",
+            "risk_score": 85,
+            "confidence": 0.95,
+            "reason": txt,
+            "explanation": txt,
+            "text": txt,
+            "summary": txt
+        }
+
     try:
         entropy    = float(entropy or 0)
         risk_score = int(risk_score or 0)

@@ -440,7 +440,7 @@ DANGEROUS_SCRIPT_PATTERNS: dict[str, re.Pattern] = {
         r"\[AutoRun\][\s\S]{0,200}(?:Open|ShellExecute)\s*=\s*\S+\.(exe|bat|cmd|com|scr|pif|vbs|ps1)", re.I
     ),
     "SQL Injection Pattern": re.compile(
-        r"(?:DROP\s+TABLE|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\w+\s*;|INSERT\s+INTO\s+\w+\s*VALUES\s*\(['\"]?\w+['\"]?\s*,\s*['\"]?\w+['\"]?\))\s*;", re.I
+        r"(?:DROP\s+TABLE\s+\w+|TRUNCATE\s+TABLE\s+\w+|DELETE\s+FROM\s+\w+|INSERT\s+INTO\s+\w+[\s\S]{0,100}VALUES\s*\([^\)]+\))\s*;", re.I
     ),
     "VBE Encoded Script": re.compile(
         r"#@~\^[A-Za-z0-9+/=]{6,}==", re.I
