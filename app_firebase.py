@@ -182,7 +182,7 @@ def _in_memory_heuristics(text: str) -> list:
         findings.append("Persistence Mechanism")
     return findings
 
-def determine_threat_level(risk_score: int, detection_details: list) -> tuple[str, str]:
+def determine_threat_level(risk_score: int, detection_details: list, pattern_result: str = "") -> tuple[str, str]:
     # Threat level is determined strictly by the 5 standard risk score tiers:
     # BENIGN: 0–15 | LOW: 16–35 | MEDIUM: 36–55 | HIGH: 56–80 | CRITICAL: 81–100
     if risk_score >= 81:
@@ -195,6 +195,14 @@ def determine_threat_level(risk_score: int, detection_details: list) -> tuple[st
         level = "Low"
     else:
         level = "Benign"
+
+    # Grayware override: prank/nuisance files should always show at least LOW, never BENIGN,
+    # because they have a confirmed (though harmless) behavior pattern.
+    if level == "Benign":
+        det_str = " ".join(str(d) for d in detection_details).lower() + str(pattern_result).lower()
+        if "[grayware]" in det_str:
+            level = "Low"
+
     status = "Threat" if level in {"Critical", "High", "Medium"} else "Benign"
     return level, status
 
@@ -296,11 +304,14 @@ def _sync_file_with_vt_consensus(file_dict: dict) -> bool:
                 current_risk = 30
                 updated = True
             elif current_risk > 0 and current_risk == file_dict.get("raw_heuristic_score"):
+                is_grayware = "[grayware]" in str(file_dict.get("pattern_result", "")).lower()
                 current_risk = max(0, current_risk - 15)
+                if is_grayware and current_risk < 10:
+                    current_risk = 10
                 file_dict["risk_score"] = current_risk
                 updated = True
 
-        new_level, new_status = determine_threat_level(current_risk, [])
+        new_level, new_status = determine_threat_level(current_risk, [], file_dict.get("pattern_result", ""))
         if file_dict.get("threat_level") != new_level or file_dict.get("status") != new_status:
             file_dict["threat_level"] = new_level
             file_dict["status"] = new_status
@@ -1398,7 +1409,7 @@ def _upload_single_file_impl():
     detection_details = (scan_res.get("suspicious_functions", []) + scan_res.get("heuristics", []))
     if vt_result.get("positives", 0):
         detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count',0)} engines")
-    threat_level, status = determine_threat_level(risk_score, detection_details)
+    threat_level, status = determine_threat_level(risk_score, detection_details, scan_res.get("pattern_result", ""))
 
     # ── Engine 3: AI analysis — AFTER VT override so risk_score is the final adjusted value ──
     ai_result = {}
@@ -1663,7 +1674,7 @@ def guest_upload_api():
     detection_details = (scan_res.get("suspicious_functions", []) + scan_res.get("heuristics", []))
     if vt_result.get("positives", 0):
         detection_details.append(f"VirusTotal: {vt_result['positives']}/{vt_result.get('engine_count',0)} engines")
-    threat_level, status = determine_threat_level(risk_score, detection_details)
+    threat_level, status = determine_threat_level(risk_score, detection_details, scan_res.get("pattern_result", ""))
 
     file_id = str(uuid.uuid4())
     guest_record = {
@@ -2067,7 +2078,7 @@ def scan(file_id):
 
             file_meta["risk_score"]   = min(final_risk, 100)
             file_meta["threat_level"], file_meta["status"] = determine_threat_level(
-                final_risk, detection_details
+                final_risk, detection_details, offline_cache.get("pattern_result", "")
             )
 
             # AI analysis — called AFTER final_risk is computed so AI gets the exact final score
@@ -2141,7 +2152,8 @@ def scan(file_id):
                 _apply_scan_result_to_file(file_meta, fresh_scan)
                 file_meta["risk_score"] = min(fresh_risk, 100)
                 file_meta["threat_level"], file_meta["status"] = determine_threat_level(
-                    fresh_risk, fresh_scan.get("suspicious_functions", []) + fresh_scan.get("heuristics", [])
+                    fresh_risk, fresh_scan.get("suspicious_functions", []) + fresh_scan.get("heuristics", []),
+                    fresh_scan.get("pattern_result", "")
                 )
                 file_meta["explanation"] = generate_explanation(file_meta)
         except Exception as exc:
@@ -2151,9 +2163,19 @@ def scan(file_id):
         _cur_risk = int(file_meta.get("risk_score", 0))
         _ai_v = str(ai_data.get("verdict", "") if isinstance(ai_data, dict) else ai_data or "").upper()
         _ai_txt = str(_extract_ai_text(ai_data)).upper() if ai_data else ""
+        
+        _is_gw = "[grayware]" in str(file_meta.get("pattern_result", "")).lower() or "[grayware]" in str(file_meta.get("signature_status", "")).lower()
+        _gw_mismatch = _is_gw and "NUISANCE" not in _ai_txt
+
+        import re as _re_sc
+        _sc_match = _re_sc.search(r"THREAT SCORE:\s*(\d+)/100", _ai_txt)
+        _sc_mismatch = _sc_match and int(_sc_match.group(1)) != _cur_risk
+
         _ai_contradicts = (
             (_cur_risk < 56 and any(w in _ai_v for w in ["CRITICAL", "HIGH RISK", "HIGHLY MALICIOUS"]))
             or (_cur_risk < 56 and ("[CRITICAL RISK]" in _ai_txt or "HIGHLY MALICIOUS" in _ai_txt))
+            or _gw_mismatch
+            or _sc_mismatch
         )
         _is_generic_placeholder = (
             "SCAN COMPLETED." in _ai_txt
@@ -2173,6 +2195,7 @@ def scan(file_id):
                 patterns=file_meta.get("pattern_result", "None"),
                 imports=file_meta.get("risky_imports", "None"),
                 risk_score=_cur_risk,
+                file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
                 filename=file_meta.get("filename", ""),
             )
             file_meta["ai_analysis"] = ai_data
@@ -2353,7 +2376,7 @@ def multiple_scan(file_id):
 
             file_meta["risk_score"] = min(final_risk, 100)
             file_meta["threat_level"], file_meta["status"] = determine_threat_level(
-                final_risk, detection_details
+                final_risk, detection_details, str(results.get("heuristic", {}).get("pattern_result", ""))
             )
             file_meta["explanation"] = generate_explanation(file_meta)
 
@@ -3007,7 +3030,7 @@ def auto_scan_api():
                 detection_details.append(f"VirusTotal: {pos}/{total} engines detected threat")
                 
         final_risk = min(final_risk, 100)
-        threat_level, status = determine_threat_level(final_risk, detection_details)
+        threat_level, status = determine_threat_level(final_risk, detection_details, heuristic_res.get("pattern_result", ""))
 
         # 3. AI Analysis — called AFTER VT override so it uses the correct final_risk
         patterns = heuristic_res.get("pattern_result", "None")
