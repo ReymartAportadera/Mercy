@@ -55,17 +55,21 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
         }
 
     def _compute_conf(r_val: int, f_count: int = 0) -> float:
+        """Confidence scales with risk — more evidence = higher certainty."""
         s = max(0, min(int(r_val or 0), 100))
         if s >= 81:
-            return round(min(0.92 + (f_count * 0.02), 0.99), 2)
+            return round(min(0.95 + (f_count * 0.01), 0.99), 2)
         elif s >= 56:
             return round(min(0.82 + (f_count * 0.02), 0.92), 2)
         elif s >= 36:
-            return round(min(0.65 + (f_count * 0.02), 0.75), 2)
+            return round(min(0.72 + (f_count * 0.02), 0.82), 2)
         elif s >= 16:
-            return round(0.85, 2)
+            return round(min(0.58 + (f_count * 0.02), 0.72), 2)
+        elif s >= 1:
+            return round(min(0.52 + (f_count * 0.02), 0.65), 2)
         else:
-            return round(max(0.92 - (s * 0.01), 0.88), 2)
+            return round(0.50, 2)
+
 
     if api_key:
         try:
@@ -543,17 +547,39 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
 
         summary_text = " ".join(lines)
         def _calc_local_conf(s_val, f_cnt):
+            """
+            Confidence reflects how certain the engine is about its verdict.
+
+            High risk files with many detections = very high confidence (lots of evidence).
+            Low risk / clean files with few findings = lower confidence (less evidence to work with).
+
+            Scale:
+              81–100 (Critical/High)  → 95–99%  (many strong signals, very certain)
+              56–80  (Medium)         → 82–92%  (moderate signals, fairly certain)
+              36–55  (Low-Medium)     → 72–82%  (some signals, reasonably certain)
+              16–35  (Low)            → 58–72%  (few signals, cautiously certain)
+               1–15  (Minimal)        → 52–65%  (almost clean, low certainty)
+                 0   (Clean)          → 50–55%  (no detections, baseline certainty only)
+            """
             s = max(0, min(int(s_val or 0), 100))
             if s >= 81:
-                return round(min(0.92 + (f_cnt * 0.02), 0.99), 2)
+                # Critical / High Risk — lots of strong detections
+                return round(min(0.95 + (f_cnt * 0.01), 0.99), 2)
             elif s >= 56:
+                # Medium Risk — several meaningful signals
                 return round(min(0.82 + (f_cnt * 0.02), 0.92), 2)
             elif s >= 36:
-                return round(min(0.65 + (f_cnt * 0.02), 0.75), 2)
+                # Low-Medium — some signals present
+                return round(min(0.72 + (f_cnt * 0.02), 0.82), 2)
             elif s >= 16:
-                return round(0.85, 2)
+                # Low Risk — very few signals; cautious confidence
+                return round(min(0.58 + (f_cnt * 0.02), 0.72), 2)
+            elif s >= 1:
+                # Minimal / near-clean — almost nothing detected
+                return round(min(0.52 + (f_cnt * 0.02), 0.65), 2)
             else:
-                return round(max(0.92 - (s * 0.01), 0.88), 2)
+                # Score 0: perfectly clean, no detections at all
+                return round(0.50, 2)
 
         return {
             "verdict": risk_label,
