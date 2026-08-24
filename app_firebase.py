@@ -1242,8 +1242,12 @@ def dashboard():
                 pass
 
         risk = f.get("risk_score", 0) or 0
-        lvl, _ = determine_threat_level(risk, f.get("all_detections", []))
+        all_det = f.get("all_detections", [])
+        if not all_det:
+            all_det = [f.get("pattern_result", ""), f.get("signature_status", "")]
+        lvl, st = determine_threat_level(risk, all_det, f.get("pattern_result", "") or f.get("signature_status", ""))
         f["threat_level"] = lvl
+        f["status"] = st
         if lvl == "Critical":
             counters["critical_threat"] += 1
         elif lvl == "High":

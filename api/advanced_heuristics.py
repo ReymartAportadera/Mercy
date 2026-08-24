@@ -819,6 +819,7 @@ class AdvancedHeuristicResult:
     risk_explanation:     str   = ""   # RULE 7 — plain-English verdict
     final_verdict:        str   = ""   # RULE 7 — one-liner for UI header
     detections:           list  = field(default_factory=list)
+    grayware_notes:       list  = field(default_factory=list)
     fp_notes:             list  = field(default_factory=list)
 
     # Depth Control & Grounding
@@ -2151,7 +2152,10 @@ def _build_detection_summary(result: AdvancedHeuristicResult) -> dict:
     if not result.embedded_executables:
         summary["executable_payload"] = "no executable payloads detected"
     if not result.script_findings:
-        summary["scripts"] = "no suspicious scripts detected"
+        if result.grayware_notes:
+            summary["scripts"] = "grayware/nuisance script pattern detected"
+        else:
+            summary["scripts"] = "no suspicious scripts detected"
     if result.trusted_vendor:
         summary["reputation"] = (
             "trusted vendor signature present — " +
@@ -2697,6 +2701,12 @@ def _build_risk_explanation(r: AdvancedHeuristicResult) -> str:
         if key in ds and not any(ds[key] in p for p in parts):
             parts.append(ds[key] + ".")
 
+    # Grayware findings
+    has_gw = bool(r.grayware_notes or any("[GRAYWARE]" in d for d in r.detections))
+    if has_gw:
+        gw_txt = r.grayware_notes[0] if r.grayware_notes else "VBScript repeated popup loop detected (prank/nuisance — no system-level threat)"
+        parts.append(f"[GRAYWARE] {gw_txt}.")
+
     # Safe / informational observations follow
     if "reputation" in ds:
         parts.append(ds["reputation"] + ".")
@@ -2706,7 +2716,7 @@ def _build_risk_explanation(r: AdvancedHeuristicResult) -> str:
         parts.append(ds["macros"] + ".")
     if "executable_payload" in ds and r.threat_level in ("Benign", "Low Risk") and not critical_hits:
         parts.append(ds["executable_payload"] + ".")
-    if "scripts" in ds and r.threat_level in ("Benign", "Low Risk") and not critical_hits:
+    if "scripts" in ds and r.threat_level in ("Benign", "Low Risk") and not critical_hits and not has_gw:
         parts.append(ds["scripts"] + ".")
     if "informational_hyperlinks" in ds:
         parts.append(ds["informational_hyperlinks"] + ".")
@@ -2854,6 +2864,7 @@ def run_advanced_heuristics(file_path: str, file_bytes: bytes) -> dict:
 
         # Detections / FP notes
         "detections":             result.detections,
+        "grayware_notes":         result.grayware_notes,
         "fp_notes":               result.fp_notes,
         "hc_indicators":          result._hc_indicators,
         "co_indicators":          result._co_indicators,
