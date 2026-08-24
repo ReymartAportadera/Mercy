@@ -33,7 +33,7 @@ from werkzeug.utils import secure_filename
 
 import firebase_utils as fb
 
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 
 # ── Scan Dependencies ────────────────────────────────────────────────────────
 from api.malware_api import check_hash_api, smart_virustotal_scan, get_cached_result
@@ -768,7 +768,8 @@ app = Flask(__name__)
 
 # Apply ProxyFix for Vercel/reverse-proxy HTTPS headers
 from werkzeug.middleware.proxy_fix import ProxyFix
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 
 _secret = os.environ.get("TRUSTFILE_SECRET_KEY") or "b979550ef58e9dd5670e175aa34eef959f51911a92f2e7da4989d4ff87793dd4"
 app.config["SECRET_KEY"] = _secret
@@ -804,11 +805,20 @@ def request_entity_too_large(error):
     return redirect(url_for("uploadfiles"))
 
 
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    logger.warning("CSRF validation failure handled: %s", getattr(error, 'description', error))
+    flash("Your security session was refreshed. Please try again.")
+    target = request.path if request.path in ["/login", "/signup", "/forgot_password"] else url_for("login")
+    return redirect(target)
+
+
 @app.errorhandler(500)
 def internal_server_error(error):
     logger.exception("500 Internal Server Error handled: %s", error)
     flash("A temporary server issue occurred. You can use Quick Scan while we resolve it.")
     return redirect(url_for("guest_scan"))
+
 
 
 
