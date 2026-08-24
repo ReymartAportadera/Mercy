@@ -2026,18 +2026,7 @@ def scan(file_id):
                 results["virustotal"] = {"error": str(exc), "positives": 0,
                                          "engine_count": 0, "method": "error", "scans": {}}
 
-            # AI analysis
-            results["ai_analysis"] = analyze_file_ai(
-                entropy=offline_cache.get("entropy", 0),
-                patterns=offline_cache.get("pattern_result", "None"),
-                imports=offline_cache.get("risky_imports_str", "None"),
-                risk_score=offline_cache.get("risk_score", 0),
-                file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
-                filename=file_meta.get("filename", ""),
-            )
-            file_meta["ai_analysis"] = results["ai_analysis"]
-
-            # Final risk
+            # Final risk calculation with VirusTotal consensus override
             final_risk        = offline_cache.get("risk_score", 0)
             detection_details = (offline_cache.get("suspicious_functions", []) +
                                  offline_cache.get("heuristics", []))
@@ -2050,10 +2039,15 @@ def scan(file_id):
                     final_risk = max(final_risk, int((pos / total) * 100))
                 elif total >= 20 and pos == 0:
                     # Global Industry Consensus Hard Override
-                    if final_risk > 40:
-                        final_risk = 40
-                    else:
-                        final_risk = max(0, final_risk - 15)
+                    has_active_threat = any(k in str(offline_cache.get("pattern_result", "")).lower() or k in str(offline_cache.get("heuristics", "")).lower() for k in [
+                        "persistence mechanism", "invoke-expression", "obfuscated loader", "obfuscated execution",
+                        "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
+                    ])
+                    if not has_active_threat:
+                        if final_risk > 30:
+                            final_risk = 30
+                        else:
+                            final_risk = max(0, final_risk - 15)
                 if pos:
                     detection_details.append(
                         f"VirusTotal: {pos}/{total} engines detected threat"
@@ -2063,7 +2057,19 @@ def scan(file_id):
             file_meta["threat_level"], file_meta["status"] = determine_threat_level(
                 final_risk, detection_details
             )
+
+            # AI analysis — called AFTER final_risk is computed so AI gets the exact final score
+            results["ai_analysis"] = analyze_file_ai(
+                entropy=offline_cache.get("entropy", 0),
+                patterns=offline_cache.get("pattern_result", "None"),
+                imports=offline_cache.get("risky_imports_str", "None"),
+                risk_score=file_meta["risk_score"],
+                file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
+                filename=file_meta.get("filename", ""),
+            )
+            file_meta["ai_analysis"] = results["ai_analysis"]
             file_meta["explanation"] = generate_explanation(file_meta)
+
 
             # Always save the file record — manual delete from dashboard
             fb.save_uploaded_file(file_meta)
