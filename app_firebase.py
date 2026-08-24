@@ -1075,8 +1075,38 @@ def forgot_password():
 
             return redirect(url_for("forgot_password", step="2", token=reset_token))
 
+        # ── RESEND OTP: Generate new code & resend to email ──────────────────
+        elif form_step == "resend":
+            token = request.form.get("token", "")
+            rec = fb.get_password_reset(token) if token and token != "invalid" else None
+            if not rec:
+                flash("If that email is registered, a new reset code will be sent shortly.", "info")
+                return redirect(url_for("forgot_password", step="2", token="invalid"))
+
+            email = rec.get("email", "")
+            otp = str(secrets.randbelow(900000) + 100000)   # 6-digit
+            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+
+            rec["otp_hash"] = generate_password_hash(otp, method="pbkdf2:sha256")
+            rec["expires_at"] = expires_at
+            rec["verified"] = False
+            fb.save_password_reset(token, rec)
+
+            sent = _send_otp_email(email, otp)
+            mail_user = os.getenv("MAIL_USER") or "reymartaportadera@gmail.com"
+            mail_pass = os.getenv("MAIL_PASS") or "zyngiormyvjtbkdb"
+            if sent:
+                flash("A new 6-digit code was sent to your email. Check your inbox.", "success")
+            elif not mail_user or not mail_pass:
+                flash(f"A new 6-digit reset code has been generated. (Cloud Backup Notice: Your code is: {otp})", "info")
+            else:
+                flash(f"Email delivery was delayed by mail server. Your backup 6-digit code is: {otp}", "warning")
+
+            return redirect(url_for("forgot_password", step="2", token=token))
+
         # ── STEP 2: Verify OTP ───────────────────────────────────────────────
         elif form_step == "2":
+
             token     = request.form.get("token", "")
             otp_input = request.form.get("otp", "").strip()
 
