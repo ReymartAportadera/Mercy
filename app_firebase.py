@@ -803,6 +803,14 @@ def request_entity_too_large(error):
     return redirect(url_for("uploadfiles"))
 
 
+@app.errorhandler(500)
+def internal_server_error(error):
+    logger.exception("500 Internal Server Error handled: %s", error)
+    flash("A temporary server issue occurred. You can use Quick Scan while we resolve it.")
+    return redirect(url_for("guest_scan"))
+
+
+
 # ── CSS Cache Busting ─────────────────────────────────────────────────────────
 import time as _time
 _CSS_VERSION = str(int(_time.time()))
@@ -865,73 +873,97 @@ class User(UserMixin):
 def load_user(user_id):
     try:
         data = fb.get_user(user_id)
+        if data and isinstance(data, dict):
+            return User(
+                uid=data.get("uid", user_id),
+                username=data.get("username", "User"),
+                email=data.get("email", ""),
+                password_hash=data.get("password", "")
+            )
     except Exception as e:
         logger.warning("Failed to load user %s: %s", user_id, e)
-        return None
-    if data:
-        return User(uid=data["uid"], username=data["username"], email=data["email"], password_hash=data["password"])
     return None
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "").strip()
-        confirm_password = request.form.get("confirm_password", "").strip()
+        try:
+            username = request.form.get("username", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("password", "").strip()
+            confirm_password = request.form.get("confirm_password", "").strip()
 
-        if not (username and email and password):
-            flash("Please fill out all fields.")
-            return redirect(url_for("signup"))
+            if not (username and email and password):
+                flash("Please fill out all fields.")
+                return redirect(url_for("signup"))
 
-        # ── Server-side password strength enforcement ──────────────────────
-        import re as _re
-        if len(password) < 8:
-            flash("Password must be at least 8 characters long.")
+            # ── Server-side password strength enforcement ──────────────────────
+            import re as _re
+            if len(password) < 8:
+                flash("Password must be at least 8 characters long.")
+                return redirect(url_for("signup"))
+            if not _re.search(r"[A-Z]", password):
+                flash("Password must contain at least one uppercase letter.")
+                return redirect(url_for("signup"))
+            if not _re.search(r"[a-z]", password):
+                flash("Password must contain at least one lowercase letter.")
+                return redirect(url_for("signup"))
+            if not _re.search(r"[0-9]", password):
+                flash("Password must contain at least one number.")
+                return redirect(url_for("signup"))
+            if not _re.search(r"[^A-Za-z0-9]", password):
+                flash("Password must contain at least one special character (e.g. @, !, #).")
+                return redirect(url_for("signup"))
+            if " " in password:
+                flash("Password must not contain spaces.")
+                return redirect(url_for("signup"))
+            if confirm_password and password != confirm_password:
+                flash("Passwords do not match.")
+                return redirect(url_for("signup"))
+            # ──────────────────────────────────────────────────────────────────
+            if fb.get_user_by_email(email):
+                flash("Email already in use.")
+                return redirect(url_for("signup"))
+            password_hash = generate_password_hash(password, method="pbkdf2:sha256")
+            uid = fb.save_user({"username": username, "email": email, "password": password_hash})
+            flash("Account created! Please log in.")
+            return redirect(url_for("login"))
+        except Exception as exc:
+            logger.exception("Signup error: %s", exc)
+            flash("An error occurred during account creation. Please try again or use Quick Scan.")
             return redirect(url_for("signup"))
-        if not _re.search(r"[A-Z]", password):
-            flash("Password must contain at least one uppercase letter.")
-            return redirect(url_for("signup"))
-        if not _re.search(r"[a-z]", password):
-            flash("Password must contain at least one lowercase letter.")
-            return redirect(url_for("signup"))
-        if not _re.search(r"[0-9]", password):
-            flash("Password must contain at least one number.")
-            return redirect(url_for("signup"))
-        if not _re.search(r"[^A-Za-z0-9]", password):
-            flash("Password must contain at least one special character (e.g. @, !, #).")
-            return redirect(url_for("signup"))
-        if " " in password:
-            flash("Password must not contain spaces.")
-            return redirect(url_for("signup"))
-        if confirm_password and password != confirm_password:
-            flash("Passwords do not match.")
-            return redirect(url_for("signup"))
-        # ──────────────────────────────────────────────────────────────────
-        if fb.get_user_by_email(email):
-            flash("Email already in use.")
-            return redirect(url_for("signup"))
-        password_hash = generate_password_hash(password, method="pbkdf2:sha256")
-        uid = fb.save_user({"username": username, "email": email, "password": password_hash})
-        flash("Account created! Please log in.")
-        return redirect(url_for("login"))
     return render_template("signup.html")
+
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("10 per minute")
+@limiter.limit("20 per minute")
 def login():
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "").strip()
-        user_rec = fb.get_user_by_email(email)
-        if user_rec and check_password_hash(user_rec["password"], password):
-            user = User(uid=user_rec["uid"], username=user_rec["username"], email=user_rec["email"], password_hash=user_rec["password"])
-            login_user(user)
-            return redirect(url_for("dashboard"))
-        else:
+        try:
+            email = request.form.get("email", "").strip().lower()
+            password = request.form.get("password", "").strip()
+            user_rec = fb.get_user_by_email(email)
+            if user_rec and isinstance(user_rec, dict) and check_password_hash(user_rec.get("password", ""), password):
+                user = User(
+                    uid=user_rec.get("uid", str(uuid.uuid4())),
+                    username=user_rec.get("username", "User"),
+                    email=user_rec.get("email", email),
+                    password_hash=user_rec.get("password", "")
+                )
+                login_user(user)
+                next_page = request.args.get("next")
+                if next_page and next_page.startswith("/"):
+                    return redirect(next_page)
+                return redirect(url_for("dashboard"))
+            else:
+                flash("Incorrect email or password. Please try again.")
+                return redirect(url_for("login"))
+        except Exception as exc:
+            logger.exception("Login error: %s", exc)
             flash("Incorrect email or password. Please try again.")
             return redirect(url_for("login"))
     return render_template("login.html")
+
 
 def _send_otp_email(to_email: str, otp: str) -> bool:
     """Send a 6-digit OTP to the given email via Gmail SMTP with dual-port fallback (587 STARTTLS / 465 SSL).
