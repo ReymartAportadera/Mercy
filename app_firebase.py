@@ -1371,12 +1371,17 @@ def _upload_single_file_impl():
                     "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
                 ])
                 if not has_active_threat:
-                    # When VirusTotal reports 0 detections across 20+ engines for clean software/documents,
+                    # When VirusTotal reports 0 detections across 20+ engines,
                     # cap internal heuristic risk score at maximum of LOW (30%).
+                    # BUT: grayware scores (prank/nuisance) must keep a minimum floor of 10
+                    # so the AI can correctly explain the nuisance behavior.
+                    is_grayware = "[grayware]" in str(pattern_result).lower()
                     if risk_score > 30:
                         risk_score = 30
                     else:
                         risk_score = max(0, risk_score - 15)
+                        if is_grayware and risk_score < 10:
+                            risk_score = 10
         finally:
             try:
                 _signal.alarm(0)
@@ -1619,12 +1624,16 @@ def guest_upload_api():
                 "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
             ])
             if not has_active_threat:
-                # When VirusTotal reports 0 detections across 20+ engines for clean software/documents,
+                # When VirusTotal reports 0 detections across 20+ engines,
                 # cap internal heuristic risk score at maximum of LOW (30%).
+                # BUT: grayware scores must keep a minimum floor of 10.
+                is_grayware = "[grayware]" in str(pattern_result).lower()
                 if risk_score > 30:
                     risk_score = 30
                 else:
                     risk_score = max(0, risk_score - 15)
+                    if is_grayware and risk_score < 10:
+                        risk_score = 10
     except Exception as exc:
         logger.warning("Guest scan - VirusTotal error: %s", exc)
         vt_result = {"error": str(exc), "positives": 0, "engine_count": 0, "method": "error", "scans": {}}
@@ -2044,10 +2053,13 @@ def scan(file_id):
                         "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
                     ])
                     if not has_active_threat:
+                        is_grayware = "[grayware]" in str(offline_cache.get("pattern_result", "")).lower()
                         if final_risk > 30:
                             final_risk = 30
                         else:
                             final_risk = max(0, final_risk - 15)
+                            if is_grayware and final_risk < 10:
+                                final_risk = 10
                 if pos:
                     detection_details.append(
                         f"VirusTotal: {pos}/{total} engines detected threat"
@@ -2118,10 +2130,13 @@ def scan(file_id):
                     if total and pos:
                         fresh_risk = max(fresh_risk, int((pos / total) * 100))
                     elif total >= 20 and pos == 0:
+                        is_grayware = "[grayware]" in str(fresh_scan.get("pattern_result", "")).lower()
                         if fresh_risk > 40:
                             fresh_risk = 40
                         else:
                             fresh_risk = max(0, fresh_risk - 15)
+                            if is_grayware and fresh_risk < 10:
+                                fresh_risk = 10
 
                 _apply_scan_result_to_file(file_meta, fresh_scan)
                 file_meta["risk_score"] = min(fresh_risk, 100)
@@ -2309,10 +2324,13 @@ def multiple_scan(file_id):
                         final_risk = max(final_risk, int((pos / total) * 100))
                     elif total >= 20 and pos == 0:
                         # Global Industry Consensus Hard Override
+                        is_grayware = "[grayware]" in str(results.get("heuristic", {}).get("pattern_result", "")).lower()
                         if final_risk > 40:
                             final_risk = 40
                         else:
                             final_risk = max(0, final_risk - 15)
+                            if is_grayware and final_risk < 10:
+                                final_risk = 10
                     if pos:
                         detection_details.append(
                             f"VirusTotal: {pos}/{total} engines detected threat"
@@ -2978,10 +2996,13 @@ def auto_scan_api():
                 final_risk = max(final_risk, int((pos / total) * 100))
             elif total >= 20 and pos == 0:
                 # ── Global Industry Consensus Hard Override Rule ─────────────
+                is_grayware = "[grayware]" in str(heuristic_res.get("pattern_result", "")).lower()
                 if final_risk > 40:
                     final_risk = 40
                 else:
                     final_risk = max(0, final_risk - 15)
+                    if is_grayware and final_risk < 10:
+                        final_risk = 10
             if pos:
                 detection_details.append(f"VirusTotal: {pos}/{total} engines detected threat")
                 

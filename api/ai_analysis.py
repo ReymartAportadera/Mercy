@@ -71,6 +71,14 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
             return round(0.50, 2)
 
 
+    # ── Grayware shortcut: always use local engine for prank/nuisance files ──
+    # Gemini tends to classify grayware (popup loops) as CLEAN because they are
+    # not technically malicious. We use the local engine to ensure the correct
+    # LOW RISK — NUISANCE label and proper explanation is always shown.
+    import re
+    if re.search(r"\[GRAYWARE\]", str(patterns), re.IGNORECASE):
+        return analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content=file_content, filename=filename)
+
     if api_key:
         try:
             ent_val = float(entropy or 0)
@@ -79,6 +87,7 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
             imp_val = str(imports or "")
 
             verdict_label = "Critical Threat" if risk_val >= 81 else "High Risk" if risk_val >= 56 else "Medium Risk" if risk_val >= 36 else "Low Risk" if risk_val >= 16 else "Benign"
+
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
@@ -206,7 +215,8 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
     try:
         entropy    = float(entropy or 0)
         risk_score = int(risk_score or 0)
-        patterns   = str(patterns or "").lower()
+        patterns_orig = str(patterns or "")   # Keep original case for [GRAYWARE] tag matching
+        patterns   = patterns_orig.lower()
         imports    = str(imports or "").lower()
         ext        = os.path.splitext(filename or "")[1].lower()
 
@@ -354,10 +364,10 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
             )
 
         # ── Grayware / Prank Detection ─────────────────────────────────────────
-        grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p]
+        grayware_hits = [p for p in patterns_orig.split(";") if "[GRAYWARE]" in p.upper()]
         if not grayware_hits:
             import re as _re
-            grayware_hits = _re.findall(r"\[GRAYWARE\][^\n;]+", patterns)
+            grayware_hits = _re.findall(r"\[GRAYWARE\][^\n;]+", patterns_orig, _re.IGNORECASE)
 
         # ── Classify malware family ───────────────────────────────────────────
         malware_family = _classify_malware_family(threat_classes, risk_score, entropy)
@@ -370,7 +380,9 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
             import re as _re_tag
             gw_clean = _re_tag.sub(r"(?i)\[grayware\]", "", grayware_hits[0]).strip().split("(")[0].strip()
             gw_clean = gw_clean[0].upper() + gw_clean[1:] if gw_clean else "Repeated popup dialog loop"
-            lines.append(f"[{risk_label} — NUISANCE SCRIPT] TrustFile identified a harmless prank or nuisance pattern in this file (Threat Score: {risk_score}/100).")
+            # Grayware always uses LOW RISK — NUISANCE label regardless of score (VT may reduce it to 0)
+            gw_display_score = max(risk_score, 10)  # Always show at least 10 for nuisance scripts
+            lines.append(f"[LOW RISK — NUISANCE SCRIPT] TrustFile identified a harmless prank or nuisance pattern in this file (Threat Score: {gw_display_score}/100).")
             lines.append(f"What does it do? This script contains a nuisance behavior ({gw_clean.rstrip('.')}) that will repeatedly pop up dialog boxes or spam messages on your screen if opened.")
             lines.append("Is it dangerous? No. It does NOT steal your passwords, damage your files, or install viruses — it is only designed to be annoying.")
             lines.append("Recommended Action: This file is not a virus and poses no security threat to your computer, but opening it will cause annoying popups on your screen. You can safely delete it if you do not want to see the prank.")
@@ -595,10 +607,15 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 # Score 0: perfectly clean, no detections at all
                 return round(0.50, 2)
 
+        # For grayware files, override verdict and confidence regardless of score
+        is_grayware_result = bool(grayware_hits)
+        final_verdict    = "LOW RISK — NUISANCE" if is_grayware_result else risk_label
+        final_confidence = 0.75 if is_grayware_result else _calc_local_conf(risk_score, len(findings))
+
         return {
-            "verdict": risk_label,
-            "label": risk_label,
-            "confidence": _calc_local_conf(risk_score, len(findings)),
+            "verdict": final_verdict,
+            "label": final_verdict,
+            "confidence": final_confidence,
             "reason": summary_text,
             "explanation": summary_text,
             "text": summary_text
