@@ -472,7 +472,39 @@ OFFICE_SAFE_URL_PREFIXES: tuple[str, ...] = (
     "https://dublincore.org/",
     "http://ns.adobe.com/",
     "https://ns.adobe.com/",
+    # ── Well-known academic/research journals & publishers ─────────────────
+    "https://doi.org/",
+    "http://doi.org/",
+    "https://scholar.google.com/",
+    "https://academic.oup.com/",
+    "https://www.sciencedirect.com/",
+    "https://ieeexplore.ieee.org/",
+    "https://dl.acm.org/",
+    "https://arxiv.org/",
+    "https://link.springer.com/",
+    "https://www.researchgate.net/",
+    "https://pubmed.ncbi.nlm.nih.gov/",
+    "https://www.ncbi.nlm.nih.gov/",
+    "https://ijisae.org/",          # Int'l Journal of Intelligent Systems & Applications in Engineering
+    "http://ijisae.org/",
+    # ── Well-known security/news reference sites ────────────────────────────
+    "https://www.bleepingcomputer.com/",
+    "http://www.bleepingcomputer.com/",
+    "https://nvd.nist.gov/",
+    "https://cve.mitre.org/",
+    "https://www.cisa.gov/",
+    "https://attack.mitre.org/",
+    "https://www.virustotal.com/",
+    "https://www.microsoft.com/",
+    "https://support.microsoft.com/",
+    "https://learn.microsoft.com/",
+    "https://docs.microsoft.com/",
+    "https://www.wikipedia.org/",
+    "https://en.wikipedia.org/",
+    "https://www.github.com/",
+    "https://github.com/",
 )
+
 
 # RULE 8 — XML attribute patterns that are pure namespace / metadata declarations.
 # Matching any of these in a line means the line is metadata, not a live link.

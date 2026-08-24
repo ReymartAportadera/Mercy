@@ -599,9 +599,18 @@ def _run_full_heuristic_scan(
         _grayware_score += 25  # More disruptive than a simple popup
 
     # 6. Universal: Fake error / BSOD / "your PC is infected" mimicry (social engineering)
-    if re.search(r"(blue\s*screen|bsod|critical\s*error|your\s*pc\s*(has\s+a\s+virus|is\s+infected))", _text_lower):
-        _grayware_notes.append("[GRAYWARE] Fake system error / BSOD mimicry text (social engineering prank — no actual damage)")
-        _grayware_score += 15
+    #    Only relevant in script/executable files — NOT in documents (.docx, .pdf, .txt, .html)
+    #    because research papers and educational content routinely mention "BSOD" or "critical error"
+    #    in descriptive/educational context and are NOT social engineering payloads.
+    _BSOD_ACTIVE_EXTS = {
+        ".vbs", ".bat", ".cmd", ".ps1", ".js", ".wsf", ".hta", ".py", ".sh",
+        ".exe", ".scr", ".com", ".pif", ".vbe", ".jse",
+    }
+    if norm_ext in _BSOD_ACTIVE_EXTS:
+        if re.search(r"(blue\s*screen|bsod|critical\s*error|your\s*pc\s*(has\s+a\s+virus|is\s+infected))", _text_lower):
+            _grayware_notes.append("[GRAYWARE] Fake system error / BSOD mimicry text (social engineering prank — no actual damage)")
+            _grayware_score += 15
+
 
     # 7. VBScript/Batch: CD-ROM tray open/close prank (hardware disruption)
     if re.search(r"MediaPlayer\.openPlayer|mc\s+open\s+type\s+cdaudio|Set\s+oWMP\s*=.*MediaPlayer", active_text, re.I):
