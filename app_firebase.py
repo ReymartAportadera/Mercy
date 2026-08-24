@@ -477,7 +477,7 @@ def _run_full_heuristic_scan(
             "Infinite Loop":   r"(:\w+.*goto\s+\w+)|(while\s+true)",
             "Network":         r"\b(requests\.(get|post)|socket|http|ftp)\b",
             "Encoding":        r"\b(base64|b64decode|hex|encode|decode)\b",
-            "Script Engine":   r"\b(wscript|cscript|powershell)\b",
+            "Script Engine":   r"\b(cscript(\.exe)?|powershell(\.exe)?|wscript\.shell)\b",
             "File Access":     r"\b(open|write|delete|remove|mkdir)\b",
             "Batch Abuse":     r"\b(start|taskkill|shutdown|del)\b",
         }
@@ -683,12 +683,6 @@ def _run_full_heuristic_scan(
 
 
     if not is_binary:
-        if not is_passive_markup:
-            if suspicious and risk_score < 30:
-                risk_score = 30
-            if risky_imports and risk_score < 20:
-                risk_score = 20
-
         has_exec_func = bool(re.search(
             r"\b(eval|exec|compile|subprocess|os\.system|os\.popen|shell_exec|passthru)\b|\b(eval|exec)\s*\(|Invoke-Expression|\biex\b",
             active_text, re.I

@@ -348,23 +348,14 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
             )
 
         # ── Grayware / Prank Detection ─────────────────────────────────────────
-        grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p or "grayware" in p.lower() or "prank" in p.lower()]
+        grayware_hits = [p for p in patterns.split(";") if "[GRAYWARE]" in p]
         if not grayware_hits:
             import re as _re
             grayware_hits = _re.findall(r"\[GRAYWARE\][^\n;]+", patterns)
-        
-        # Check file_content directly as fallback for pranks
-        if not grayware_hits and file_content:
-            fc_prank = file_content.lower()
-            if ext in [".vbs", ".vbe"] and ("msgbox" in fc_prank or "inputbox" in fc_prank) and any(k in fc_prank for k in ["for ", "while ", "do "]):
-                grayware_hits = ["[GRAYWARE] VBScript repeated popup loop detected (prank/nuisance)"]
-            elif ext in [".bat", ".cmd"] and ("start " in fc_prank or "echo " in fc_prank) and any(k in fc_prank for k in ["goto ", ":loop"]):
-                grayware_hits = ["[GRAYWARE] Batch infinite loop with disruptive display commands (prank pattern)"]
-            elif "fork bomb" in fc_prank or "%0|%0" in fc_prank:
-                grayware_hits = ["[GRAYWARE] Fork bomb process replication loop detected"]
 
         # ── Classify malware family ───────────────────────────────────────────
         malware_family = _classify_malware_family(threat_classes, risk_score, entropy)
+
 
         # ── Compose the analysis report ───────────────────────────────────────
         lines = []
