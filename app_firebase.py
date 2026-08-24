@@ -2193,7 +2193,7 @@ def scan(file_id):
             or _ai_contradicts
             or _is_generic_placeholder
         )
-        if _needs_refresh:
+        if file_bytes or _needs_refresh:
             ai_data = analyze_file_ai(
                 entropy=file_meta.get("entropy", 0),
                 patterns=file_meta.get("pattern_result", "None"),
