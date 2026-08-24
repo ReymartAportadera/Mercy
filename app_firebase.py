@@ -1913,14 +1913,10 @@ def scan(file_id):
 
     already_scanned = file_meta.get("status") != "Pending"
     auto_scan = request.args.get("auto_scan", "false")
+    is_rescan = request.args.get("rescan", "false").lower() == "true" or request.form.get("rescan") == "true"
 
-    if request.method == "POST" or (auto_scan.lower() == "true" and not already_scanned):
-        if already_scanned and request.method == "POST":
-            flash("This file has already been scanned.", "warning")
-            return redirect(url_for("dashboard"))
-
-        # ── Run the full scan inline (HTTP redirects are always GET, so we
-        #    cannot redirect to /multiple_scan and expect its POST branch to run)
+    if request.method == "POST" or (auto_scan.lower() == "true" and not already_scanned) or is_rescan:
+        # ── Run the full scan / rescan inline with updated engines ───────────
         if not scan_semaphore.acquire(blocking=False):
             flash("System is busy. Please try again in a moment.", "warning")
             return redirect(url_for("dashboard"))
@@ -1951,11 +1947,12 @@ def scan(file_id):
             offline_cache = None
             results: dict = {}
 
-            # Heuristic
+            # Heuristic scan — always runs on available bytes to apply updated rules
             if file_bytes:
                 offline_cache = _run_full_heuristic_scan(
                     file_meta.get("filename"), file_bytes, file_hash
                 )
+
             elif file_meta.get("status") and file_meta.get("status") != "Pending":
                 logger.info("scan: file %s already scanned during upload (status: %s), preserving scan result", file_meta.get("filename"), file_meta.get("status"))
                 if request.method == "POST":
