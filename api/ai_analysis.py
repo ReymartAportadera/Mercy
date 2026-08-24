@@ -138,7 +138,7 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"NEVER say 'Critical' if the score is below 81. NEVER say 'High Risk' if the score is below 56.\n"
                 f"RULE 2: NO IT JARGON. Never use words like 'entropy', 'heuristic', 'LOLBin', 'IEX', 'AMSI', 'UAC', 'COM object', 'payload', "
                 f"'shellcode', 'obfuscation', 'base64', 'regex', 'API', or programming terms. Explain what happens to the user's computer in plain, simple everyday words.\n"
-                f"RULE 3: If clean (0–15 score), clearly explain that the file is safe and cannot harm their computer (e.g. text/docs have no virus code).\n"
+                f"RULE 3: CONTENT AWARENESS & CLEAN ASSESSMENT: Look at the file content snippet provided above. Briefly describe what the file actually contains (for example, if it contains notes, text mentioning historical virus names like 'love bug' or 'Jerusalem', source code, or text data). Clearly explain that passive text or documentation cannot execute code or harm their computer (just like reading a book about diseases cannot make you sick).\n"
                 f"RULE 4: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 top security programs all confirmed this file is safe.\n"
                 f"RULE 5: If the file is dangerous or suspicious, clearly explain the danger in 1-2 simple sentences.\n"
                 f"RULE 6: PROVIDE THE SOLUTION AS A NATURAL PARAGRAPH (do NOT use numbered lists or bullet points). Start the solution with 'Recommended Action:' and clearly explain what the user should do in smooth conversational sentences.\n"
@@ -441,87 +441,87 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                         "This is a script file. TrustFile checked every line and confirmed it does not try to "
                         "run hidden programs, change your settings, connect to the internet, or do anything harmful."
                     )
-
-            elif ext in [".ps1", ".psm1"]:
-                lines.append(
-                    "This is a PowerShell script (a type of automation file for Windows). "
-                    "TrustFile confirmed it does not download anything, does not hide its content, "
-                    "and does not try to take control of your computer."
-                )
-            elif ext in [".bat", ".cmd"]:
-                lines.append(
-                    "This is a Windows command script. TrustFile checked it and found no attempts to "
-                    "change startup settings, delete files, or download harmful programs."
-                )
-            elif ext in [".py", ".pyw"]:
-                lines.append(
-                    "This is a Python script file. TrustFile confirmed it does not try to open internet "
-                    "connections, run hidden commands, or do anything suspicious on your computer."
-                )
-            elif ext in [".php", ".phtml"]:
-                lines.append(
-                    "This is a web server script. TrustFile confirmed it does not contain any web backdoor "
-                    "code or commands that would let someone remotely control a web server."
-                )
-            elif ext in [".js", ".ts", ".html", ".htm"]:
-                lines.append(
-                    "This is a web page or web script file. TrustFile confirmed it does not redirect you "
-                    "to harmful websites, hide any malicious code, or try to take over your browser."
-                )
-            elif ext in [".doc", ".docx", ".docm", ".xls", ".xlsx", ".xlsm", ".ppt", ".pptx", ".pptm", ".pdf"]:
-                lines.append(
-                    "This is a document file. TrustFile confirmed it does not contain hidden scripts, "
-                    "auto-run macros, or any code that would execute when you open it."
-                )
-            elif ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".cab"]:
-                lines.append(
-                    "This is a compressed archive (like a ZIP file). TrustFile scanned the contents inside "
-                    "and confirmed there are no hidden executable files, no auto-run scripts, and no malware "
-                    "inside the package."
-                )
-            elif ext in [".exe", ".dll", ".bin", ".sys", ".elf"]:
-                lines.append(
-                    "This is a program file. TrustFile scanned its internal structure and confirmed it does "
-                    "not contain any virus signatures, does not try to inject itself into other programs, "
-                    "and behaves like a normal application."
-                )
-            elif ext in [".txt", ".md", ".csv", ".json", ".xml", ".log", ".rst", ".svg"]:
-                virus_mentions = []
-                for vname in ["love bug", "lehigh", "jerusalem", "eicar", "trojan", "virus", "worm", "malware", "ransomware", "payload"]:
-                    if vname in fc_lower:
-                        virus_mentions.append(vname)
-                if virus_mentions:
-                    vm_str = ", ".join(f"'{v}'" for v in virus_mentions[:3])
+                elif ext in [".ps1", ".psm1"]:
                     lines.append(
-                        f"This file mentions some virus names ({vm_str}) but that is completely fine — "
-                        f"it is just text. A plain text file cannot run any code and cannot harm your computer, "
-                        f"the same way a book about diseases cannot make you sick."
+                        "This is a PowerShell script (a type of automation file for Windows). "
+                        "TrustFile confirmed it does not download anything, does not hide its content, "
+                        "and does not try to take control of your computer."
+                    )
+                elif ext in [".bat", ".cmd"]:
+                    lines.append(
+                        "This is a Windows command script. TrustFile checked it and found no attempts to "
+                        "change startup settings, delete files, or download harmful programs."
+                    )
+                elif ext in [".py", ".pyw"]:
+                    lines.append(
+                        "This is a Python script file. TrustFile confirmed it does not try to open internet "
+                        "connections, run hidden commands, or do anything suspicious on your computer."
+                    )
+                elif ext in [".php", ".phtml"]:
+                    lines.append(
+                        "This is a web server script. TrustFile confirmed it does not contain any web backdoor "
+                        "code or commands that would let someone remotely control a web server."
+                    )
+                elif ext in [".js", ".ts", ".html", ".htm"]:
+                    lines.append(
+                        "This is a web page or web script file. TrustFile confirmed it does not redirect you "
+                        "to harmful websites, hide any malicious code, or try to take over your browser."
+                    )
+                elif ext in [".doc", ".docx", ".docm", ".xls", ".xlsx", ".xlsm", ".ppt", ".pptx", ".pptm", ".pdf"]:
+                    lines.append(
+                        "This is a document file. TrustFile confirmed it does not contain hidden scripts, "
+                        "auto-run macros, or any code that would execute when you open it."
+                    )
+                elif ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".tgz", ".cab"]:
+                    lines.append(
+                        "This is a compressed archive (like a ZIP file). TrustFile scanned the contents inside "
+                        "and confirmed there are no hidden executable files, no auto-run scripts, and no malware "
+                        "inside the package."
+                    )
+                elif ext in [".exe", ".dll", ".bin", ".sys", ".elf"]:
+                    lines.append(
+                        "This is a program file. TrustFile scanned its internal structure and confirmed it does "
+                        "not contain any virus signatures, does not try to inject itself into other programs, "
+                        "and behaves like a normal application."
+                    )
+                elif ext in [".txt", ".md", ".csv", ".json", ".xml", ".log", ".rst", ".svg"]:
+                    virus_mentions = []
+                    for vname in ["love bug", "lehigh", "jerusalem", "eicar", "trojan", "virus", "worm", "malware", "ransomware", "payload"]:
+                        if vname in fc_lower:
+                            virus_mentions.append(vname)
+                    if virus_mentions:
+                        vm_str = ", ".join(f"'{v}'" for v in virus_mentions[:3])
+                        lines.append(
+                            f"This file mentions some virus names ({vm_str}) but that is completely fine — "
+                            f"it is just text. A plain text file cannot run any code and cannot harm your computer, "
+                            f"the same way a book about diseases cannot make you sick."
+                        )
+                    else:
+                        lines.append(
+                            "This is a plain text or data file. It cannot run code, open programs, or change "
+                            "anything on your computer. It is safe to open."
+                        )
+                elif ext in [".reg"]:
+                    lines.append(
+                        "This is a Windows Registry file. TrustFile confirmed it does not try to add malicious "
+                        "startup entries or change critical system settings that would harm your computer."
+                    )
+                elif ext in [".inf"]:
+                    lines.append(
+                        "This is a Windows setup or driver configuration file. TrustFile confirmed it does not "
+                        "include any auto-run commands that would execute a harmful program."
+                    )
+                elif ext in [".sql"]:
+                    lines.append(
+                        "This is a database script file. TrustFile confirmed it does not contain destructive "
+                        "commands that would delete or steal data from a database."
                     )
                 else:
                     lines.append(
-                        "This is a plain text or data file. It cannot run code, open programs, or change "
-                        "anything on your computer. It is safe to open."
+                        "TrustFile inspected this file and found no signs of harmful behavior. "
+                        "It appears safe based on its content and structure."
                     )
-            elif ext in [".reg"]:
-                lines.append(
-                    "This is a Windows Registry file. TrustFile confirmed it does not try to add malicious "
-                    "startup entries or change critical system settings that would harm your computer."
-                )
-            elif ext in [".inf"]:
-                lines.append(
-                    "This is a Windows setup or driver configuration file. TrustFile confirmed it does not "
-                    "include any auto-run commands that would execute a harmful program."
-                )
-            elif ext in [".sql"]:
-                lines.append(
-                    "This is a database script file. TrustFile confirmed it does not contain destructive "
-                    "commands that would delete or steal data from a database."
-                )
-            else:
-                lines.append(
-                    "TrustFile inspected this file and found no signs of harmful behavior. "
-                    "It appears safe based on its content and structure."
-                )
+
 
         # ── Solution for Users (Paragraph format) ─────────────────────────────
         is_archive = ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"] or "archive" in patterns.lower()
