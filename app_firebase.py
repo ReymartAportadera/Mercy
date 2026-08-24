@@ -766,22 +766,23 @@ logging.basicConfig(
 # ── App setup ─────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 
-# Initialize CSRF protection (adds csrf_token() globally)
-csrf = CSRFProtect(app)
+# Apply ProxyFix for Vercel/reverse-proxy HTTPS headers
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+
+_secret = os.environ.get("TRUSTFILE_SECRET_KEY") or "b979550ef58e9dd5670e175aa34eef959f51911a92f2e7da4989d4ff87793dd4"
+app.config["SECRET_KEY"] = _secret
+
+# CSRF configuration
 app.config["WTF_CSRF_SSL_STRICT"] = False  # Allows cryptographic token validation behind cloud reverse proxies / strict referrer policies
 app.config["WTF_CSRF_TIME_LIMIT"] = 3600   # 1 hour CSRF token validity
 
-_secret = os.environ.get("TRUSTFILE_SECRET_KEY", "")
-if not _secret:
-    logger.critical(
-        "TRUSTFILE_SECRET_KEY is not set in .env — "
-        "sessions are INSECURE. Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
-    )
-    _secret = "insecure-default-replace-me"
-app.config["SECRET_KEY"] = _secret
+# Initialize CSRF protection (adds csrf_token() globally)
+csrf = CSRFProtect(app)
 
 # Unlimited upload size at Flask level (no application file/folder size cap)
 app.config["MAX_CONTENT_LENGTH"] = None
+
 
 _is_vercel = "VERCEL" in os.environ or "VERCEL_ENV" in os.environ or os.environ.get("SERVER_SOFTWARE", "").startswith("Vercel") or os.path.exists("/var/task")
 if _is_vercel:
