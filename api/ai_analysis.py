@@ -132,8 +132,10 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"RULE 3: If clean (0–15 score), clearly explain that the file is safe and cannot harm their computer (e.g. text/docs have no virus code).\n"
                 f"RULE 4: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 top security programs all confirmed this file is safe.\n"
                 f"RULE 5: If the file is dangerous or suspicious, clearly explain the danger in 1-2 simple sentences.\n"
-                f"RULE 6: PROVIDE THE SOLUTION AS A NATURAL PARAGRAPH (do NOT use numbered lists or bullet points). Start the solution with 'Recommended Action:' and clearly explain what the user should do in smooth conversational sentences (e.g. delete the file permanently, disconnect Wi-Fi and run an antivirus scan if opened, verify the sender, or safely use the file).\n\n"
+                f"RULE 6: PROVIDE THE SOLUTION AS A NATURAL PARAGRAPH (do NOT use numbered lists or bullet points). Start the solution with 'Recommended Action:' and clearly explain what the user should do in smooth conversational sentences.\n"
+                f"RULE 7: ARCHIVE / DEVELOPER PROJECT CONTEXT: If the file is an archive (.zip, .rar, .7z, .tar) or contains software/project files, explain clearly that archives bundle multiple files together. If this archive is a software development backup or came from a trusted developer/drive, clarify that the detected code patterns might be developer test scripts or security definitions rather than an active infection, while advising users not to run unfamiliar scripts if the source is unknown.\n\n"
                 f"Write a friendly, clear, and reassuring explanation in natural paragraphs that anyone without technical background can immediately understand and follow."
+
             )
 
             payload = {
@@ -510,8 +512,19 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                 )
 
         # ── Solution for Users (Paragraph format) ─────────────────────────────
+        is_archive = ext in [".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"] or "archive" in patterns.lower()
         if not grayware_hits:
-            if risk_score >= 81:
+            if is_archive and risk_score >= 56:
+                lines.append(
+                    "Archive Context: This is a compressed archive containing multiple files or code scripts. "
+                    "If you downloaded this archive as a software project backup or from your own trusted drive, "
+                    "some detected patterns may be developer test scripts or security definitions rather than an active infection. "
+                    "However, if this archive was received unexpectedly or from an unknown sender, you should avoid running any scripts inside."
+                )
+                lines.append(
+                    "Recommended Action: Because this archive contains files with suspicious command patterns, do not execute the scripts inside unless you are certain this is your own trusted project backup. If this file came from an unfamiliar or unexpected source, delete it immediately without extracting its contents."
+                )
+            elif risk_score >= 81:
                 lines.append(
                     "Recommended Action: We strongly advise you not to open, run, or share this file under any circumstances. "
                     "Please delete it permanently right away by pressing Shift + Delete on Windows or by emptying your Trash on Mac. "
@@ -524,6 +537,7 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                     "You should remove this file from your computer immediately unless you explicitly downloaded it from a trusted and "
                     "verified official developer. If you already opened the file, disconnect from Wi-Fi and perform a thorough security scan."
                 )
+
             elif risk_score >= 36:
                 lines.append(
                     "Recommended Action: Exercise caution before opening this file because it exhibits unusual characteristics, even though "
