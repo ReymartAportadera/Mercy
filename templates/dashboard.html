@@ -202,14 +202,6 @@
                                 <i class="fa-solid fa-magnifying-glass"></i>
                                 <span>Results</span>
                             </a>
-                            <form method="POST" action="{{ url_for('scan_page', file_id=file.id) }}" style="display:inline; margin:0;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="rescan" value="true">
-                                <button type="submit" class="action-btn btn-view" style="background: rgba(37,99,235,0.12); color:#60a5fa; border: 1px solid rgba(59,130,246,0.3); cursor:pointer;" title="Rescan with Latest Engine">
-                                    <i class="fa-solid fa-rotate-right"></i>
-                                    <span>Rescan</span>
-                                </button>
-                            </form>
                             <form method="POST" action="{{ url_for('delete_file', file_id=file.id) }}"
                                   onsubmit="return confirm('Are you sure you want to remove this file?');" style="display:inline; margin:0;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -219,6 +211,7 @@
                                 </button>
                             </form>
                         </div>
+
 
                     </div>
                     {% endfor %}

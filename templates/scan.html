@@ -513,18 +513,12 @@
 <div class="scan-wrapper">
 
     <!-- ========== TOP CENTERED NAVIGATION ========== -->
-    <div class="back-nav-wrap" style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+    <div class="back-nav-wrap">
         <a href="{{ url_for('dashboard') }}" class="btn-back-dash">
             <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
         </a>
-        <form method="POST" action="{{ url_for('scan_page', file_id=file.id) }}" style="display: inline; margin: 0;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="rescan" value="true">
-            <button type="submit" class="btn-back-dash btn-rescan" id="rescanBtn" style="cursor: pointer; border: 1px solid rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.12); color: #93c5fd;">
-                <i class="fa-solid fa-rotate-right"></i> Rescan File
-            </button>
-        </form>
     </div>
+
 
     <h1 class="main-scanner-title">FILE SCANNER</h1>
     <div class="main-filename-sub">{{ file.filename }}</div>

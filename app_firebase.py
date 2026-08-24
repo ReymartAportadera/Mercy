@@ -2086,6 +2086,46 @@ def scan(file_id):
             scan_semaphore.release()
 
     if already_scanned:
+        # Dynamically re-evaluate against latest heuristic rules on page refresh if file is present
+        try:
+            file_exists  = os.path.isfile(file_meta.get("filepath", ""))
+            cached_bytes = _get_bytes(file_meta["id"])
+            file_bytes   = None
+            if file_exists:
+                try:
+                    with safe_open(file_meta["filepath"], "rb") as fh:
+                        file_bytes = fh.read()
+                except Exception:
+                    file_bytes = None
+            if not file_bytes:
+                file_bytes = cached_bytes
+
+            if file_bytes:
+                fresh_scan = _run_full_heuristic_scan(file_meta.get("filename"), file_bytes, file_meta.get("hash", ""))
+                fresh_risk = fresh_scan.get("risk_score", 0)
+
+                # Sync with VirusTotal override
+                vt = file_meta.get("virustotal", {})
+                if isinstance(vt, dict):
+                    pos = vt.get("positives", 0)
+                    total = vt.get("engine_count", 0)
+                    if total and pos:
+                        fresh_risk = max(fresh_risk, int((pos / total) * 100))
+                    elif total >= 20 and pos == 0:
+                        if fresh_risk > 40:
+                            fresh_risk = 40
+                        else:
+                            fresh_risk = max(0, fresh_risk - 15)
+
+                _apply_scan_result_to_file(file_meta, fresh_scan)
+                file_meta["risk_score"] = min(fresh_risk, 100)
+                file_meta["threat_level"], file_meta["status"] = determine_threat_level(
+                    fresh_risk, fresh_scan.get("suspicious_functions", []) + fresh_scan.get("heuristics", [])
+                )
+                file_meta["explanation"] = generate_explanation(file_meta)
+        except Exception as exc:
+            logger.warning("Dynamic heuristic refresh on GET failed: %s", exc)
+
         ai_data = file_meta.get("ai_analysis")
         _cur_risk = int(file_meta.get("risk_score", 0))
         _ai_v = str(ai_data.get("verdict", "") if isinstance(ai_data, dict) else ai_data or "").upper()
@@ -2120,6 +2160,7 @@ def scan(file_id):
                 fb.save_uploaded_file(file_meta)
             except Exception as exc:
                 logger.warning("Could not update file_meta in Firebase: %s", exc)
+
 
         results = {
             "heuristic": {
