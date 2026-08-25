@@ -440,103 +440,104 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                     "which may be used to disguise what it actually does"
                 )
 
-        # ── Pattern-based detections — plain English ──────────────────────────
-        if "code execution" in patterns or "eval" in patterns or "exec" in patterns:
-            findings.append("this file can run hidden commands on your computer without you seeing them")
-            threat_classes.append("code injection")
+        # ── Pattern-based detections — plain English (only when risk is elevated) ──
+        if risk_score >= 16:
+            if "code execution" in patterns or "eval" in patterns or "exec" in patterns:
+                findings.append("this file can run hidden commands on your computer without you seeing them")
+                threat_classes.append("code injection")
 
-        if "system command" in patterns or "cmd" in patterns or "powershell" in patterns:
-            findings.append("this file can silently run system commands in the background, similar to how a hacker would control a computer remotely")
-            threat_classes.append("command execution")
+            if "system command" in patterns or "cmd" in patterns or "powershell" in patterns:
+                findings.append("this file can silently run system commands in the background, similar to how a hacker would control a computer remotely")
+                threat_classes.append("command execution")
 
-        if "process spawn" in patterns or "subprocess" in patterns:
-            findings.append("this file can secretly open and run other programs on your computer")
-            threat_classes.append("process injection")
+            if "process spawn" in patterns or "subprocess" in patterns:
+                findings.append("this file can secretly open and run other programs on your computer")
+                threat_classes.append("process injection")
 
-        if "network" in patterns or "socket" in patterns or "http" in patterns:
-            findings.append("this file tries to connect to the internet without your permission")
-            threat_classes.append("network communication")
+            if ("socket" in patterns or "reverse shell" in patterns or "network communication" in patterns or "c2" in patterns) and ext not in [".docx", ".xlsx", ".pptx", ".txt", ".pdf", ".html", ".css", ".json", ".xml", ".md"]:
+                findings.append("this file tries to connect to the internet without your permission")
+                threat_classes.append("network communication")
 
-        if "exfiltration" in patterns or "webhook" in patterns or "pastebin" in patterns:
-            findings.append("this file appears designed to secretly send your files or data to an outside server controlled by someone else")
-            threat_classes.append("data exfiltration")
+            if "exfiltration" in patterns or "webhook" in patterns or "pastebin" in patterns:
+                findings.append("this file appears designed to secretly send your files or data to an outside server controlled by someone else")
+                threat_classes.append("data exfiltration")
 
-        if "reverse shell" in patterns:
-            findings.append("this file can give a hacker full remote control of your computer, allowing them to see your screen, read your files, and type commands as if they were sitting in front of it")
-            threat_classes.append("remote access trojan (RAT)")
+            if "reverse shell" in patterns:
+                findings.append("this file can give a hacker full remote control of your computer, allowing them to see your screen, read your files, and type commands as if they were sitting in front of it")
+                threat_classes.append("remote access trojan (RAT)")
 
-        if "persistence" in patterns or "startup" in patterns or "registry" in patterns or "schtasks" in patterns:
-            findings.append("this file modifies your computer's startup settings so it runs automatically every time you turn on your PC, even after you delete it from its original location")
-            threat_classes.append("persistence")
+            if "persistence" in patterns or "startup" in patterns or "registry" in patterns or "schtasks" in patterns:
+                findings.append("this file modifies your computer's startup settings so it runs automatically every time you turn on your PC, even after you delete it from its original location")
+                threat_classes.append("persistence")
 
-        if "obfuscated" in patterns or "base64" in patterns or "encoding" in patterns:
-            findings.append("the harmful content of this file is intentionally disguised to avoid being caught by antivirus programs")
-            threat_classes.append("obfuscation")
+            if "obfuscated" in patterns or "base64" in patterns or "encoding" in patterns:
+                findings.append("the harmful content of this file is intentionally disguised to avoid being caught by antivirus programs")
+                threat_classes.append("obfuscation")
 
-        if "batch abuse" in patterns or "taskkill" in patterns or "shutdown" in patterns:
-            findings.append("this file contains commands that can force-close programs or shut down your computer without warning")
-            threat_classes.append("system disruption")
+            if "batch abuse" in patterns or "taskkill" in patterns or "shutdown" in patterns:
+                findings.append("this file contains commands that can force-close programs or shut down your computer without warning")
+                threat_classes.append("system disruption")
 
-        if "file access" in patterns or "delete" in patterns or "remove" in patterns:
-            findings.append("this file can delete or overwrite files on your computer")
+            if "file access" in patterns or "delete" in patterns or "remove" in patterns:
+                findings.append("this file can delete or overwrite files on your computer")
 
-        # ── New pattern detections — plain English ────────────────────────────
-        if "autorun inf dropper" in patterns or "autorun" in patterns:
-            findings.append("this file is designed to run automatically the moment a USB drive or disc is inserted into a computer, without any action from you")
-            threat_classes.append("command execution")
+            # ── New pattern detections — plain English ────────────────────────────
+            if "autorun inf dropper" in patterns or "autorun" in patterns:
+                findings.append("this file is designed to run automatically the moment a USB drive or disc is inserted into a computer, without any action from you")
+                threat_classes.append("command execution")
 
-        if "sql injection" in patterns:
-            findings.append("this file contains commands that can destroy or steal data from a database — for example, it can delete entire tables or add fake admin accounts")
-            threat_classes.append("code injection")
+            if "sql injection" in patterns:
+                findings.append("this file contains commands that can destroy or steal data from a database — for example, it can delete entire tables or add fake admin accounts")
+                threat_classes.append("code injection")
 
-        if "lolbin abuse" in patterns:
-            findings.append("this file abuses trusted Windows tools (like certutil or bitsadmin) that are already on your computer to download or run harmful programs, so they look normal to antivirus software")
-            threat_classes.append("command execution")
+            if "lolbin abuse" in patterns:
+                findings.append("this file abuses trusted Windows tools (like certutil or bitsadmin) that are already on your computer to download or run harmful programs, so they look normal to antivirus software")
+                threat_classes.append("command execution")
 
-        if "shadow copy deletion" in patterns or "vssadmin" in patterns:
-            findings.append("this file deletes your Windows backup copies (System Restore points), which means if it damages your files, you will not be able to recover them — this is a classic ransomware behavior")
-            threat_classes.append("system disruption")
+            if "shadow copy deletion" in patterns or "vssadmin" in patterns:
+                findings.append("this file deletes your Windows backup copies (System Restore points), which means if it damages your files, you will not be able to recover them — this is a classic ransomware behavior")
+                threat_classes.append("system disruption")
 
-        if "iex_usage" in patterns or "invoke-expression" in patterns or "iex" in patterns:
-            findings.append("this file secretly downloads and runs another harmful program from the internet directly into memory, so no file is saved to your computer for antivirus to find")
-            threat_classes.append("command execution")
+            if "iex_usage" in patterns or "invoke-expression" in patterns or "iex" in patterns:
+                findings.append("this file secretly downloads and runs another harmful program from the internet directly into memory, so no file is saved to your computer for antivirus to find")
+                threat_classes.append("command execution")
 
-        if "vbe encoded" in patterns or "vbe" in patterns:
-            findings.append("this script file has its contents deliberately scrambled so you cannot read what it does — this is a common hiding technique used in email-based malware")
-            threat_classes.append("obfuscation")
+            if "vbe encoded" in patterns or "vbe" in patterns:
+                findings.append("this script file has its contents deliberately scrambled so you cannot read what it does — this is a common hiding technique used in email-based malware")
+                threat_classes.append("obfuscation")
 
-        if "wmi execution" in patterns:
-            findings.append("this file uses a hidden Windows feature to run programs in the background without opening any visible window, making it very hard to detect")
-            threat_classes.append("command execution")
+            if "wmi execution" in patterns:
+                findings.append("this file uses a hidden Windows feature to run programs in the background without opening any visible window, making it very hard to detect")
+                threat_classes.append("command execution")
 
-        if "uac bypass" in patterns or "fodhelper" in patterns or "eventvwr" in patterns:
-            findings.append("this file tries to gain administrator-level access to your computer without asking for your password or showing the usual permission pop-up")
-            threat_classes.append("command execution")
+            if "uac bypass" in patterns or "fodhelper" in patterns or "eventvwr" in patterns:
+                findings.append("this file tries to gain administrator-level access to your computer without asking for your password or showing the usual permission pop-up")
+                threat_classes.append("command execution")
 
-        if "amsi bypass" in patterns:
-            findings.append("this file attempts to turn off Windows' built-in malware protection before running, so it can operate without being blocked or detected")
-            threat_classes.append("command execution")
+            if "amsi bypass" in patterns:
+                findings.append("this file attempts to turn off Windows' built-in malware protection before running, so it can operate without being blocked or detected")
+                threat_classes.append("command execution")
 
-        if "php eval" in patterns or "php shell" in patterns or "php dynamic" in patterns:
-            findings.append("this is a web shell — a hidden backdoor planted on a website server that lets an attacker send commands to the server through a normal web browser")
-            threat_classes.append("code injection")
+            if "php eval" in patterns or "php shell" in patterns or "php dynamic" in patterns:
+                findings.append("this is a web shell — a hidden backdoor planted on a website server that lets an attacker send commands to the server through a normal web browser")
+                threat_classes.append("code injection")
 
-        # ── Import-based detections — plain English ───────────────────────────
-        risky_import_map = {
-            "subprocess": "can open and run other programs or system commands in the background",
-            "socket":     "can make direct internet connections without using your browser",
-            "ctypes":     "can call deep Windows system functions, often used to manipulate memory or inject code",
-            "winreg":     "can read and modify Windows Registry settings (controls how programs and the OS behave)",
-            "shutil":     "can copy, move, or delete files and folders on your computer",
-        }
-        found_imports = []
-        for key, plain_desc in risky_import_map.items():
-            if key in imports:
-                found_imports.append(plain_desc)
-        if found_imports:
-            findings.append(
-                "this file uses built-in capabilities that " + " and ".join(found_imports[:2])
-            )
+            # ── Import-based detections — plain English ───────────────────────────
+            risky_import_map = {
+                "subprocess": "can open and run other programs or system commands in the background",
+                "socket":     "can make direct internet connections without using your browser",
+                "ctypes":     "can call deep Windows system functions, often used to manipulate memory or inject code",
+                "winreg":     "can read and modify Windows Registry settings (controls how programs and the OS behave)",
+                "shutil":     "can copy, move, or delete files and folders on your computer",
+            }
+            found_imports = []
+            for key, plain_desc in risky_import_map.items():
+                if key in imports:
+                    found_imports.append(plain_desc)
+            if found_imports:
+                findings.append(
+                    "this file uses built-in capabilities that " + " and ".join(found_imports[:2])
+                )
 
         # ── Grayware / Prank Detection ─────────────────────────────────────────
         grayware_hits = [p for p in patterns_orig.split(";") if "[GRAYWARE]" in p.upper()]
@@ -611,7 +612,13 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                         "knows the secret URL can send commands to the server and control it completely."
                     )
             elif risk_score <= 15:
-                if ext in [".vbs", ".vbe", ".bas"]:
+                if ext in [".docx", ".xlsx", ".pptx", ".docm", ".xlsm", ".odt", ".ods", ".odp", ".doc", ".xls", ".ppt"]:
+                    lines.append(
+                        "This is a Microsoft Word / Office document. TrustFile confirmed it does not contain hidden macros, "
+                        "auto-run scripts, or dangerous embedded objects. Any web links in the document are standard informational "
+                        "references and will not execute code automatically."
+                    )
+                elif ext in [".vbs", ".vbe", ".bas"]:
                     lines.append(
                         "This is a script file. TrustFile checked every line and confirmed it does not try to "
                         "run hidden programs, change your settings, connect to the internet, or do anything harmful."

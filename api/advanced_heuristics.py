@@ -1809,9 +1809,10 @@ def _scan_xml_for_external_urls(
         if _line_is_namespace_decl(line):
             continue
 
-        # Is this URL in a suspicious context?
+        # Is this URL in a truly suspicious injection context (remote template, OLE object, ActiveX)?
+        # Normal body text hyperlinks (<w:hyperlink>, citations) are informational only.
         suspicious_context = bool(re.search(
-            r"(href|src|action|url|link|template|target|attachment|load|fetch|download|http-equiv)",
+            r"(attachedTemplate|remoteTemplate|frame|oleObject|activeX|control|http-equiv)",
             line, re.I
         ))
 
@@ -1835,6 +1836,10 @@ def _scan_xml_for_external_urls(
             result.detections.append(
                 f"External URL in Office XML [{severity}] "
                 f"({entry_name}): {url[:80]}"
+            )
+        else:
+            result.fp_notes.append(
+                f"Informational reference hyperlink in {entry_name}: {url[:80]} (not scored)"
             )
 
 
