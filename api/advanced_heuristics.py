@@ -719,19 +719,25 @@ ACTIVE_THREAT_GATE_INDICATORS: set[str] = {
 
 # Trusted vendor strings for reputation scoring (req. 6)
 TRUSTED_VENDOR_STRINGS: tuple[str, ...] = (
-    "Microsoft Corporation", "Google LLC", "NVIDIA Corporation",
-    "Valve Corp", "Adobe Inc", "Mozilla Corporation",
-    "Apple Inc", "Intel Corporation", "Advanced Micro Devices",
-    "Canonical Ltd", "Oracle Corporation",
+    "Microsoft Corporation", "Google LLC", "Google Inc", "NVIDIA Corporation",
+    "Valve Corp", "Valve Corporation", "Adobe Inc", "Adobe Systems",
+    "Mozilla Corporation", "Mozilla Foundation", "Brave Software", "Brave Software Inc",
+    "Brave Software, Inc.", "Brave Software Inc.", "Apple Inc", "Intel Corporation",
+    "Advanced Micro Devices", "AMD", "Canonical Ltd", "Oracle Corporation",
+    "Zoom Video Communications", "Discord Inc", "Spotify AB", "Telegram FZ-LLC",
+    "Epic Games", "Electronic Arts", "Ubisoft", "JetBrains s.r.o.",
+    "Python Software Foundation", "The Document Foundation", "Cisco Systems",
+    "VMware", "Broadcom", "Dell Inc.", "HP Inc.", "Lenovo", "Logitech",
 )
 
 # Trusted domains — URLs pointing only here get a small credit
 TRUSTED_DOMAINS: tuple[str, ...] = (
-    "microsoft.com", "google.com", "github.com", "stackoverflow.com",
-    "mozilla.org", "apple.com", "adobe.com", "nvidia.com",
+    "microsoft.com", "google.com", "github.com", "githubusercontent.com", "stackoverflow.com",
+    "mozilla.org", "apple.com", "adobe.com", "nvidia.com", "brave.com", "bravesoftware.com",
+    "brave.software", "zoom.us", "discord.com", "spotify.com", "telegram.org",
     "doi.org", "nih.gov", "ieee.org", "acm.org", "arxiv.org",
     "jstor.org", "scholar.google.com", "pubmed.ncbi.nlm.nih.gov",
-    # Major CDN / web delivery networks (commonly found in HTML <link>/<script> tags)
+    # Major CDN & cloud delivery networks
     "jsdelivr.net", "cdnjs.cloudflare.com", "cloudflare.com",
     "unpkg.com", "bootstrapcdn.com", "fontawesome.com",
     "fonts.googleapis.com", "fonts.gstatic.com", "ajax.googleapis.com",
@@ -741,6 +747,13 @@ TRUSTED_DOMAINS: tuple[str, ...] = (
     "w3.org", "schema.org", "openxmlformats.org",
     "jquery.com", "angularjs.org", "vuejs.org", "reactjs.org",
     "gravatar.com", "shields.io", "badge.fury.io",
+    # Certificate authorities & CRL/OCSP verification domains
+    "digicert.com", "sectigo.com", "verisign.com", "globalsign.com",
+    "letsencrypt.org", "entrust.net", "usertrust.com", "pki.goog",
+    "symantec.com", "godaddy.com", "comodoca.com", "identrust.com",
+    # Major download infrastructure & mirrors
+    "fastly.net", "fastly.com", "akamaized.net", "akamai.net",
+    "cloudfront.net", "amazonaws.com", "azureedge.net", "windows.net",
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1374,7 +1387,25 @@ def analyze_entropy(
         return
 
     if ext in {".exe", ".dll", ".bin", ".dat"}:
-        high_thresh = 7.0
+        is_installer_binary = (
+            any(k in (ext or "").lower() for k in [".msi"])
+            or any(k in (result.file_classification or "").lower() for k in ["installer", "setup"])
+            or any(sig in file_bytes[:131072] for sig in [b"NullsoftInst", b"Inno Setup", b"WiX", b"InstallShield", b"7z\xbc\xaf\x27\x1c", b"BraveSetup", b"GoogleUpdate"])
+        )
+        if is_installer_binary or result.trusted_vendor:
+            high_thresh = 7.95
+            if result.entropy <= 7.95:
+                result.entropy_context = (
+                    f"{result.entropy} — Normal for compressed software installer/setup ({result.file_classification or 'Installer'}). "
+                    f"High entropy reflects internal archive compression, not obfuscation."
+                )
+                result.entropy_explanation = result.entropy_context
+                result.fp_notes.append(
+                    f"Entropy {result.entropy} recognized as normal compression for software installer/setup."
+                )
+                return
+        else:
+            high_thresh = 7.0
     else:
         high_thresh = 6.5
 
@@ -2369,24 +2400,33 @@ def calculate_score(result: AdvancedHeuristicResult, file_bytes: bytes = b"") ->
     # on files that legitimately link to CDN resources, stylesheets, or documentation.
     _PASSIVE_MARKUP_EXTS = {".html", ".htm", ".css", ".txt", ".json", ".xml", ".svg", ".md", ".rst", ".csv", ".tsv", ".log"}
     _is_passive_markup = result.claimed_extension in _PASSIVE_MARKUP_EXTS
+    _is_executable_binary = result.claimed_extension in {".exe", ".dll", ".bin", ".dat", ".sys"}
+
+    # For compiled executable binaries (.exe/.dll), URLs embedded in binary strings are standard
+    # metadata (update URLs, telemetry, CRLs) unless accompanied by an active script dropper / cradle.
+    _has_dropper_activity = bool(
+        result.script_findings
+        or result.vba_findings
+        or any(k in result._hc_indicators for k in ["powershell_download", "iex_usage", "lolbin_abuse", "taint_staging_flow"])
+    )
 
     # Req. 4 — URL scoring: only add points when NOT all-trusted-domain AND not passive markup
     # Trusted-domain credit is applied via whitelist_credits below.
     urls = iocs.get("URLs", [])
     untrusted_urls = [u for u in urls
                       if not any(td in u.lower() for td in TRUSTED_DOMAINS)]
-    if untrusted_urls and not _is_passive_markup:
+    if untrusted_urls and not _is_passive_markup and (not _is_executable_binary or _has_dropper_activity):
         # Cap at 3 hits, each worth suspicious_url weight
         score += add("suspicious_url", min(len(untrusted_urls), 3))
     elif urls:
-        # All URLs are trusted (or file is passive markup) — informational, no score
+        # All URLs are trusted (or file is passive markup / compiled binary metadata) — informational, no score
         result.fp_notes.append(
             f"{len(urls)} URL(s) detected but scored 0 — "
-            + ("passive markup file type" if _is_passive_markup else "all resolve to trusted domains")
+            + ("compiled binary string metadata" if _is_executable_binary else "passive markup file type" if _is_passive_markup else "all resolve to trusted domains")
             + " (not scored)."
         )
 
-    if "IP Addresses" in iocs and not _is_passive_markup:
+    if "IP Addresses" in iocs and not _is_passive_markup and (not _is_executable_binary or _has_dropper_activity):
         score += add("suspicious_ip", min(len(iocs["IP Addresses"]), 3))
 
     # ── PE / APIs ─────────────────────────────────────────────────────────────

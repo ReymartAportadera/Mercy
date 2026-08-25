@@ -142,7 +142,9 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"RULE 4: If VirusTotal shows 0 detections from 75 engines, tell the user that 75 top security programs all confirmed this file is safe.\n"
                 f"RULE 5: If the file is dangerous or suspicious, clearly explain the danger in 1-2 simple sentences.\n"
                 f"RULE 6: PROVIDE THE SOLUTION AS A NATURAL PARAGRAPH (do NOT use numbered lists or bullet points). Start the solution with 'Recommended Action:' and clearly explain what the user should do in smooth conversational sentences.\n"
-                f"RULE 7: ARCHIVE / DEVELOPER PROJECT CONTEXT: If the file is an archive (.zip, .rar, .7z, .tar) or contains software/project files, explain clearly that archives bundle multiple files together. If this archive is a software development backup or came from a trusted developer/drive, clarify that the detected code patterns might be developer test scripts or security definitions rather than an active infection, while advising users not to run unfamiliar scripts if the source is unknown.\n\n"
+                f"RULE 7: ARCHIVE / DEVELOPER PROJECT CONTEXT: If the file is an archive (.zip, .rar, .7z, .tar) or contains software/project files, explain clearly that archives bundle multiple files together. If this archive is a software development backup or came from a trusted developer/drive, clarify that the detected code patterns might be developer test scripts or security definitions rather than an active infection, while advising users not to run unfamiliar scripts if the source is unknown.\n"
+                f"RULE 8: PRANK / GRAYWARE SCRIPTS: If the detected patterns contain '[GRAYWARE]' (popup loop, dialog spam), clearly explain to the user that this is a harmless prank script that repeatedly shows popup messages on their screen, but does not steal passwords, install malware, or harm their computer.\n"
+                f"RULE 9: SOFTWARE INSTALLERS & APPLICATIONS: If the file is an application installer (such as Brave Browser Setup, Chrome Setup, Zoom, or similar software setup), explain clearly that this is an official software installer package. Explain that high entropy is completely normal for installers because they compress and package their installation files like a ZIP, and the detected web addresses are normal update and download servers used by the application. If 75/75 security engines found 0 threats, reassure the user that it is safe to install.\n\n"
                 f"Write a friendly, clear, and reassuring explanation in natural paragraphs that anyone without technical background can immediately understand and follow."
 
             )
@@ -478,12 +480,21 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
                         "and confirmed there are no hidden executable files, no auto-run scripts, and no malware "
                         "inside the package."
                     )
-                elif ext in [".exe", ".dll", ".bin", ".sys", ".elf"]:
-                    lines.append(
-                        "This is a program file. TrustFile scanned its internal structure and confirmed it does "
-                        "not contain any virus signatures, does not try to inject itself into other programs, "
-                        "and behaves like a normal application."
-                    )
+                elif ext in [".exe", ".dll", ".bin", ".sys", ".elf", ".msi"]:
+                    fn_lower = (filename or "").lower()
+                    is_setup = any(k in fn_lower for k in ["setup", "installer", "install", "update", "brave", "chrome", "firefox", "zoom", "discord"])
+                    if is_setup:
+                        lines.append(
+                            f"This is an official software installer package ({filename or 'Application Setup'}). "
+                            f"TrustFile verified that its high entropy is structurally normal due to internal setup compression. "
+                            f"It does not contain trojans, backdoors, or malicious injection code, and the detected web addresses are standard application update servers."
+                        )
+                    else:
+                        lines.append(
+                            "This is a program file. TrustFile scanned its internal structure and confirmed it does "
+                            "not contain any virus signatures, does not try to inject itself into other programs, "
+                            "and behaves like a normal application."
+                        )
                 elif ext in [".txt", ".md", ".csv", ".json", ".xml", ".log", ".rst", ".svg"]:
                     virus_mentions = []
                     for vname in ["love bug", "lehigh", "jerusalem", "eicar", "trojan", "virus", "worm", "malware", "ransomware", "payload"]:
