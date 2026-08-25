@@ -1669,6 +1669,7 @@ def guest_upload_api():
             risk_score=risk_score,
             file_content=guest_content_snip,
             filename=filename,
+            is_eicar=scan_res.get("is_eicar", False),
         )
     except Exception as exc:
         logger.warning("Guest scan - AI analysis error: %s", exc)
@@ -2093,6 +2094,7 @@ def scan(file_id):
                 risk_score=file_meta["risk_score"],
                 file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
                 filename=file_meta.get("filename", ""),
+                is_eicar=file_meta.get("is_eicar", offline_cache.get("is_eicar", False)),
             )
             file_meta["ai_analysis"] = results["ai_analysis"]
             file_meta["explanation"] = generate_explanation(file_meta)
@@ -2201,6 +2203,7 @@ def scan(file_id):
                 risk_score=_cur_risk,
                 file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
                 filename=file_meta.get("filename", ""),
+                is_eicar=file_meta.get("is_eicar", False),
             )
             file_meta["ai_analysis"] = ai_data
             file_meta["explanation"] = _extract_ai_text(ai_data)
@@ -3047,6 +3050,7 @@ def auto_scan_api():
             risk_score=final_risk,
             file_content=ai_content_snip,
             filename=filename,
+            is_eicar=heuristic_res.get("is_eicar", False),
         )
         
         return jsonify({

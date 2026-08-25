@@ -33,9 +33,10 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
     api_key = _get_gemini_api_key() or GEMINI_API_KEY
     pat_str = str(patterns or "").lower()
 
-    # EICAR shortcut: only fire when the heuristic engine explicitly confirmed actual EICAR
-    # binary signature — not just a mention of 'eicar' found in source code patterns.
-    if is_eicar:
+    # EICAR shortcut: fire when the heuristic engine explicitly confirmed actual EICAR
+    # binary signature or when EICAR detection patterns are present.
+    is_eicar_confirmed = is_eicar or any(k in pat_str for k in ["eicar test", "eicar standard", "av test signature", "eicar signature"])
+    if is_eicar_confirmed:
         is_zip = any(k in (filename or "").lower() for k in [".zip", ".rar", ".7z", ".tar", ".gz", ".cab"])
         nested_note = " TrustFile successfully unpacked the archive layers in computer memory and detected the test signature hidden deep inside the nested archive." if is_zip else ""
         txt = (
@@ -371,7 +372,9 @@ def analyze_file_ai_local(entropy, patterns, imports, risk_score, file_content: 
     Analyze a file using local rule-based intelligence.
     Returns a multi-sentence assessment string.
     """
-    if is_eicar:
+    pat_str = str(patterns or "").lower()
+    is_eicar_confirmed = is_eicar or any(k in pat_str for k in ["eicar test", "eicar standard", "av test signature", "eicar signature"])
+    if is_eicar_confirmed:
         is_zip = any(k in (filename or "").lower() for k in [".zip", ".rar", ".7z", ".tar", ".gz", ".cab"])
         nested_note = " TrustFile successfully unpacked the archive layers in computer memory and detected the test signature hidden deep inside the nested archive." if is_zip else ""
         txt = (
