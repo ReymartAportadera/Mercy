@@ -2173,6 +2173,9 @@ def scan(file_id):
         _is_gw = "[grayware]" in str(file_meta.get("pattern_result", "")).lower() or "[grayware]" in str(file_meta.get("signature_status", "")).lower()
         _gw_mismatch = _is_gw and "NUISANCE" not in _ai_txt
 
+        _is_eicar_file = "EICAR" in str(file_meta.get("pattern_result", "")).upper() or file_meta.get("is_eicar", False) or "AV TEST SIGNATURE" in str(file_meta.get("pattern_result", "")).upper()
+        _eicar_needs_expansion = _is_eicar_file and "WHAT IS EICAR?" not in _ai_txt
+
         import re as _re_sc
         _sc_match = _re_sc.search(r"THREAT SCORE:\s*(\d+)/100", _ai_txt)
         _sc_mismatch = _sc_match and int(_sc_match.group(1)) != _cur_risk
@@ -2194,6 +2197,8 @@ def scan(file_id):
             or (isinstance(ai_data, str) and not ai_data.strip())
             or _ai_contradicts
             or _is_generic_placeholder
+            or _eicar_needs_expansion
+            or request.args.get("refresh") == "1"
         )
         if file_bytes or _needs_refresh:
             ai_data = analyze_file_ai(
@@ -2203,7 +2208,7 @@ def scan(file_id):
                 risk_score=_cur_risk,
                 file_content=_get_safe_ai_content_snippet(file_meta.get("filename", ""), file_bytes or b""),
                 filename=file_meta.get("filename", ""),
-                is_eicar=file_meta.get("is_eicar", False),
+                is_eicar=_is_eicar_file,
             )
             file_meta["ai_analysis"] = ai_data
             file_meta["explanation"] = _extract_ai_text(ai_data)
