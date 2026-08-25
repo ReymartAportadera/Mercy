@@ -94,33 +94,53 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
             # not just THAT it was raised.
             fn_lower = (filename or "").lower()
             ext = "." + fn_lower.rsplit(".", 1)[-1] if "." in fn_lower else ""
-            is_exe    = ext in {".exe", ".dll", ".sys", ".bin", ".msi"}
-            is_zip    = ext in {".zip", ".rar", ".7z", ".tar", ".gz", ".cab"}
-            is_script = ext in {".ps1", ".vbs", ".bat", ".cmd", ".js", ".py"}
-            is_doc    = ext in {".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt", ".docm", ".xlsm"}
-            is_text   = ext in {".txt", ".csv", ".json", ".xml", ".log", ".md"}
+
+            # ── File-type category detection (mirrors advanced_heuristics.py sets) ──
+            is_pe_binary   = ext in {".exe", ".dll", ".scr", ".com", ".cpl"}       # Portable Executable — runnable programs
+            is_sys_binary  = ext in {".sys", ".drv", ".ocx", ".ax", ".efi"}        # Kernel/driver/firmware — deepest system level
+            is_archive     = ext in {".zip", ".rar", ".7z", ".tar", ".gz", ".tgz",
+                                     ".bz2", ".tbz2", ".xz", ".cab", ".tar.gz"}    # Compressed archives
+            is_container   = ext in {".apk", ".ipa", ".jar", ".appx", ".msix",
+                                     ".war", ".ear", ".aab"}                        # App/package containers
+            is_disk_image  = ext in {".iso", ".img", ".vhd", ".vhdx", ".vmdk",
+                                     ".vdi", ".dmg", ".bin", ".nrg"}               # Disk/VM images
+            is_script      = ext in {".ps1", ".psm1", ".psd1", ".vbs", ".vbe",
+                                     ".bat", ".cmd", ".js", ".jse", ".hta", ".wsf",
+                                     ".sh", ".bash", ".py", ".pyw", ".rb", ".pl",
+                                     ".lua", ".php", ".reg", ".inf", ".wsh"}       # Interpreted/scripting
+            is_doc_xml     = ext in {".docx", ".xlsx", ".pptx", ".docm", ".xlsm",
+                                     ".pptm", ".dotx", ".odt", ".ods", ".odp"}     # Modern XML Office
+            is_doc_ole     = ext in {".doc", ".xls", ".ppt", ".dot", ".xlt"}       # Legacy OLE Office
+            is_text        = ext in {".txt", ".csv", ".json", ".xml", ".log",
+                                     ".md", ".rst", ".html", ".htm", ".css", ".svg"}
+            is_pdf         = ext in {".pdf"}
 
             _PLAIN_FLAG_MAP = {
-                "process_injection_api":     "The program contains code that can secretly insert itself into other running programs on the computer.",
-                "credential_api":            "The program contains code that can read saved passwords or login information.",
-                "ransomware_api":            "The program contains code that can lock and encrypt (scramble) files on the computer.",
-                "anti_debug":                "The program is designed to hide itself when security tools try to inspect it.",
-                "powershell_download":       "A script was found that can silently download files from the internet.",
-                "lolbin_abuse":              "Built-in Windows tools are being used in an unusual way, which is a technique used to avoid detection.",
-                "suspicious_url":            "Web addresses were found that are not associated with any known trusted company or service.",
-                "suspicious_ip":             "Raw network addresses were found that could be used to contact a remote server.",
-                "vba_macro":                 "An automatic script (macro) was found inside the document that runs when the file is opened.",
-                "has_vba_project":           "This document contains an embedded program (macro) that executes automatically when opened.",
-                "obfuscated_script":         "Part of the file's code appears to be scrambled or hidden to avoid inspection.",
-                "packed_executable":         "The program is wrapped inside a compressor/wrapper, which is sometimes used to hide malicious code.",
-                "embedded_executable":       "An executable program was found hidden inside this file.",
-                "type_mismatch":             "The file claims to be one type but its actual content is different — a technique used to disguise malware.",
-                "double_extension":          "The filename has two extensions (e.g. 'photo.jpg.exe') which is a common trick to hide that it is actually a program.",
-                "windows_persistence_lotl":  "The file contains instructions to automatically restart or re-run itself every time the computer starts.",
-                "obfuscated_loader_exec_pattern": "The file contains hidden code that appears designed to silently load and run additional programs.",
-                "av_test_signature":         "A known antivirus test pattern (EICAR) was detected inside this file.",
-                "dynamic_exec_var":          "The script builds and runs commands dynamically at runtime, which is a technique used to evade detection.",
-                "taint_staging_flow":        "The script downloads and immediately executes code from the internet — a classic malware delivery chain.",
+                "process_injection_api":          "The program contains code that can secretly insert itself into other running programs on the computer.",
+                "credential_api":                 "The program contains code that can read saved passwords or login credentials from the system.",
+                "ransomware_api":                 "The program contains code that can lock and scramble (encrypt) files, which is how ransomware works.",
+                "anti_debug":                     "The program is designed to detect and hide from security scanning tools.",
+                "powershell_download":            "A command was found that can silently download files from the internet.",
+                "lolbin_abuse":                   "Built-in Windows tools are being used in an unusual way to avoid triggering standard security alerts.",
+                "suspicious_url":                 "Web addresses were found that do not belong to any known trusted company or service.",
+                "suspicious_ip":                  "Direct network server addresses (IP addresses) were found that could be used to contact a remote attacker's server.",
+                "vba_macro":                      "An automatic script (macro) was found inside the document that runs when the file is opened.",
+                "has_vba_project":                "This document contains an embedded program (macro) that can execute automatically when opened.",
+                "has_macrosheet":                 "This spreadsheet contains a hidden macro sheet that can run commands when the file is opened in Excel.",
+                "obfuscated_script":              "Part of the file's code has been deliberately scrambled or hidden to avoid inspection.",
+                "packed_executable":              "This program is wrapped inside a compression layer, a technique sometimes used to hide malicious code from scanners.",
+                "embedded_executable":            "A runnable program file was found hidden inside this file.",
+                "type_mismatch":                  "This file claims to be one type but is actually a different type — a common technique used to disguise malware.",
+                "double_extension":               "The filename uses a double extension (e.g. 'invoice.pdf.exe') which is used to disguise executable programs as safe files.",
+                "windows_persistence_lotl":       "The file contains code to make itself start automatically every time the computer is turned on.",
+                "obfuscated_loader_exec_pattern": "Hidden code was found that appears designed to silently load and run additional programs.",
+                "av_test_signature":              "A known antivirus test string (EICAR) was detected — this is used to test antivirus software, not an actual virus.",
+                "dynamic_exec_var":               "The file builds and runs commands dynamically while running, a technique commonly used to hide malicious intent.",
+                "taint_staging_flow":             "The file downloads code from the internet and immediately runs it — a classic malware delivery technique.",
+                "office_remote_template":         "This document is set to automatically load its template from a remote internet server when opened.",
+                "office_external_rel":            "This document has links pointing to external servers that load content automatically when opened.",
+                "polyglot_file":                  "This file is valid as two different file types simultaneously — an advanced technique used by sophisticated malware.",
+                "appended_payload":               "Extra data was found appended to the end of this file that does not belong to its normal structure.",
             }
 
             plain_flags = []
@@ -129,40 +149,101 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 if key in pat_lower_check:
                     plain_flags.append(plain_text)
 
-            # Build file-type-aware flag context for the AI
-            if plain_flags and risk_val >= 16:
-                file_type_label = (
-                    "executable program (.exe/.dll)" if is_exe else
-                    "compressed archive (.zip/.rar/.7z)" if is_zip else
-                    "script file (.ps1/.vbs/.bat)" if is_script else
-                    "Office document (.docx/.xlsx)" if is_doc else
-                    "text/data file (.txt/.json/.csv)" if is_text else
-                    f"file ({ext or 'unknown type'})"
+            # ── File-type-aware context sentence ─────────────────────────────
+            if is_pe_binary:
+                file_type_label = "executable program (.exe / .dll / .scr)"
+                type_context = (
+                    "Executable programs (.exe, .dll) legitimately use many of the same code patterns as malware — "
+                    "browsers, games, and update tools all use network code, memory management, and system calls. "
+                    "Whether a flag is serious depends entirely on whether the program came from a trusted source. "
+                    "If you downloaded this from the official developer website and it has a valid digital signature, "
+                    "these detections are most likely normal program behavior, not malware."
                 )
+            elif is_sys_binary:
+                file_type_label = "system binary / driver (.sys / .drv / .efi)"
+                type_context = (
+                    "Driver and system binary files operate at the deepest level of your computer — they have direct "
+                    "access to hardware, memory, and the operating system kernel. Legitimate drivers from hardware "
+                    "manufacturers (graphics cards, network adapters, printers) do use low-level system functions. "
+                    "However, malicious drivers are extremely dangerous because they can hide from all other security tools. "
+                    "A driver file should only come from the hardware manufacturer's official website or Windows Update."
+                )
+            elif is_archive:
+                file_type_label = "compressed archive (.zip / .rar / .7z / .tar)"
+                type_context = (
+                    "An archive file is just a container — like an envelope. It cannot do anything on its own. "
+                    "The risk entirely depends on what files are INSIDE the archive. "
+                    "TrustFile scanned the contents and found the patterns listed above inside the bundled files. "
+                    "If this archive contains software development files or security research tools, "
+                    "some flags may be from legitimate code rather than active malware."
+                )
+            elif is_container:
+                file_type_label = "application container / package (.apk / .jar / .appx)"
+                type_context = (
+                    "Application packages are ZIP-based containers that bundle an entire app together. "
+                    "They contain code, resources, and configuration files. Legitimate apps also use network "
+                    "connections, storage access, and system APIs — these are normal app behaviors. "
+                    "The flags found refer to what the app code is capable of doing, not necessarily what it will do. "
+                    "Only install app packages from official app stores or the developer's verified website."
+                )
+            elif is_disk_image:
+                file_type_label = "disk image / virtual machine image (.iso / .img / .vhd / .vmdk)"
+                type_context = (
+                    "A disk image is a complete snapshot of a storage device — it can contain an entire operating "
+                    "system, programs, and files. The flags were found inside content mounted from the image. "
+                    "Disk images from official sources (operating system ISOs from Microsoft, Ubuntu, etc.) are safe. "
+                    "Disk images from unknown sources should be treated with extreme caution as they can contain "
+                    "pre-installed malware that activates the moment the image is booted or mounted."
+                )
+            elif is_script:
+                file_type_label = "script file (.ps1 / .vbs / .bat / .py / .js / .sh)"
+                type_context = (
+                    "Script files are directly executable instructions. Unlike compiled programs, their code is "
+                    "human-readable text — and TrustFile reads every line. The patterns found in this script "
+                    "are genuine capabilities the script will carry out when run. Scripts used by IT administrators, "
+                    "developers, and automation tools do use these same techniques legitimately. "
+                    "The key question is: do you know who wrote this script and why?"
+                )
+            elif is_doc_xml or is_doc_ole:
+                file_type_label = "Office document (.docx / .xlsx / .doc / .xls)"
+                type_context = (
+                    "Office documents can contain embedded macros (small programs that run automatically when the file "
+                    "is opened). Legitimate business documents sometimes use macros for automation, but malware also "
+                    "commonly spreads through malicious macros. If you were not expecting a document with macros from "
+                    "this sender, treat it with caution and do not click 'Enable Macros' unless you are certain it is safe."
+                )
+            elif is_pdf:
+                file_type_label = "PDF document (.pdf)"
+                type_context = (
+                    "PDF files can contain embedded JavaScript, links, and in rare cases, exploits targeting PDF readers. "
+                    "Most PDFs are completely safe. A flag on a PDF usually means embedded code or external links were "
+                    "detected. If this PDF came from an official source (bank statement, invoice, official form), it is "
+                    "almost certainly safe."
+                )
+            elif is_text:
+                file_type_label = "text / data file (.txt / .html / .json / .csv)"
+                type_context = (
+                    "Text and data files cannot execute code on their own. They are purely passive — like a printed page. "
+                    "Any flags detected on a text file are almost certainly false positives caused by the scanner finding "
+                    "suspicious-looking words or patterns in the text content. "
+                    "Reading or opening a text file poses no security risk to your computer."
+                )
+            else:
+                file_type_label = f"file ({ext or 'unknown type'})"
+                type_context = "Review the file type and source carefully before opening."
+
+            # Build final context block for the AI
+            if plain_flags and risk_val >= 16:
                 plain_flag_context = (
-                    f"\n=== WHY THIS FILE WAS FLAGGED (Plain English for the AI to use) ===\n"
-                    f"File type: {file_type_label}\n"
-                    f"The heuristic engine flagged this {file_type_label} for the following reasons:\n"
+                    f"\n=== WHY THIS FILE WAS FLAGGED (Plain English — AI must use this in the explanation) ===\n"
+                    f"File category: {file_type_label}\n"
+                    f"The heuristic engine flagged this {file_type_label} because:\n"
                     + "\n".join(f"  • {f}" for f in plain_flags)
-                    + f"\n\nIMPORTANT CONTEXT FOR AI: A '{file_type_label}' being flagged for these reasons means:\n"
-                    + (
-                        "  - For .exe/.dll: These code patterns exist in the binary. Whether they are malicious depends entirely on whether this is a legitimate program or not. "
-                        "If it came from a trusted official source (e.g. the developer's own website) and has a valid digital signature, these patterns are likely normal program behavior."
-                        if is_exe else
-                        "  - For .zip/.rar: The scanner found suspicious files INSIDE the archive. The archive itself is just a container — the risk depends on what is inside."
-                        if is_zip else
-                        "  - For scripts (.ps1/.vbs/.bat): Script files that contain these patterns are genuinely capable of carrying out the described actions when run."
-                        if is_script else
-                        "  - For Office documents: Macros embedded in documents can run automatically and carry out these actions when the file is opened in Word/Excel."
-                        if is_doc else
-                        "  - For text/data files: These flags are almost certainly false positives. Text files cannot execute code or carry out any of these actions."
-                        if is_text else
-                        "  - Use the file type and score together to decide how serious this flag is."
-                    )
-                    + "\n"
+                    + f"\n\nFile-type context the AI MUST explain to the user:\n  {type_context}\n"
                 )
             else:
                 plain_flag_context = ""
+
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
 
