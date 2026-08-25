@@ -88,8 +88,84 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
 
             verdict_label = "Critical Threat" if risk_val >= 81 else "High Risk" if risk_val >= 56 else "Medium Risk" if risk_val >= 36 else "Low Risk" if risk_val >= 16 else "Benign"
 
+            # ── Plain-English Flag Translation ────────────────────────────────
+            # Converts raw internal pattern names into human-readable explanations
+            # so the AI understands WHY a flag was raised for this file type,
+            # not just THAT it was raised.
+            fn_lower = (filename or "").lower()
+            ext = "." + fn_lower.rsplit(".", 1)[-1] if "." in fn_lower else ""
+            is_exe    = ext in {".exe", ".dll", ".sys", ".bin", ".msi"}
+            is_zip    = ext in {".zip", ".rar", ".7z", ".tar", ".gz", ".cab"}
+            is_script = ext in {".ps1", ".vbs", ".bat", ".cmd", ".js", ".py"}
+            is_doc    = ext in {".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt", ".docm", ".xlsm"}
+            is_text   = ext in {".txt", ".csv", ".json", ".xml", ".log", ".md"}
+
+            _PLAIN_FLAG_MAP = {
+                "process_injection_api":     "The program contains code that can secretly insert itself into other running programs on the computer.",
+                "credential_api":            "The program contains code that can read saved passwords or login information.",
+                "ransomware_api":            "The program contains code that can lock and encrypt (scramble) files on the computer.",
+                "anti_debug":                "The program is designed to hide itself when security tools try to inspect it.",
+                "powershell_download":       "A script was found that can silently download files from the internet.",
+                "lolbin_abuse":              "Built-in Windows tools are being used in an unusual way, which is a technique used to avoid detection.",
+                "suspicious_url":            "Web addresses were found that are not associated with any known trusted company or service.",
+                "suspicious_ip":             "Raw network addresses were found that could be used to contact a remote server.",
+                "vba_macro":                 "An automatic script (macro) was found inside the document that runs when the file is opened.",
+                "has_vba_project":           "This document contains an embedded program (macro) that executes automatically when opened.",
+                "obfuscated_script":         "Part of the file's code appears to be scrambled or hidden to avoid inspection.",
+                "packed_executable":         "The program is wrapped inside a compressor/wrapper, which is sometimes used to hide malicious code.",
+                "embedded_executable":       "An executable program was found hidden inside this file.",
+                "type_mismatch":             "The file claims to be one type but its actual content is different — a technique used to disguise malware.",
+                "double_extension":          "The filename has two extensions (e.g. 'photo.jpg.exe') which is a common trick to hide that it is actually a program.",
+                "windows_persistence_lotl":  "The file contains instructions to automatically restart or re-run itself every time the computer starts.",
+                "obfuscated_loader_exec_pattern": "The file contains hidden code that appears designed to silently load and run additional programs.",
+                "av_test_signature":         "A known antivirus test pattern (EICAR) was detected inside this file.",
+                "dynamic_exec_var":          "The script builds and runs commands dynamically at runtime, which is a technique used to evade detection.",
+                "taint_staging_flow":        "The script downloads and immediately executes code from the internet — a classic malware delivery chain.",
+            }
+
+            plain_flags = []
+            pat_lower_check = pat_val.lower()
+            for key, plain_text in _PLAIN_FLAG_MAP.items():
+                if key in pat_lower_check:
+                    plain_flags.append(plain_text)
+
+            # Build file-type-aware flag context for the AI
+            if plain_flags and risk_val >= 16:
+                file_type_label = (
+                    "executable program (.exe/.dll)" if is_exe else
+                    "compressed archive (.zip/.rar/.7z)" if is_zip else
+                    "script file (.ps1/.vbs/.bat)" if is_script else
+                    "Office document (.docx/.xlsx)" if is_doc else
+                    "text/data file (.txt/.json/.csv)" if is_text else
+                    f"file ({ext or 'unknown type'})"
+                )
+                plain_flag_context = (
+                    f"\n=== WHY THIS FILE WAS FLAGGED (Plain English for the AI to use) ===\n"
+                    f"File type: {file_type_label}\n"
+                    f"The heuristic engine flagged this {file_type_label} for the following reasons:\n"
+                    + "\n".join(f"  • {f}" for f in plain_flags)
+                    + f"\n\nIMPORTANT CONTEXT FOR AI: A '{file_type_label}' being flagged for these reasons means:\n"
+                    + (
+                        "  - For .exe/.dll: These code patterns exist in the binary. Whether they are malicious depends entirely on whether this is a legitimate program or not. "
+                        "If it came from a trusted official source (e.g. the developer's own website) and has a valid digital signature, these patterns are likely normal program behavior."
+                        if is_exe else
+                        "  - For .zip/.rar: The scanner found suspicious files INSIDE the archive. The archive itself is just a container — the risk depends on what is inside."
+                        if is_zip else
+                        "  - For scripts (.ps1/.vbs/.bat): Script files that contain these patterns are genuinely capable of carrying out the described actions when run."
+                        if is_script else
+                        "  - For Office documents: Macros embedded in documents can run automatically and carry out these actions when the file is opened in Word/Excel."
+                        if is_doc else
+                        "  - For text/data files: These flags are almost certainly false positives. Text files cannot execute code or carry out any of these actions."
+                        if is_text else
+                        "  - Use the file type and score together to decide how serious this flag is."
+                    )
+                    + "\n"
+                )
+            else:
+                plain_flag_context = ""
 
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+
 
             # Entropy context note — tell AI explicitly not to cite entropy for compressed containers
             entropy_note = (
@@ -145,7 +221,8 @@ def analyze_file_ai(entropy, patterns, imports, risk_score, file_content: str = 
                 f"- Detected Patterns: {pat_val}\n"
                 f"- Risky Imports / APIs: {imp_val}\n"
                 f"{vt_note}"
-                f"{content_section}\n"
+                f"{content_section}"
+                f"{plain_flag_context}\n"
                 f"=== RULES (STRICTLY ENFORCED) ===\n"
                 f"RULE 1: Your response MUST reflect the engine verdict '{verdict_label}' and score {risk_val}/100 exactly. "
                 f"NEVER say 'Critical' if the score is below 81. NEVER say 'High Risk' if the score is below 56.\n"
