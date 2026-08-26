@@ -553,8 +553,9 @@ async function startScan() {
 
         if (hashResp.ok) {
           const data = await hashResp.json();
-          if (data && data.file_id) {
-            allScanRecords.push(data);
+          if (data && (data.file_id || data.id)) {
+            data.id = data.file_id || data.id;
+            addScanRecord(data);
           }
         }
       } catch (err) {
