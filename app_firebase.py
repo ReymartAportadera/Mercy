@@ -1381,7 +1381,9 @@ def _upload_single_file_impl():
             if vt_total and vt_pos:
                 risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
             elif (vt_total >= 20 or len(vt_result.get("scans", {})) >= 20) and vt_pos == 0:
-                has_active_threat = any(k in str(pattern_result).lower() or k in str(heuristics).lower() for k in [
+                _pat = str(scan_res.get("pattern_result", "")).lower()
+                _heur = str(scan_res.get("heuristics", [])).lower()
+                has_active_threat = any(k in _pat or k in _heur for k in [
                     "persistence mechanism", "invoke-expression", "obfuscated loader", "obfuscated execution",
                     "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
                 ])
@@ -1390,7 +1392,7 @@ def _upload_single_file_impl():
                     # cap internal heuristic risk score at maximum of LOW (30%).
                     # BUT: grayware scores (prank/nuisance) must keep a minimum floor of 10
                     # so the AI can correctly explain the nuisance behavior.
-                    is_grayware = "[grayware]" in str(pattern_result).lower()
+                    is_grayware = "[grayware]" in _pat
                     if risk_score > 30:
                         risk_score = 30
                     else:
@@ -1576,6 +1578,7 @@ def scan_hash_api():
 
 # ── Guest Quick Scan (No Login Required — Temporary Session Only) ───────────
 @app.route("/guest_scan", methods=["GET"])
+@app.route("/guest-scan", methods=["GET"])
 def guest_scan_page():
     guest_id = session.get("guest_id")
     if not guest_id:
@@ -1634,7 +1637,9 @@ def guest_upload_api():
         if vt_total and vt_pos:
             risk_score = max(risk_score, int((vt_pos / vt_total) * 100))
         elif (vt_total >= 20 or len(vt_result.get("scans", {})) >= 20) and vt_pos == 0:
-            has_active_threat = any(k in str(pattern_result).lower() or k in str(heuristics).lower() for k in [
+            _pat = str(scan_res.get("pattern_result", "")).lower()
+            _heur = str(scan_res.get("heuristics", [])).lower()
+            has_active_threat = any(k in _pat or k in _heur for k in [
                 "persistence mechanism", "invoke-expression", "obfuscated loader", "obfuscated execution",
                 "amsi bypass", "uac bypass", "shadow copy deletion", "php shell execution", "powershell download"
             ])
@@ -1642,7 +1647,7 @@ def guest_upload_api():
                 # When VirusTotal reports 0 detections across 20+ engines,
                 # cap internal heuristic risk score at maximum of LOW (30%).
                 # BUT: grayware scores must keep a minimum floor of 10.
-                is_grayware = "[grayware]" in str(pattern_result).lower()
+                is_grayware = "[grayware]" in _pat
                 if risk_score > 30:
                     risk_score = 30
                 else:
