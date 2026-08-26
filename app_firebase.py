@@ -837,7 +837,7 @@ def handle_csrf_error(error):
 def internal_server_error(error):
     logger.exception("500 Internal Server Error handled: %s", error)
     flash("A temporary server issue occurred. You can use Quick Scan while we resolve it.")
-    return redirect(url_for("guest_scan"))
+    return redirect(url_for("guest_scan_page"))
 
 
 
