@@ -2829,6 +2829,67 @@ def history_day(date):
 
     return render_template("history_day.html", files=day_files, date=date, day_label=day_label)
 
+# ── Activity Monitor (Monitor Account Only) ────────────────────────────────────
+MONITOR_EMAIL = "trustfile@gmail.com"
+
+@app.route("/monitor")
+@login_required
+def monitor():
+    if current_user.email != MONITOR_EMAIL:
+        flash("Access denied. This page is restricted.", "error")
+        return redirect(url_for("dashboard"))
+
+    from firebase_admin import db as fdb
+    all_users = []
+    total_files = 0
+    active_count = 0
+
+    try:
+        users_data = fdb.reference("users").get() or {}
+        files_data = fdb.reference("uploaded_files").get() or {}
+
+        # Count files per user
+        file_counts = {}
+        for fid, fval in files_data.items():
+            if isinstance(fval, dict):
+                uid = fval.get("user_id", "")
+                if uid:
+                    file_counts[uid] = file_counts.get(uid, 0) + 1
+            total_files += 1
+
+        for uid, u in users_data.items():
+            if not isinstance(u, dict):
+                continue
+            email = u.get("email", "")
+            # Skip the monitor account itself and test accounts
+            if email == MONITOR_EMAIL or "audit" in email or "pwtest" in email or "verificationscan" in email:
+                continue
+            fc = file_counts.get(uid, 0)
+            if fc > 0:
+                active_count += 1
+            created = u.get("createdAt", u.get("created_at", "N/A"))
+            all_users.append({
+                "email": email,
+                "username": u.get("username", "N/A"),
+                "created_at": created,
+                "file_count": fc
+            })
+
+        # Sort: active users first
+        all_users.sort(key=lambda x: x["file_count"], reverse=True)
+
+    except Exception as exc:
+        app.logger.error("Monitor page error: %s", exc)
+
+    return render_template(
+        "monitor.html",
+        users=all_users,
+        total_users=len(all_users),
+        total_files=total_files,
+        active_today=active_count
+    )
+
+
 # ── Reports ───────────────────────────────────────────────────────────────────
 @app.route("/reports")
 @login_required
