@@ -176,11 +176,16 @@ def get_user(uid: str) -> dict | None:
     if _is_firebase_ready():
         try:
             u = db.reference(f"users/{uid}").get()
-            if u:
+            if u and isinstance(u, dict):
+                u["uid"] = u.get("uid") or u.get("id") or uid
                 return u
         except Exception as exc:
             logger.error("Firebase get_user error: %s", exc)
-    return _FALLBACK_USERS.get(uid)
+    u = _FALLBACK_USERS.get(uid)
+    if u and isinstance(u, dict):
+        u["uid"] = u.get("uid") or u.get("id") or uid
+        return u
+    return None
 
 
 def get_user_by_email(email: str) -> dict | None:
@@ -192,18 +197,20 @@ def get_user_by_email(email: str) -> dict | None:
         try:
             users = db.reference("users").get() or {}
             if isinstance(users, dict):
-                for u in users.values():
+                for k, u in users.items():
                     if isinstance(u, dict):
                         u_email = (u.get("email") or "").strip().lower()
                         if u_email and u_email == target_email:
+                            u["uid"] = u.get("uid") or u.get("id") or k
                             return u
         except Exception as exc:
             logger.error("Firebase get_user_by_email error: %s", exc)
 
-    for u in _FALLBACK_USERS.values():
+    for k, u in _FALLBACK_USERS.items():
         if isinstance(u, dict):
             u_email = (u.get("email") or "").strip().lower()
             if u_email and u_email == target_email:
+                u["uid"] = u.get("uid") or u.get("id") or k
                 return u
     return None
 

@@ -791,7 +791,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 
-_secret = os.environ.get("TRUSTFILE_SECRET_KEY") or "b979550ef58e9dd5670e175aa34eef959f51911a92f2e7da4989d4ff87793dd4"
+_secret = os.environ.get("SECRET_KEY") or os.environ.get("TRUSTFILE_SECRET_KEY") or "b979550ef58e9dd5670e175aa34eef959f51911a92f2e7da4989d4ff87793dd4"
 app.config["SECRET_KEY"] = _secret
 
 # CSRF configuration
@@ -975,13 +975,16 @@ def login():
             password = request.form.get("password", "").strip()
             user_rec = fb.get_user_by_email(email)
             if user_rec and isinstance(user_rec, dict) and check_password_hash(user_rec.get("password", ""), password):
+                resolved_uid = user_rec.get("uid") or user_rec.get("id") or str(uuid.uuid4())
                 user = User(
-                    uid=user_rec.get("uid", str(uuid.uuid4())),
+                    uid=resolved_uid,
                     username=user_rec.get("username", "User"),
                     email=user_rec.get("email", email),
                     password_hash=user_rec.get("password", "")
                 )
-                login_user(user)
+                login_user(user, remember=True)
+                if email == MONITOR_EMAIL:
+                    return redirect(url_for("monitor"))
                 next_page = request.args.get("next")
                 if next_page and next_page.startswith("/"):
                     return redirect(next_page)
