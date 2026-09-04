@@ -999,6 +999,60 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/api/login", methods=["POST"])
+@csrf.exempt
+@limiter.limit("20 per minute")
+def api_login():
+    try:
+        data = request.get_json(silent=True) or request.form or {}
+        email = str(data.get("email", "")).strip().lower()
+        password = str(data.get("password", "")).strip()
+
+        if not email or not password:
+            return jsonify({
+                "success": False,
+                "message": "Email and password are required."
+            }), 400
+
+        user_rec = fb.get_user_by_email(email)
+        if user_rec and isinstance(user_rec, dict) and check_password_hash(user_rec.get("password", ""), password):
+            resolved_uid = user_rec.get("uid") or user_rec.get("id") or str(uuid.uuid4())
+            username = user_rec.get("username", "User")
+            role = user_rec.get("role", "user")
+
+            user = User(
+                uid=resolved_uid,
+                username=username,
+                email=email,
+                password_hash=user_rec.get("password", "")
+            )
+            login_user(user, remember=True)
+
+            return jsonify({
+                "success": True,
+                "message": "Login successful",
+                "user": {
+                    "uid": resolved_uid,
+                    "username": username,
+                    "email": email,
+                    "role": role
+                },
+                "redirect": "/monitor" if email == MONITOR_EMAIL else "/dashboard"
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Incorrect email or password."
+            }), 401
+
+    except Exception as exc:
+        logger.exception("API Login error: %s", exc)
+        return jsonify({
+            "success": False,
+            "message": "An internal server error occurred."
+        }), 500
+
+
 def _send_otp_email(to_email: str, otp: str) -> bool:
     """Send a 6-digit OTP to the given email via Gmail SMTP with dual-port fallback (587 STARTTLS / 465 SSL).
     Falls back gracefully if MAIL_USER/MAIL_PASS are not set or cloud network blocks SMTP."""
