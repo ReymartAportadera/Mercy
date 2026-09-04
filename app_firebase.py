@@ -1028,6 +1028,36 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/api", methods=["GET"])
+@app.route("/api/", methods=["GET"])
+@csrf.exempt
+def api_index():
+    """Returns the master directory of all available API endpoints."""
+    return jsonify({
+        "system": "TRUSTFile Malware Analysis Platform API",
+        "version": "2.0.0",
+        "status": "Operational",
+        "description": "Multi-engine static heuristic, VirusTotal consensus, and Gemini AI malware detection API.",
+        "endpoints": {
+            "authentication": {
+                "login": "POST /api/login"
+            },
+            "malware_scanning": {
+                "upload_file": "POST /api/upload_single_file",
+                "scan_hash": "POST /api/scan_hash",
+                "guest_upload": "POST /api/guest_upload"
+            },
+            "admin_telemetry": {
+                "system_stats": "GET /api/admin/stats",
+                "client_directory": "GET /api/admin/users",
+                "engine_health": "GET /api/admin/health",
+                "delete_user": "POST /api/admin/delete_user"
+            }
+        },
+        "documentation": "https://trustfile-tau.vercel.app"
+    }), 200
+
+
 @app.route("/api/login", methods=["POST"])
 @csrf.exempt
 @limiter.limit("20 per minute")
@@ -2959,8 +2989,36 @@ def admin_portal():
                 "file_count": fc
             })
 
-        # Sort: active users first
-        all_users.sort(key=lambda x: x["file_count"], reverse=True)
+        # Extract recent system scan activity logs (newest first)
+        recent_logs = []
+        for fid, fval in files_data.items():
+            if not isinstance(fval, dict):
+                continue
+            upload_time = fval.get("upload_time", fval.get("timestamp", ""))
+            try:
+                if upload_time:
+                    dt = datetime.fromisoformat(upload_time.replace("Z", "+00:00"))
+                    time_display = dt.strftime("%b %d, %Y • %I:%M %p")
+                else:
+                    time_display = "Recent"
+            except Exception:
+                time_display = "Recent"
+
+            u_email = fval.get("user_email") or fval.get("email") or "Guest / Quick Scan"
+            risk = int(fval.get("risk_score", 0) or 0)
+            threat_lvl = fval.get("threat_level") or ("Critical" if risk >= 81 else "High" if risk >= 56 else "Medium" if risk >= 36 else "Low" if risk >= 16 else "Benign")
+
+            recent_logs.append({
+                "id": fid,
+                "timestamp": time_display,
+                "raw_time": upload_time or "",
+                "user_email": u_email,
+                "threat_level": threat_lvl,
+                "risk_score": risk
+            })
+
+        recent_logs.sort(key=lambda x: x["raw_time"], reverse=True)
+        recent_logs = recent_logs[:20]  # Latest 20 scan activity logs
 
     except Exception as exc:
         app.logger.error("Admin portal error: %s", exc)
@@ -2968,6 +3026,7 @@ def admin_portal():
     return render_template(
         "monitor.html",
         users=all_users,
+        logs=recent_logs,
         total_users=len(all_users),
         total_files=total_files,
         active_today=active_count

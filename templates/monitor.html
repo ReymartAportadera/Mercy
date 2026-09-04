@@ -3,12 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TRUSTFile | Activity Monitor</title>
+<title>TRUSTFile | Activity Monitor & System Logs</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#060d1a;--surface:#0d1627;--surface2:#111e35;--border:rgba(255,255,255,0.07);--accent:#ef4444;--accent2:#06b6d4;--text:#e2e8f0;--text-dim:#64748b;--green:#22c55e;--gray:#475569}
+:root{
+  --bg:#060d1a;
+  --surface:#0d1627;
+  --surface2:#111e35;
+  --border:rgba(255,255,255,0.07);
+  --accent:#ef4444;
+  --accent2:#06b6d4;
+  --text:#e2e8f0;
+  --text-dim:#64748b;
+  --green:#22c55e;
+  --gray:#475569;
+  --yellow:#eab308;
+  --orange:#f97316;
+}
 body{background:var(--bg);color:var(--text);font-family:Inter,sans-serif;min-height:100vh}
 .topnav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
 .logo{display:flex;align-items:center;gap:10px}
@@ -18,12 +31,18 @@ body{background:var(--bg);color:var(--text);font-family:Inter,sans-serif;min-hei
 .logo-sub{font-size:0.78rem;color:var(--text-dim);margin-left:6px}
 .nav-right{display:flex;align-items:center;gap:14px}
 .nav-user{font-size:0.82rem;color:var(--text-dim)}
+.nav-links{display:flex;align-items:center;gap:10px}
+.nav-btn{background:rgba(6,182,212,0.12);color:var(--accent2);border:1px solid rgba(6,182,212,0.3);border-radius:8px;padding:6px 12px;font-size:0.8rem;font-weight:600;text-decoration:none;transition:all 0.2s}
+.nav-btn:hover{background:rgba(6,182,212,0.22)}
 .logout-btn{background:rgba(239,68,68,0.12);color:var(--accent);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:6px 14px;font-size:0.8rem;font-weight:600;cursor:pointer;text-decoration:none}
+
 .main{padding:28px 32px;max-width:1400px;margin:0 auto}
 .page-title{font-size:1.45rem;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:10px}
 .page-title i{color:var(--accent)}
 .page-sub{font-size:0.82rem;color:var(--text-dim);margin-bottom:28px}
-.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:28px}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:32px}
 .metric-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between}
 .metric-card:first-child{border-bottom:3px solid var(--accent)}
 .metric-card:nth-child(2){border-bottom:3px solid var(--accent2)}
@@ -34,12 +53,16 @@ body{background:var(--bg);color:var(--text);font-family:Inter,sans-serif;min-hei
 .metric-card:first-child .metric-icon{color:var(--accent)}
 .metric-card:nth-child(2) .metric-icon{color:var(--accent2)}
 .metric-card:last-child .metric-icon{color:var(--green)}
+
+/* Section Layout */
+.section-wrap{margin-bottom:32px}
 .table-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.table-title{font-size:0.95rem;font-weight:700}
+.table-title{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
 .search-box{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 14px}
 .search-box i{color:var(--text-dim);font-size:0.82rem}
 .search-box input{background:transparent;border:none;outline:none;color:var(--text);font-size:0.83rem;font-family:Inter,sans-serif;width:220px}
 .search-box input::placeholder{color:var(--text-dim)}
+
 .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
 table{width:100%;border-collapse:collapse}
 thead{background:var(--surface2)}
@@ -51,31 +74,49 @@ tbody td{padding:13px 18px;font-size:0.84rem}
 td.email{font-weight:600}
 td.username,td.date{color:var(--text-dim)}
 td.files{font-weight:700;color:var(--accent2)}
+td.time{color:var(--text-dim);font-size:0.8rem}
+
+/* Badges */
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:0.73rem;font-weight:700;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.5px}
 .badge-active{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.3)}
 .badge-inactive{background:rgba(100,116,139,0.12);color:var(--gray);border:1px solid rgba(100,116,139,0.25)}
+.badge-critical{background:rgba(239,68,68,0.15);color:var(--accent);border:1px solid rgba(239,68,68,0.35)}
+.badge-high{background:rgba(249,115,22,0.15);color:var(--orange);border:1px solid rgba(249,115,22,0.35)}
+.badge-medium{background:rgba(234,179,8,0.15);color:var(--yellow);border:1px solid rgba(234,179,8,0.35)}
+.badge-low{background:rgba(6,182,212,0.15);color:var(--accent2);border:1px solid rgba(6,182,212,0.35)}
+.badge-benign{background:rgba(34,197,94,0.15);color:var(--green);border:1px solid rgba(34,197,94,0.35)}
 .badge-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
 .table-footer{padding:12px 18px;font-size:0.78rem;color:var(--text-dim);background:var(--surface2);border-top:1px solid var(--border)}
-.empty-state{text-align:center;padding:48px 24px;color:var(--text-dim);font-size:0.85rem}
+.empty-state{text-align:center;padding:40px 24px;color:var(--text-dim);font-size:0.85rem}
 .empty-state i{font-size:2rem;margin-bottom:12px;display:block}
+
 @media(max-width:768px){.main{padding:16px}.metrics{grid-template-columns:1fr}.table-header{flex-direction:column;align-items:flex-start;gap:10px}}
 </style>
 </head>
 <body>
+
 <nav class="topnav">
   <div class="logo">
     <i class="fa-solid fa-shield-halved"></i>
     <div><div class="logo-text">TRUST<span>File</span></div></div>
-    <span class="logo-sub">Activity Monitor</span>
+    <span class="logo-sub">Activity Monitor & Logs</span>
   </div>
   <div class="nav-right">
+    <div class="nav-links">
+      <a href="{{ url_for('dashboard') }}" class="nav-btn"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    </div>
     <span class="nav-user"><i class="fa-solid fa-user-shield" style="margin-right:5px;color:#06b6d4"></i>{{ current_user.email }}</span>
     <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </div>
 </nav>
+
 <div class="main">
-  <div class="page-title"><i class="fa-solid fa-chart-line"></i> TRUSTFile Activity Monitor</div>
-  <div class="page-sub">Real-time overview of all registered clients and their scan activity.</div>
+
+  <div class="page-title"><i class="fa-solid fa-chart-line"></i> TRUSTFile Activity Monitor & Audit Logs</div>
+  <div class="page-sub">Real-time overview of registered clients, file upload volume, and live security scan logs.</div>
+
+  <!-- Top 3 Metric Cards -->
   <div class="metrics">
     <div class="metric-card">
       <div><div class="metric-label">Total Registered Clients</div><div class="metric-value">{{ total_users }}</div></div>
@@ -90,45 +131,99 @@ td.files{font-weight:700;color:var(--accent2)}
       <i class="fa-solid fa-circle-check metric-icon"></i>
     </div>
   </div>
-  <div class="table-header">
-    <div class="table-title"><i class="fa-solid fa-list" style="color:#06b6d4;margin-right:7px"></i>Client Accounts</div>
-    <div class="search-box">
-      <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="searchInput" placeholder="Search by email or username..." oninput="filterTable()">
+
+  <!-- SECTION 1: Client Accounts Directory -->
+  <div class="section-wrap">
+    <div class="table-header">
+      <div class="table-title"><i class="fa-solid fa-users" style="color:#06b6d4"></i> Registered Client Accounts</div>
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search by email or username..." oninput="filterTable()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="userTable">
+        <thead>
+          <tr>
+            <th>#</th><th>User Email</th><th>Username</th><th>Files Scanned</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          {% if users %}
+            {% for u in users %}
+            <tr>
+              <td style="color:#64748b;font-size:0.78rem">{{ loop.index }}</td>
+              <td class="email">{{ u.email }}</td>
+              <td class="username">{{ u.username }}</td>
+              <td class="files">{{ u.file_count }}</td>
+              <td>
+                {% if u.file_count > 0 %}
+                <span class="badge badge-active"><span class="badge-dot"></span>Active</span>
+                {% else %}
+                <span class="badge badge-inactive"><span class="badge-dot"></span>Inactive</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-users-slash"></i>No registered clients found.</div></td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="table-footer" id="tableFooter">Showing {{ users|length }} client(s)</div>
     </div>
   </div>
-  <div class="table-wrap">
-    <table id="userTable">
-      <thead>
-        <tr>
-          <th>#</th><th>User Email</th><th>Username</th><th>Files Scanned</th><th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-        {% if users %}
-          {% for u in users %}
+
+  <!-- SECTION 2: Live System Scan Activity & Audit Logs -->
+  <div class="section-wrap">
+    <div class="table-header">
+      <div class="table-title"><i class="fa-solid fa-clock-rotate-left" style="color:#ef4444"></i> Live System Scan Activity & Security Logs</div>
+      <div style="font-size:0.78rem;color:#64748b"><i class="fa-solid fa-circle-dot" style="color:#22c55e;margin-right:5px"></i>Live Firebase Telemetry</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
           <tr>
-            <td style="color:#64748b;font-size:0.78rem">{{ loop.index }}</td>
-            <td class="email">{{ u.email }}</td>
-            <td class="username">{{ u.username }}</td>
-            <td class="files">{{ u.file_count }}</td>
-            <td>
-              {% if u.file_count > 0 %}
-              <span class="badge badge-active"><span class="badge-dot"></span>Active</span>
-              {% else %}
-              <span class="badge badge-inactive"><span class="badge-dot"></span>Inactive</span>
-              {% endif %}
-            </td>
+            <th>#</th><th>Timestamp</th><th>User / Source</th><th>Threat Level</th><th>Risk Score</th>
           </tr>
-          {% endfor %}
-        {% else %}
-          <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-users-slash"></i>No registered clients found.</div></td></tr>
-        {% endif %}
-      </tbody>
-    </table>
-    <div class="table-footer" id="tableFooter">Showing {{ users|length }} client(s)</div>
+        </thead>
+        <tbody>
+          {% if logs %}
+            {% for l in logs %}
+            <tr>
+              <td style="color:#64748b;font-size:0.78rem">{{ loop.index }}</td>
+              <td class="time"><i class="fa-regular fa-clock" style="margin-right:6px"></i>{{ l.timestamp }}</td>
+              <td class="email">{{ l.user_email }}</td>
+              <td>
+                {% set tl = (l.threat_level or 'Benign')|lower %}
+                {% if 'critical' in tl %}
+                  <span class="badge badge-critical"><span class="badge-dot"></span>Critical Threat</span>
+                {% elif 'high' in tl %}
+                  <span class="badge badge-high"><span class="badge-dot"></span>High Risk</span>
+                {% elif 'medium' in tl %}
+                  <span class="badge badge-medium"><span class="badge-dot"></span>Medium Risk</span>
+                {% elif 'low' in tl %}
+                  <span class="badge badge-low"><span class="badge-dot"></span>Low Risk</span>
+                {% else %}
+                  <span class="badge badge-benign"><span class="badge-dot"></span>Benign</span>
+                {% endif %}
+              </td>
+              <td style="font-weight:700; color:{% if l.risk_score >= 81 %}#ef4444{% elif l.risk_score >= 56 %}#f97316{% elif l.risk_score >= 36 %}#eab308{% elif l.risk_score >= 16 %}#06b6d4{% else %}#22c55e{% endif %}">
+                {{ l.risk_score }}%
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-file-circle-xmark"></i>No scan activity logs recorded yet.</div></td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <div class="table-footer">Showing latest {{ logs|length }} system scan events</div>
+    </div>
   </div>
+
 </div>
+
 <script>
 function filterTable(){
   var q=document.getElementById("searchInput").value.toLowerCase();
@@ -142,5 +237,7 @@ function filterTable(){
   document.getElementById("tableFooter").textContent="Showing "+visible+" client(s)";
 }
 </script>
+
 </body>
 </html>
+
