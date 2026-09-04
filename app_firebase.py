@@ -19,6 +19,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 from threading import Semaphore
+from functools import wraps
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -884,13 +885,17 @@ login_manager.login_view = "login"
 
 # ── In-memory byte cache (LRU) — defined at module top, re-referenced here ───
 
+ADMIN_EMAILS = {"reymartaportadera@gmail.com", "trustfile@gmail.com"}
+MONITOR_EMAIL = "trustfile@gmail.com"
+
 # ── User class (Firebase‑backed) ────────────────────────────────────────────────
 class User(UserMixin):
-    def __init__(self, uid: str, username: str, email: str, password_hash: str):
+    def __init__(self, uid: str, username: str, email: str, password_hash: str, role: str = "user"):
         self.uid = uid
         self.username = username
         self.email = email
         self.password_hash = password_hash
+        self.role = role
 
     def get_id(self):
         return self.uid
@@ -899,21 +904,45 @@ class User(UserMixin):
     def is_active(self):
         return True
 
+    @property
+    def is_admin(self):
+        return self.email in ADMIN_EMAILS or self.role in {"admin", "monitor"}
+
 # Load user callback
 @login_manager.user_loader
 def load_user(user_id):
     try:
         data = fb.get_user(user_id)
         if data and isinstance(data, dict):
+            email = data.get("email", "")
+            role = "admin" if email in ADMIN_EMAILS else data.get("role", "user")
             return User(
                 uid=data.get("uid", user_id),
                 username=data.get("username", "User"),
-                email=data.get("email", ""),
-                password_hash=data.get("password", "")
+                email=email,
+                password_hash=data.get("password", ""),
+                role=role
             )
     except Exception as e:
         logger.warning("Failed to load user %s: %s", user_id, e)
     return None
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            if request.path.startswith("/api/"):
+                return jsonify({"success": False, "message": "Authentication required."}), 401
+            flash("Please log in with an administrator account.", "error")
+            return redirect(url_for("login"))
+        if current_user.email not in ADMIN_EMAILS and getattr(current_user, "role", "") not in {"admin", "monitor"}:
+            if request.path.startswith("/api/"):
+                return jsonify({"success": False, "message": "Forbidden: Administrator access required."}), 403
+            flash("Access denied. Restricted to administrators only.", "error")
+            return redirect(url_for("dashboard"))
+        return f(*args, **kwargs)
+    return decorated_function
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
 @app.route("/signup", methods=["GET", "POST"])
@@ -2886,16 +2915,13 @@ def history_day(date):
 
     return render_template("history_day.html", files=day_files, date=date, day_label=day_label)
 
-# ── Activity Monitor (Monitor Account Only) ────────────────────────────────────
-MONITOR_EMAIL = "trustfile@gmail.com"
+# ── Activity Monitor & Admin Portal ───────────────────────────────────────────
 
+@app.route("/admin")
 @app.route("/monitor")
 @login_required
-def monitor():
-    if current_user.email != MONITOR_EMAIL:
-        flash("Access denied. This page is restricted.", "error")
-        return redirect(url_for("dashboard"))
-
+@admin_required
+def admin_portal():
     from firebase_admin import db as fdb
     all_users = []
     total_files = 0
@@ -2918,14 +2944,15 @@ def monitor():
             if not isinstance(u, dict):
                 continue
             email = u.get("email", "")
-            # Skip the monitor account itself and test accounts
-            if email == MONITOR_EMAIL or "audit" in email or "pwtest" in email or "verificationscan" in email:
+            # Skip admin accounts and automated test accounts in the client list
+            if email in ADMIN_EMAILS or "audit" in email or "pwtest" in email or "verificationscan" in email:
                 continue
             fc = file_counts.get(uid, 0)
             if fc > 0:
                 active_count += 1
             created = u.get("createdAt", u.get("created_at", "N/A"))
             all_users.append({
+                "uid": uid,
                 "email": email,
                 "username": u.get("username", "N/A"),
                 "created_at": created,
@@ -2936,7 +2963,7 @@ def monitor():
         all_users.sort(key=lambda x: x["file_count"], reverse=True)
 
     except Exception as exc:
-        app.logger.error("Monitor page error: %s", exc)
+        app.logger.error("Admin portal error: %s", exc)
 
     return render_template(
         "monitor.html",
@@ -2945,6 +2972,139 @@ def monitor():
         total_files=total_files,
         active_today=active_count
     )
+
+
+# ── Admin REST API Endpoints ───────────────────────────────────────────────────
+
+@app.route("/api/admin/stats", methods=["GET"])
+@admin_required
+def api_admin_stats():
+    """Returns platform-wide metrics and engine telemetry."""
+    try:
+        from firebase_admin import db as fdb
+        users_data = fdb.reference("users").get() or {}
+        files_data = fdb.reference("uploaded_files").get() or {}
+        vt_cache = fdb.reference("vt_cache").get() or {}
+
+        total_scans = len(files_data)
+        threat_count = sum(1 for f in files_data.values() if isinstance(f, dict) and f.get("threat_level") in {"High", "Critical"})
+
+        vt_key_present = bool(os.getenv("VIRUSTOTAL_API_KEY"))
+        gemini_key_present = bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"))
+
+        return jsonify({
+            "success": True,
+            "system_status": "Operational",
+            "stats": {
+                "total_registered_clients": len(users_data),
+                "total_files_scanned": total_scans,
+                "threats_detected": threat_count,
+                "cached_virustotal_lookups": len(vt_cache)
+            },
+            "engine_health": {
+                "heuristic_engine": "Active (161 Formats / 9 Categories)",
+                "virustotal_cloud": "Online (75 Engines)" if vt_key_present else "Degraded",
+                "gemini_ai": "Active (Flash 2.0)" if gemini_key_present else "Local Fallback",
+                "firebase_database": "Connected" if fb._is_firebase_ready() else "Local Fallback"
+            }
+        }), 200
+    except Exception as exc:
+        app.logger.error("API Admin Stats error: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def api_admin_users():
+    """Returns client accounts and their scan usage statistics."""
+    try:
+        from firebase_admin import db as fdb
+        users_data = fdb.reference("users").get() or {}
+        files_data = fdb.reference("uploaded_files").get() or {}
+
+        file_counts = {}
+        for fval in files_data.values():
+            if isinstance(fval, dict):
+                uid = fval.get("user_id", "")
+                if uid:
+                    file_counts[uid] = file_counts.get(uid, 0) + 1
+
+        clients = []
+        for uid, u in users_data.items():
+            if not isinstance(u, dict):
+                continue
+            email = u.get("email", "")
+            if email in ADMIN_EMAILS or "audit" in email or "pwtest" in email or "verificationscan" in email:
+                continue
+            fc = file_counts.get(uid, 0)
+            clients.append({
+                "uid": uid,
+                "email": email,
+                "username": u.get("username", "N/A"),
+                "files_scanned": fc,
+                "status": "Active" if fc > 0 else "Inactive"
+            })
+
+        clients.sort(key=lambda x: x["files_scanned"], reverse=True)
+        return jsonify({
+            "success": True,
+            "count": len(clients),
+            "users": clients
+        }), 200
+    except Exception as exc:
+        app.logger.error("API Admin Users error: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/admin/health", methods=["GET"])
+@admin_required
+def api_admin_health():
+    """Real-time system health and security inspection status."""
+    vt_key = os.getenv("VIRUSTOTAL_API_KEY")
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    return jsonify({
+        "success": True,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "services": {
+            "web_server": "Online",
+            "firebase_realtime_db": "Healthy" if fb._is_firebase_ready() else "Fallback",
+            "heuristics_core": "Ready (9 Categories / 161 Formats)",
+            "virustotal_api": "Configured (75 Engines)" if vt_key else "Missing Key",
+            "gemini_ai_engine": "Configured (Flash 2.0)" if gemini_key else "Local Engine"
+        }
+    }), 200
+
+
+@app.route("/api/admin/delete_user", methods=["POST"])
+@csrf.exempt
+@admin_required
+def api_admin_delete_user():
+    """Allows administrators to securely remove a user account."""
+    try:
+        data = request.get_json(silent=True) or request.form or {}
+        target_uid = data.get("uid")
+        target_email = data.get("email")
+
+        if not target_uid and not target_email:
+            return jsonify({"success": False, "message": "User UID or Email required."}), 400
+
+        if target_email and target_email in ADMIN_EMAILS:
+            return jsonify({"success": False, "message": "Cannot delete an administrator account."}), 403
+
+        if not target_uid and target_email:
+            u = fb.get_user_by_email(target_email)
+            if u:
+                target_uid = u.get("uid") or u.get("id")
+
+        if target_uid:
+            fb.delete_user(target_uid)
+            return jsonify({"success": True, "message": f"User {target_uid} deleted successfully."}), 200
+        else:
+            return jsonify({"success": False, "message": "User not found."}), 404
+
+    except Exception as exc:
+        app.logger.error("API Admin Delete User error: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
