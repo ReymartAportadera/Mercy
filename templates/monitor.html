@@ -103,9 +103,6 @@ td.time{color:var(--text-dim);font-size:0.8rem}
     <span class="logo-sub">Activity Monitor & Logs</span>
   </div>
   <div class="nav-right">
-    <div class="nav-links">
-      <a href="{{ url_for('dashboard') }}" class="nav-btn"><i class="fa-solid fa-gauge"></i> Dashboard</a>
-    </div>
     <span class="nav-user"><i class="fa-solid fa-user-shield" style="margin-right:5px;color:#06b6d4"></i>{{ current_user.email }}</span>
     <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </div>
