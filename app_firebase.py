@@ -1013,7 +1013,7 @@ def login():
                 )
                 login_user(user, remember=True)
                 if email == MONITOR_EMAIL:
-                    return redirect(url_for("monitor"))
+                    return redirect(url_for("admin_portal"))
                 next_page = request.args.get("next")
                 if next_page and next_page.startswith("/"):
                     return redirect(next_page)
@@ -2917,8 +2917,8 @@ def history_day(date):
 
 # ── Activity Monitor & Admin Portal ───────────────────────────────────────────
 
-@app.route("/admin")
-@app.route("/monitor")
+@app.route("/admin", endpoint="admin_portal")
+@app.route("/monitor", endpoint="monitor")
 @login_required
 @admin_required
 def admin_portal():
