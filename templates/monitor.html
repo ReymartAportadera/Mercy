@@ -92,6 +92,15 @@ td.time{color:var(--text-dim);font-size:0.8rem}
 .empty-state i{font-size:2rem;margin-bottom:12px;display:block}
 
 @media(max-width:768px){.main{padding:16px}.metrics{grid-template-columns:1fr}.table-header{flex-direction:column;align-items:flex-start;gap:10px}}
+
+/* API Panel */
+.ep-row{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#111e35;border-radius:8px;margin-bottom:6px}
+.ep-method{font-size:0.68rem;font-weight:700;padding:3px 8px;border-radius:5px;min-width:44px;text-align:center;letter-spacing:0.5px}
+.ep-method.get{background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3)}
+.ep-method.post{background:rgba(6,182,212,0.15);color:#06b6d4;border:1px solid rgba(6,182,212,0.3)}
+.ep-method.del{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)}
+.ep-path{font-size:0.8rem;font-weight:600;font-family:monospace;color:#e2e8f0;flex:1}
+.ep-note{font-size:0.68rem;color:#64748b;background:rgba(255,255,255,0.04);padding:2px 7px;border-radius:5px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -103,10 +112,87 @@ td.time{color:var(--text-dim);font-size:0.8rem}
     <span class="logo-sub">Activity Monitor & Logs</span>
   </div>
   <div class="nav-right">
+    <button class="nav-btn" onclick="toggleApiPanel()"><i class="fa-solid fa-plug"></i> API Endpoints</button>
     <span class="nav-user"><i class="fa-solid fa-user-shield" style="margin-right:5px;color:#06b6d4"></i>{{ current_user.email }}</span>
     <a href="{{ url_for('logout') }}" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
   </div>
 </nav>
+
+<!-- API Endpoints Panel -->
+<div id="apiPanel" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:#0d1627;border-left:1px solid rgba(255,255,255,0.07);z-index:999;overflow-y:auto;padding:24px 20px;box-shadow:-8px 0 32px rgba(0,0,0,0.5)">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:1rem;font-weight:800;display:flex;align-items:center;gap:8px"><i class="fa-solid fa-plug" style="color:#06b6d4"></i> API Endpoints</div>
+    <button onclick="toggleApiPanel()" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:0.8rem"><i class="fa-solid fa-xmark"></i> Close</button>
+  </div>
+  <div style="font-size:0.75rem;color:#64748b;margin-bottom:18px">Base URL: <span style="color:#06b6d4;font-weight:600">https://trustfile-tau.vercel.app</span></div>
+
+  <!-- Auth -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:10px">🔐 Authentication</div>
+    <div class="ep-row">
+      <span class="ep-method post">POST</span>
+      <span class="ep-path">/api/login</span>
+    </div>
+  </div>
+
+  <!-- Scanning -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:10px">🔬 Malware Scanning</div>
+    <div class="ep-row">
+      <span class="ep-method post">POST</span>
+      <span class="ep-path">/api/upload_single_file</span>
+    </div>
+    <div class="ep-row">
+      <span class="ep-method post">POST</span>
+      <span class="ep-path">/api/scan_hash</span>
+    </div>
+    <div class="ep-row">
+      <span class="ep-method post">POST</span>
+      <span class="ep-path">/api/guest_upload</span>
+      <span class="ep-note">No login required</span>
+    </div>
+  </div>
+
+  <!-- Admin -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:10px">🛡️ Admin Telemetry</div>
+    <div class="ep-row">
+      <span class="ep-method get">GET</span>
+      <span class="ep-path">/api/admin/stats</span>
+      <span class="ep-note">Admin only</span>
+    </div>
+    <div class="ep-row">
+      <span class="ep-method get">GET</span>
+      <span class="ep-path">/api/admin/users</span>
+      <span class="ep-note">Admin only</span>
+    </div>
+    <div class="ep-row">
+      <span class="ep-method get">GET</span>
+      <span class="ep-path">/api/admin/health</span>
+      <span class="ep-note">Admin only</span>
+    </div>
+    <div class="ep-row">
+      <span class="ep-method del">POST</span>
+      <span class="ep-path">/api/admin/delete_user</span>
+      <span class="ep-note">Admin only</span>
+    </div>
+  </div>
+
+  <!-- Index -->
+  <div style="margin-bottom:18px">
+    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:10px">📋 Index</div>
+    <div class="ep-row">
+      <span class="ep-method get">GET</span>
+      <span class="ep-path">/api</span>
+      <span class="ep-note">Full directory</span>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:14px;background:#111e35;border-radius:10px;font-size:0.75rem;color:#64748b;line-height:1.7">
+    <i class="fa-solid fa-circle-info" style="color:#06b6d4;margin-right:5px"></i>
+    Admin endpoints require login as <span style="color:#e2e8f0;font-weight:600">trustfile@gmail.com</span>
+  </div>
+</div>
 
 <div class="main">
 
@@ -232,6 +318,10 @@ function filterTable(){
     if(show)visible++;
   });
   document.getElementById("tableFooter").textContent="Showing "+visible+" client(s)";
+}
+function toggleApiPanel(){
+  var p=document.getElementById("apiPanel");
+  p.style.display=(p.style.display==="none"||p.style.display===""?"block":"none");
 }
 </script>
 
