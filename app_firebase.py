@@ -1048,10 +1048,11 @@ def api_index():
                 "guest_upload": "POST /api/guest_upload"
             },
             "admin_telemetry": {
-                "system_stats": "GET /api/admin/stats",
-                "client_directory": "GET /api/admin/users",
-                "engine_health": "GET /api/admin/health",
-                "delete_user": "POST /api/admin/delete_user"
+                "system_stats":    "GET /api/admin/stats",
+                "client_directory":"GET /api/admin/users",
+                "scan_logs":       "GET /api/admin/scan_logs",
+                "engine_health":   "GET /api/admin/health",
+                "delete_user":     "POST /api/admin/delete_user"
             }
         },
         "documentation": "https://trustfile-tau.vercel.app"
@@ -3163,6 +3164,68 @@ def api_admin_delete_user():
 
     except Exception as exc:
         app.logger.error("API Admin Delete User error: %s", exc)
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route("/api/admin/scan_logs", methods=["GET"])
+@admin_required
+def api_admin_scan_logs():
+    """Returns recent scan activity logs from Firebase.
+    
+    Query params:
+      limit       (int, default 50)  – max number of records to return
+      threat_level (str, optional)   – filter by threat level (e.g. Critical, High, Medium, Low, Benign)
+    """
+    try:
+        limit = min(int(request.args.get("limit", 50)), 200)
+        filter_level = request.args.get("threat_level", "").strip().lower()
+
+        raw = fb.db.child("uploaded_files").get().val() or {}
+        logs = []
+        for fid, rec in raw.items():
+            if not isinstance(rec, dict):
+                continue
+            level = str(rec.get("threat_level", "Unknown"))
+            if filter_level and level.lower() != filter_level:
+                continue
+            risk = rec.get("risk_score", 0)
+            try:
+                risk = int(float(risk))
+            except (TypeError, ValueError):
+                risk = 0
+            logs.append({
+                "file_id":     fid,
+                "filename":    rec.get("filename", "unknown"),
+                "user_email":  rec.get("user_email", rec.get("uploaded_by", "guest")),
+                "threat_level": level,
+                "risk_score":  risk,
+                "scan_engine": rec.get("scan_engine", "TRUSTFile Multi-Engine"),
+                "timestamp":   rec.get("upload_time", rec.get("timestamp", "N/A")),
+                "status":      rec.get("status", "Completed")
+            })
+
+        logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        logs = logs[:limit]
+
+        summary = {
+            "critical": sum(1 for l in logs if l["threat_level"].lower() == "critical"),
+            "high":     sum(1 for l in logs if l["threat_level"].lower() == "high"),
+            "medium":   sum(1 for l in logs if l["threat_level"].lower() == "medium"),
+            "low":      sum(1 for l in logs if l["threat_level"].lower() == "low"),
+            "benign":   sum(1 for l in logs if l["threat_level"].lower() == "benign"),
+        }
+
+        return jsonify({
+            "success":   True,
+            "total":     len(logs),
+            "limit":     limit,
+            "filter":    filter_level or "none",
+            "summary":   summary,
+            "scan_logs": logs
+        }), 200
+
+    except Exception as exc:
+        app.logger.error("API Admin Scan Logs error: %s", exc)
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
