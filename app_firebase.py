@@ -946,6 +946,7 @@ def admin_required(f):
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
 @app.route("/signup", methods=["GET", "POST"])
+@app.route("/register", methods=["GET", "POST"])
 def signup():
     if request.method == "POST":
         try:
@@ -3180,7 +3181,8 @@ def api_admin_scan_logs():
         limit = min(int(request.args.get("limit", 50)), 200)
         filter_level = request.args.get("threat_level", "").strip().lower()
 
-        raw = fb.db.child("uploaded_files").get().val() or {}
+        from firebase_admin import db as fdb
+        raw = fdb.reference("uploaded_files").get() or {}
         logs = []
         for fid, rec in raw.items():
             if not isinstance(rec, dict):
