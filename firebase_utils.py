@@ -140,6 +140,10 @@ def delete_uploaded_file(file_id: str) -> None:
 def list_user_files(user_id: str) -> list[dict]:
     if _is_firebase_ready():
         try:
+            user_data = db.reference(f"user_files/{user_id}").get()
+            if user_data and isinstance(user_data, dict):
+                return [f for f in user_data.values() if isinstance(f, dict)]
+
             all_files = db.reference("uploaded_files").get() or {}
             if isinstance(all_files, dict):
                 return [

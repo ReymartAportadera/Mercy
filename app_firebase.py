@@ -947,6 +947,7 @@ def admin_required(f):
 # ── Auth routes ────────────────────────────────────────────────────────────────
 @app.route("/signup", methods=["GET", "POST"])
 @app.route("/register", methods=["GET", "POST"])
+@csrf.exempt
 def signup():
     if request.method == "POST":
         try:
@@ -997,6 +998,7 @@ def signup():
     return render_template("signup.html")
 
 @app.route("/login", methods=["GET", "POST"])
+@csrf.exempt
 @limiter.limit("20 per minute")
 def login():
     if request.method == "POST":
@@ -1353,12 +1355,6 @@ def dashboard():
     folder_groups_dict = {}
 
     for f in files:
-        if _sync_file_with_vt_consensus(f):
-            try:
-                fb.save_uploaded_file(f)
-            except Exception:
-                pass
-
         risk = f.get("risk_score", 0) or 0
         all_det = f.get("all_detections", [])
         if not all_det:
