@@ -262,16 +262,74 @@ td.time{color:var(--text-dim);font-size:0.8rem}
     </div>
   </div>
 
-  <!-- SECTION 2: All Scanned Files & System Security Audit Trail -->
+  <!-- SECTION 2: Weekly Security Monitoring & Telemetry -->
+  {% if weekly_summaries %}
   <div class="section-wrap">
     <div class="table-header">
-      <div class="table-title"><i class="fa-solid fa-folder-open" style="color:#06b6d4"></i> All Scanned Files & History Logs</div>
-      <div style="display:flex;align-items:center;gap:12px">
+      <div class="table-title"><i class="fa-solid fa-calendar-week" style="color:#38bdf8"></i> Weekly Security Telemetry & Audit Logs</div>
+      <div style="font-size:0.78rem;color:#64748b"><i class="fa-solid fa-chart-line" style="color:#06b6d4;margin-right:5px"></i>Weekly Aggregation ({{ weekly_summaries|length }} Weeks Recorded)</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Week Period</th>
+            <th>Total Scans</th>
+            <th>Threats Detected</th>
+            <th>Clean / Benign Files</th>
+            <th>Active Clients</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in weekly_summaries %}
+          <tr>
+            <td style="font-weight:700;color:#e2e8f0">
+              <i class="fa-regular fa-calendar" style="margin-right:7px;color:#38bdf8"></i>{{ w.label }}
+              {% if loop.first %}<span class="badge badge-active" style="margin-left:8px;font-size:0.68rem">Current Week</span>{% endif %}
+            </td>
+            <td style="font-weight:800;color:#06b6d4;font-size:0.95rem">{{ w.total_scans }}</td>
+            <td>
+              {% if w.threats > 0 %}
+                <span class="badge badge-critical"><span class="badge-dot"></span>{{ w.threats }} Threat(s)</span>
+              {% else %}
+                <span class="badge badge-benign"><span class="badge-dot"></span>0 Threats</span>
+              {% endif %}
+            </td>
+            <td><span class="badge badge-benign"><span class="badge-dot"></span>{{ w.benign }} Clean</span></td>
+            <td style="color:#94a3b8;font-weight:600"><i class="fa-solid fa-users" style="margin-right:5px;font-size:0.75rem"></i>{{ w.unique_users }} user(s)</td>
+            <td>
+              <button onclick="selectWeekFilter('{{ w.week_key }}')" class="nav-btn" style="cursor:pointer;padding:4px 10px;font-size:0.75rem"><i class="fa-solid fa-filter"></i> View Files</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="table-footer">Weekly automated security audit trail aggregated across all user scans</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 3: All Scanned Files & Security Logs (Privacy Protected) -->
+  <div class="section-wrap">
+    <div class="table-header">
+      <div>
+        <div class="table-title"><i class="fa-solid fa-shield-halved" style="color:#22c55e"></i> Scanned Files & Security Logs</div>
+        <div style="font-size:0.75rem;color:#64748b;margin-top:3px"><i class="fa-solid fa-lock" style="color:#22c55e;margin-right:4px"></i>User Privacy Protection Active: Original filenames are hidden & tokenized</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <!-- Week Filter Dropdown -->
+        <select id="weekFilter" onchange="filterLogsTable()" style="background:#111e35;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);padding:7px 12px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer">
+          <option value="">All Weeks ({{ logs|length }} files)</option>
+          {% for w in weekly_summaries %}
+          <option value="{{ w.week_key }}">{{ w.label }} ({{ w.total_scans }} scans)</option>
+          {% endfor %}
+        </select>
+        <!-- Search Box -->
         <div class="search-box">
           <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="searchLogsInput" placeholder="Search filename, user, threat..." onkeyup="filterLogsTable()">
+          <input type="text" id="searchLogsInput" placeholder="Search type, user, threat..." onkeyup="filterLogsTable()">
         </div>
-        <div style="font-size:0.78rem;color:#64748b"><i class="fa-solid fa-circle-dot" style="color:#22c55e;margin-right:5px"></i>Live Firebase Telemetry</div>
       </div>
     </div>
     <div class="table-wrap">
@@ -279,7 +337,7 @@ td.time{color:var(--text-dim);font-size:0.8rem}
         <thead>
           <tr>
             <th>#</th>
-            <th>File Name</th>
+            <th>File Type (Privacy Protected)</th>
             <th>Timestamp</th>
             <th>User / Source</th>
             <th>Threat Level</th>
@@ -289,10 +347,11 @@ td.time{color:var(--text-dim);font-size:0.8rem}
         <tbody id="logsTableBody">
           {% if logs %}
             {% for l in logs %}
-            <tr>
+            <tr data-week="{{ l.week_key }}">
               <td style="color:#64748b;font-size:0.78rem">{{ loop.index }}</td>
-              <td style="font-weight:600; color:#e2e8f0; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ l.filename }}">
-                <i class="fa-regular fa-file" style="margin-right:6px; color:#06b6d4"></i>{{ l.filename }}
+              <td style="font-weight:600; color:#e2e8f0;">
+                <i class="fa-solid fa-lock" style="margin-right:6px; color:#22c55e"></i>{{ l.file_type }}
+                <span style="color:#64748b;font-size:0.74rem;font-weight:400;margin-left:5px">[#{{ l.short_id }}]</span>
               </td>
               <td class="time"><i class="fa-regular fa-clock" style="margin-right:6px"></i>{{ l.timestamp }}</td>
               <td class="email">{{ l.user_email }}</td>
@@ -320,7 +379,7 @@ td.time{color:var(--text-dim);font-size:0.8rem}
           {% endif %}
         </tbody>
       </table>
-      <div class="table-footer" id="logsTableFooter">Showing all {{ logs|length }} scanned files across platform history</div>
+      <div class="table-footer" id="logsTableFooter">Showing all {{ logs|length }} scanned file(s) across platform history</div>
     </div>
   </div>
 
@@ -339,15 +398,27 @@ function filterTable(){
   document.getElementById("tableFooter").textContent="Showing "+visible+" client(s)";
 }
 function filterLogsTable(){
-  var q=document.getElementById("searchLogsInput").value.toLowerCase();
-  var rows=document.querySelectorAll("#logsTableBody tr");
-  var visible=0;
+  var q = (document.getElementById("searchLogsInput").value || "").toLowerCase();
+  var selectedWeek = document.getElementById("weekFilter").value;
+  var rows = document.querySelectorAll("#logsTableBody tr");
+  var visible = 0;
   rows.forEach(function(row){
-    var show=row.innerText.toLowerCase().includes(q);
-    row.style.display=show?"":"none";
-    if(show)visible++;
+    var textMatch = row.innerText.toLowerCase().includes(q);
+    var rowWeek = row.getAttribute("data-week") || "";
+    var weekMatch = !selectedWeek || rowWeek === selectedWeek;
+    var show = textMatch && weekMatch;
+    row.style.display = show ? "" : "none";
+    if(show) visible++;
   });
-  document.getElementById("logsTableFooter").textContent="Showing "+visible+" of {{ logs|length }} file(s)";
+  document.getElementById("logsTableFooter").textContent = "Showing " + visible + " of {{ logs|length }} file(s)";
+}
+function selectWeekFilter(weekKey){
+  var sel = document.getElementById("weekFilter");
+  if(sel){
+    sel.value = weekKey;
+    filterLogsTable();
+    sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 }
 function toggleApiPanel(){
   var p=document.getElementById("apiPanel");

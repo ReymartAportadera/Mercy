@@ -2987,7 +2987,18 @@ def admin_portal():
                 "file_count": fc
             })
 
-        # Extract recent system scan activity logs (newest first)
+        # Extract all system scan activity logs and calculate weekly telemetry
+        from collections import defaultdict
+        from datetime import timedelta
+        weekly_map = defaultdict(lambda: {
+            "week_key": "",
+            "label": "",
+            "total_scans": 0,
+            "threats": 0,
+            "benign": 0,
+            "users": set()
+        })
+
         recent_logs = []
         for fid, fval in files_data.items():
             if not isinstance(fval, dict):
@@ -2997,19 +3008,33 @@ def admin_portal():
                 if upload_time:
                     dt = datetime.fromisoformat(upload_time.replace("Z", "+00:00"))
                     time_display = dt.strftime("%b %d, %Y • %I:%M %p")
+                    start_of_week = dt.date() - timedelta(days=dt.weekday())
+                    end_of_week = start_of_week + timedelta(days=6)
+                    week_key = start_of_week.strftime("%Y-%m-%d")
+                    week_label = f"{start_of_week.strftime('%b %d')} – {end_of_week.strftime('%b %d, %Y')}"
                 else:
                     time_display = "Recent"
+                    week_key = "recent"
+                    week_label = "Recent Activity"
             except Exception:
                 time_display = "Recent"
+                week_key = "recent"
+                week_label = "Recent Activity"
 
             u_email = fval.get("user_email") or fval.get("email") or "Guest / Quick Scan"
-            fname = fval.get("filename") or fval.get("file_name") or "Unknown file"
+            ftype = fval.get("detected_type") or fval.get("file_type") or fval.get("classification") or "Document"
             risk = int(fval.get("risk_score", 0) or 0)
             threat_lvl = fval.get("threat_level") or ("Critical" if risk >= 81 else "High" if risk >= 56 else "Medium" if risk >= 36 else "Low" if risk >= 16 else "Benign")
 
+            # Privacy: file names are intentionally masked/hidden from administrative view
+            short_id = fid[:8] if fid else "file"
+
             recent_logs.append({
                 "id": fid,
-                "filename": fname,
+                "short_id": short_id,
+                "file_type": ftype,
+                "week_key": week_key,
+                "week_label": week_label,
                 "timestamp": time_display,
                 "raw_time": upload_time or "",
                 "user_email": u_email,
@@ -3017,8 +3042,30 @@ def admin_portal():
                 "risk_score": risk
             })
 
+            # Tally weekly metrics
+            w = weekly_map[week_key]
+            w["week_key"] = week_key
+            w["label"] = week_label
+            w["total_scans"] += 1
+            if risk >= 36:
+                w["threats"] += 1
+            else:
+                w["benign"] += 1
+            w["users"].add(u_email)
+
         recent_logs.sort(key=lambda x: x["raw_time"], reverse=True)
-        # Show all files across platform history (no artificial cap)
+
+        weekly_summaries = []
+        for wkey in sorted(weekly_map.keys(), reverse=True):
+            item = weekly_map[wkey]
+            weekly_summaries.append({
+                "week_key": item["week_key"],
+                "label": item["label"],
+                "total_scans": item["total_scans"],
+                "threats": item["threats"],
+                "benign": item["benign"],
+                "unique_users": len(item["users"])
+            })
 
     except Exception as exc:
         app.logger.error("Admin portal error: %s", exc)
@@ -3027,6 +3074,7 @@ def admin_portal():
         "monitor.html",
         users=all_users,
         logs=recent_logs,
+        weekly_summaries=weekly_summaries,
         total_users=len(all_users),
         total_files=total_files,
         active_today=active_count
