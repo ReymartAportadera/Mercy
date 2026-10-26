@@ -262,24 +262,38 @@ td.time{color:var(--text-dim);font-size:0.8rem}
     </div>
   </div>
 
-  <!-- SECTION 2: Live System Scan Activity & Audit Logs -->
+  <!-- SECTION 2: All Scanned Files & System Security Audit Trail -->
   <div class="section-wrap">
     <div class="table-header">
-      <div class="table-title"><i class="fa-solid fa-clock-rotate-left" style="color:#ef4444"></i> Live System Scan Activity & Security Logs</div>
-      <div style="font-size:0.78rem;color:#64748b"><i class="fa-solid fa-circle-dot" style="color:#22c55e;margin-right:5px"></i>Live Firebase Telemetry</div>
+      <div class="table-title"><i class="fa-solid fa-folder-open" style="color:#06b6d4"></i> All Scanned Files & History Logs</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="searchLogsInput" placeholder="Search filename, user, threat..." onkeyup="filterLogsTable()">
+        </div>
+        <div style="font-size:0.78rem;color:#64748b"><i class="fa-solid fa-circle-dot" style="color:#22c55e;margin-right:5px"></i>Live Firebase Telemetry</div>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Timestamp</th><th>User / Source</th><th>Threat Level</th><th>Risk Score</th>
+            <th>#</th>
+            <th>File Name</th>
+            <th>Timestamp</th>
+            <th>User / Source</th>
+            <th>Threat Level</th>
+            <th>Risk Score</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="logsTableBody">
           {% if logs %}
             {% for l in logs %}
             <tr>
               <td style="color:#64748b;font-size:0.78rem">{{ loop.index }}</td>
+              <td style="font-weight:600; color:#e2e8f0; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{{ l.filename }}">
+                <i class="fa-regular fa-file" style="margin-right:6px; color:#06b6d4"></i>{{ l.filename }}
+              </td>
               <td class="time"><i class="fa-regular fa-clock" style="margin-right:6px"></i>{{ l.timestamp }}</td>
               <td class="email">{{ l.user_email }}</td>
               <td>
@@ -302,11 +316,11 @@ td.time{color:var(--text-dim);font-size:0.8rem}
             </tr>
             {% endfor %}
           {% else %}
-            <tr><td colspan="5"><div class="empty-state"><i class="fa-solid fa-file-circle-xmark"></i>No scan activity logs recorded yet.</div></td></tr>
+            <tr><td colspan="6"><div class="empty-state"><i class="fa-solid fa-file-circle-xmark"></i>No scanned files found in database.</div></td></tr>
           {% endif %}
         </tbody>
       </table>
-      <div class="table-footer">Showing latest {{ logs|length }} system scan events</div>
+      <div class="table-footer" id="logsTableFooter">Showing all {{ logs|length }} scanned files across platform history</div>
     </div>
   </div>
 
@@ -323,6 +337,17 @@ function filterTable(){
     if(show)visible++;
   });
   document.getElementById("tableFooter").textContent="Showing "+visible+" client(s)";
+}
+function filterLogsTable(){
+  var q=document.getElementById("searchLogsInput").value.toLowerCase();
+  var rows=document.querySelectorAll("#logsTableBody tr");
+  var visible=0;
+  rows.forEach(function(row){
+    var show=row.innerText.toLowerCase().includes(q);
+    row.style.display=show?"":"none";
+    if(show)visible++;
+  });
+  document.getElementById("logsTableFooter").textContent="Showing "+visible+" of {{ logs|length }} file(s)";
 }
 function toggleApiPanel(){
   var p=document.getElementById("apiPanel");

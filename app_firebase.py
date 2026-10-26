@@ -3003,11 +3003,13 @@ def admin_portal():
                 time_display = "Recent"
 
             u_email = fval.get("user_email") or fval.get("email") or "Guest / Quick Scan"
+            fname = fval.get("filename") or fval.get("file_name") or "Unknown file"
             risk = int(fval.get("risk_score", 0) or 0)
             threat_lvl = fval.get("threat_level") or ("Critical" if risk >= 81 else "High" if risk >= 56 else "Medium" if risk >= 36 else "Low" if risk >= 16 else "Benign")
 
             recent_logs.append({
                 "id": fid,
+                "filename": fname,
                 "timestamp": time_display,
                 "raw_time": upload_time or "",
                 "user_email": u_email,
@@ -3016,7 +3018,7 @@ def admin_portal():
             })
 
         recent_logs.sort(key=lambda x: x["raw_time"], reverse=True)
-        recent_logs = recent_logs[:20]  # Latest 20 scan activity logs
+        # Show all files across platform history (no artificial cap)
 
     except Exception as exc:
         app.logger.error("Admin portal error: %s", exc)
