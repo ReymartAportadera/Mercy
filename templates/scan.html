@@ -1431,47 +1431,115 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script>
-/* ─── TrustFile Glossary Tooltip Engine ─── */
+/* ─── TrustFile Glossary Tooltip Engine v2 (floating tooltip — overflow-safe) ─── */
 const TF_GLOSSARY = {
-  "obfuscation":   "The process of deliberately making code hard to understand to hide malicious intent from security tools.",
-  "obfuscated":    "Intentionally scrambled or hidden code — a common tactic used by malware to evade antivirus detection.",
-  "base64":        "A text-encoding method that converts binary data into readable characters. Malware often uses it to hide payloads inside documents.",
-  "entropy":       "A measure of randomness in a file (scale 0-8). High entropy may indicate the file is encrypted, packed, or obfuscated.",
-  "heuristic":     "A rule-based detection method that identifies suspicious code patterns without needing a known malware signature.",
-  "heuristics":    "Rule-based detection methods that identify suspicious code patterns without needing a known malware signature.",
-  "payload":       "The harmful part of a malicious file — the code that actually causes damage when the file is opened or run.",
-  "ioc":           "Indicator of Compromise — a piece of evidence (URL, hash, suspicious string) that suggests a file may be malicious.",
-  "false positive": "When a safe, legitimate file is incorrectly flagged as malicious by a security scanner.",
-  "magic bytes":   "The first few bytes of a file that reveal its true file type, regardless of what the file extension says.",
-  "pe structure":  "Portable Executable — the standard Windows format for programs (.exe, .dll). Finding this inside a document is suspicious.",
-  "virustotal":    "A free online service that scans files against 75+ antivirus engines simultaneously for threat detection.",
-  "sandbox":       "An isolated virtual environment where suspicious files can be safely opened without risking the real system.",
-  "sandboxing":    "The technique of running a suspicious file in an isolated virtual environment to observe its behavior safely.",
-  "trojan":        "Malware disguised as legitimate software. Dangerous because users willingly install and run it themselves.",
-  "ransomware":    "Malware that encrypts your files and demands a ransom payment to restore access to them.",
-  "spyware":       "Software that secretly monitors your activity and sends collected data back to attackers.",
-  "shell":         "The command-line interface of an operating system. Malware that can run shell commands can control your computer.",
-  "eval":          "A programming function that executes code stored as text. Dangerous when misused to run hidden malicious commands.",
-  "exec":          "Short for execute — runs code or programs. Finding this in documents (PDF, Word) is unusual and suspicious.",
-  "signature":     "A unique fingerprint of a known malware file, stored in antivirus databases to enable fast and accurate detection.",
-  "encryption":    "The process of encoding data so only authorized parties can read it. Malware uses encryption to hide its activities.",
-  "macro":         "A small automated script inside Office documents. Malicious macros can run harmful commands when the file is opened.",
-  "macros":        "Small automated scripts inside Office documents. Malicious macros can run harmful commands when the file is opened.",
-  "embedded":      "Content (like files or scripts) hidden inside another file. Embedded items in documents can be used to deliver malware.",
-  "packed":        "A file that has been compressed and encrypted to hide its true contents from antivirus scanners.",
-  "imports":       "External code libraries loaded by a program. Risky imports may give malware access to sensitive system functions.",
-  "hash":          "A unique fingerprint of a file generated from its contents. Used to verify file integrity and match known malware samples.",
-  "benign":        "Safe and harmless. A benign file poses no threat and is cleared by the scanner.",
-  "anomaly":       "An unusual pattern or behavior that stands out from what is expected — may indicate suspicious or malicious activity.",
-  "anomalies":     "Unusual patterns or behaviors that stand out from what is expected — may indicate suspicious or malicious activity.",
-  "indicator":     "A clue or piece of evidence that suggests a file or system may be compromised or malicious.",
-  "indicators":    "Clues or pieces of evidence that suggest a file or system may be compromised or malicious.",
-  "detection":     "The process of identifying malicious code, patterns, or behavior in a file using rules, signatures, or AI.",
-  "malicious":     "Harmful or dangerous — designed to damage, steal data, or take control of a computer system.",
-  "suspicious":    "Something that looks unusual or risky — not confirmed as harmful but worth investigating further.",
-  "packer":        "A tool that compresses and encrypts an executable to hide its true contents from antivirus scanners.",
-  "executable":    "A file that can run as a program on a computer. Examples: .exe, .dll, .bat files on Windows."
+  "obfuscation":    "The process of deliberately making code hard to understand to hide malicious intent from security tools.",
+  "obfuscated":     "Intentionally scrambled or hidden code — a common tactic used by malware to evade antivirus detection.",
+  "base64":         "A text-encoding method that converts binary data into readable characters. Malware often uses it to hide payloads inside documents.",
+  "base64 strings": "Text strings encoded in Base64 format — binary data converted to text characters. Malware often uses Base64 to hide payloads.",
+  "entropy":        "A measure of randomness in a file (scale 0-8). High entropy may indicate the file is encrypted, packed, or obfuscated.",
+  "heuristic":      "A rule-based detection method that identifies suspicious code patterns without needing a known malware signature.",
+  "heuristics":     "Rule-based detection methods that identify suspicious code patterns without needing a known malware signature.",
+  "payload":        "The harmful part of a malicious file — the code that actually causes damage when the file is opened or run.",
+  "ioc":            "Indicator of Compromise — a piece of evidence (URL, hash, suspicious string) that suggests a file may be malicious.",
+  "false positive":  "When a safe, legitimate file is incorrectly flagged as malicious by a security scanner.",
+  "magic bytes":    "The first few bytes of a file that reveal its true file type, regardless of what the file extension says.",
+  "pe structure":   "Portable Executable — the standard Windows format for programs (.exe, .dll). Finding this inside a document is suspicious.",
+  "virustotal":     "A free online service that scans files against 75+ antivirus engines simultaneously for threat detection.",
+  "sandbox":        "An isolated virtual environment where suspicious files can be safely opened without risking the real system.",
+  "sandboxing":     "The technique of running a suspicious file in an isolated virtual environment to observe its behavior safely.",
+  "trojan":         "Malware disguised as legitimate software. Dangerous because users willingly install and run it themselves.",
+  "ransomware":     "Malware that encrypts your files and demands a ransom payment to restore access to them.",
+  "spyware":        "Software that secretly monitors your activity and sends collected data back to attackers.",
+  "shell":          "The command-line interface of an operating system. Malware that can run shell commands can control your computer.",
+  "eval":           "A programming function that executes code stored as text. Dangerous when misused to run hidden malicious commands.",
+  "exec":           "Short for execute — runs code or programs. Finding this in documents (PDF, Word) is unusual and suspicious.",
+  "signature":      "A unique fingerprint of a known malware file, stored in antivirus databases to enable fast and accurate detection.",
+  "encryption":     "The process of encoding data so only authorized parties can read it. Malware uses encryption to hide its activities.",
+  "macro":          "A small automated script inside Office documents. Malicious macros can run harmful commands when the file is opened.",
+  "macros":         "Small automated scripts inside Office documents. Malicious macros can run harmful commands when the file is opened.",
+  "embedded":       "Content (like files or scripts) hidden inside another file. Embedded items in documents can be used to deliver malware.",
+  "packed":         "A file that has been compressed and encrypted to hide its true contents from antivirus scanners.",
+  "imports":        "External code libraries loaded by a program. Risky imports may give malware access to sensitive system functions.",
+  "hash":           "A unique fingerprint of a file generated from its contents. Used to verify file integrity and match known malware samples.",
+  "benign":         "Safe and harmless. A benign file poses no threat and is cleared by the scanner.",
+  "anomaly":        "An unusual pattern or behavior that stands out from what is expected — may indicate suspicious or malicious activity.",
+  "anomalies":      "Unusual patterns or behaviors that stand out from what is expected — may indicate suspicious or malicious activity.",
+  "indicator":      "A clue or piece of evidence that suggests a file or system may be compromised or malicious.",
+  "indicators":     "Clues or pieces of evidence that suggest a file or system may be compromised or malicious.",
+  "detection":      "The process of identifying malicious code, patterns, or behavior in a file using rules, signatures, or AI.",
+  "malicious":      "Harmful or dangerous — designed to damage, steal data, or take control of a computer system.",
+  "suspicious":     "Something that looks unusual or risky — not confirmed as harmful but worth investigating further.",
+  "packer":         "A tool that compresses and encrypts an executable to hide its true contents from antivirus scanners.",
+  "executable":     "A file that can run as a program on a computer. Examples: .exe, .dll, .bat files on Windows.",
+  "urls":           "Uniform Resource Locators — web addresses. Suspicious URLs inside a file may point to malicious download servers.",
+  "persistence":    "A technique malware uses to stay on your computer even after a restart or antivirus scan.",
+  "code execution": "The ability to run commands or programs. Files that can trigger code execution outside their normal purpose are dangerous."
 };
+
+/* ── Floating tooltip element (appended to body — never clipped by overflow:hidden) ── */
+var tfTip = null;
+function tfGetTip() {
+  if (!tfTip) {
+    tfTip = document.createElement('div');
+    tfTip.id = 'tf-float-tip';
+    tfTip.style.cssText = [
+      'position:fixed',
+      'z-index:99999',
+      'max-width:260px',
+      'background:#0f172a',
+      'color:#e2e8f0',
+      'border:1px solid rgba(6,182,212,0.5)',
+      'border-radius:10px',
+      'padding:10px 14px',
+      'font-size:0.78rem',
+      'line-height:1.6',
+      'box-shadow:0 8px 28px rgba(0,0,0,0.65)',
+      'pointer-events:none',
+      'opacity:0',
+      'transition:opacity 0.15s ease',
+      'white-space:normal',
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif'
+    ].join(';');
+    document.body.appendChild(tfTip);
+  }
+  return tfTip;
+}
+
+function tfShowTip(el) {
+  var def = el.getAttribute('data-def');
+  if (!def) return;
+  var tip = tfGetTip();
+  tip.textContent = def;
+  tip.style.opacity = '0';
+  tip.style.display = 'block';
+
+  var rect = el.getBoundingClientRect();
+  var tipW = 260;
+  var left = rect.left + rect.width / 2 - tipW / 2;
+  var top  = rect.top - 10;
+
+  /* keep inside viewport */
+  if (left < 8) left = 8;
+  if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+
+  tip.style.width = tipW + 'px';
+  tip.style.left  = left + 'px';
+
+  /* measure height after setting text, then position above */
+  requestAnimationFrame(function() {
+    var tipH = tip.offsetHeight;
+    var finalTop = rect.top - tipH - 8;
+    if (finalTop < 8) finalTop = rect.bottom + 8; /* flip below if no room above */
+    tip.style.top = finalTop + 'px';
+    tip.style.opacity = '1';
+  });
+}
+
+function tfHideTip() {
+  var tip = tfGetTip();
+  tip.style.opacity = '0';
+}
 
 function tfEscapeRegex(s) {
   return s.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
@@ -1486,6 +1554,7 @@ function tfHighlightNode(node) {
   if (parent.classList && parent.classList.contains('term-tip')) return;
 
   var text = node.textContent;
+  /* Sort longest terms first to match multi-word terms before single words */
   var terms = Object.keys(TF_GLOSSARY).sort(function(a,b){ return b.length - a.length; });
   var patternStr = '(' + terms.map(tfEscapeRegex).join('|') + ')';
   var pattern = new RegExp(patternStr, 'gi');
@@ -1507,8 +1576,14 @@ function tfHighlightNode(node) {
       var span = document.createElement('span');
       span.className = 'term-tip';
       span.setAttribute('tabindex', '0');
-      span.setAttribute('data-def', 'Meaning: ' + def);
+      span.setAttribute('data-def', '\ud83d\udcd6 ' + def);
       span.textContent = match[0];
+      /* floating tooltip events */
+      span.addEventListener('mouseenter', function(){ tfShowTip(this); });
+      span.addEventListener('mouseleave', tfHideTip);
+      span.addEventListener('focus',      function(){ tfShowTip(this); });
+      span.addEventListener('blur',       tfHideTip);
+      span.addEventListener('click',      function(e){ e.stopPropagation(); tfShowTip(this); });
       frag.appendChild(span);
     } else {
       frag.appendChild(document.createTextNode(match[0]));
@@ -1546,9 +1621,15 @@ function tfAddLegend() {
 document.addEventListener('DOMContentLoaded', function() {
   var scanWrapper = document.querySelector('.scan-wrapper');
   if (!scanWrapper) return;
+  /* Target all result cards including IOC extraction */
   var targets = scanWrapper.querySelectorAll('.audit-card, .summary-info-strip, .ai-quote-box, .threat-meter-card, .nested-sub-card, .kv-group, .banner-inner-green, .banner-inner-blue');
   targets.forEach(function(el) { tfWalkAndHighlight(el); });
   tfAddLegend();
+
+  /* Hide tooltip when clicking outside */
+  document.addEventListener('click', function(e) {
+    if (!e.target.classList.contains('term-tip')) tfHideTip();
+  });
 });
 </script>
 
