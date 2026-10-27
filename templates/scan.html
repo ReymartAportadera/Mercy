@@ -505,6 +505,64 @@
             color: #10b981;
             margin-right: 6px;
         }
+
+        /* ═══════════════════════════════════════════════════════════ */
+        /* GLOSSARY TOOLTIP SYSTEM                                     */
+        /* ═══════════════════════════════════════════════════════════ */
+        .term-tip {
+            border-bottom: 1px dashed #06b6d4;
+            color: inherit;
+            cursor: help;
+            position: relative;
+            display: inline;
+        }
+        .term-tip::after {
+            content: attr(data-def);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: #e2e8f0;
+            border: 1px solid rgba(6, 182, 212, 0.45);
+            border-radius: 10px;
+            padding: 9px 13px;
+            font-size: 0.76rem;
+            line-height: 1.55;
+            width: 250px;
+            white-space: normal;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.18s ease;
+            z-index: 9999;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-weight: 400;
+        }
+        .term-tip:hover::after,
+        .term-tip:focus::after {
+            opacity: 1;
+        }
+        /* Glossary legend pill */
+        .glossary-legend {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            color: #6b7280;
+            background: rgba(6,182,212,0.06);
+            border: 1px solid rgba(6,182,212,0.2);
+            border-radius: 6px;
+            padding: 4px 10px;
+            margin-bottom: 14px;
+        }
+        .glossary-legend span {
+            border-bottom: 1px dashed #06b6d4;
+            color: #06b6d4;
+            font-weight: 600;
+        }
+
+
     </style>
 </head>
 
@@ -1368,6 +1426,129 @@ document.addEventListener('DOMContentLoaded', function() {
         scanForm.submit();
         {% endif %}
     }
+});
+</script>
+
+
+<script>
+/* ─── TrustFile Glossary Tooltip Engine ─── */
+const TF_GLOSSARY = {
+  "obfuscation":   "The process of deliberately making code hard to understand to hide malicious intent from security tools.",
+  "obfuscated":    "Intentionally scrambled or hidden code — a common tactic used by malware to evade antivirus detection.",
+  "base64":        "A text-encoding method that converts binary data into readable characters. Malware often uses it to hide payloads inside documents.",
+  "entropy":       "A measure of randomness in a file (scale 0-8). High entropy may indicate the file is encrypted, packed, or obfuscated.",
+  "heuristic":     "A rule-based detection method that identifies suspicious code patterns without needing a known malware signature.",
+  "heuristics":    "Rule-based detection methods that identify suspicious code patterns without needing a known malware signature.",
+  "payload":       "The harmful part of a malicious file — the code that actually causes damage when the file is opened or run.",
+  "ioc":           "Indicator of Compromise — a piece of evidence (URL, hash, suspicious string) that suggests a file may be malicious.",
+  "false positive": "When a safe, legitimate file is incorrectly flagged as malicious by a security scanner.",
+  "magic bytes":   "The first few bytes of a file that reveal its true file type, regardless of what the file extension says.",
+  "pe structure":  "Portable Executable — the standard Windows format for programs (.exe, .dll). Finding this inside a document is suspicious.",
+  "virustotal":    "A free online service that scans files against 75+ antivirus engines simultaneously for threat detection.",
+  "sandbox":       "An isolated virtual environment where suspicious files can be safely opened without risking the real system.",
+  "sandboxing":    "The technique of running a suspicious file in an isolated virtual environment to observe its behavior safely.",
+  "trojan":        "Malware disguised as legitimate software. Dangerous because users willingly install and run it themselves.",
+  "ransomware":    "Malware that encrypts your files and demands a ransom payment to restore access to them.",
+  "spyware":       "Software that secretly monitors your activity and sends collected data back to attackers.",
+  "shell":         "The command-line interface of an operating system. Malware that can run shell commands can control your computer.",
+  "eval":          "A programming function that executes code stored as text. Dangerous when misused to run hidden malicious commands.",
+  "exec":          "Short for execute — runs code or programs. Finding this in documents (PDF, Word) is unusual and suspicious.",
+  "signature":     "A unique fingerprint of a known malware file, stored in antivirus databases to enable fast and accurate detection.",
+  "encryption":    "The process of encoding data so only authorized parties can read it. Malware uses encryption to hide its activities.",
+  "macro":         "A small automated script inside Office documents. Malicious macros can run harmful commands when the file is opened.",
+  "macros":        "Small automated scripts inside Office documents. Malicious macros can run harmful commands when the file is opened.",
+  "embedded":      "Content (like files or scripts) hidden inside another file. Embedded items in documents can be used to deliver malware.",
+  "packed":        "A file that has been compressed and encrypted to hide its true contents from antivirus scanners.",
+  "imports":       "External code libraries loaded by a program. Risky imports may give malware access to sensitive system functions.",
+  "hash":          "A unique fingerprint of a file generated from its contents. Used to verify file integrity and match known malware samples.",
+  "benign":        "Safe and harmless. A benign file poses no threat and is cleared by the scanner.",
+  "anomaly":       "An unusual pattern or behavior that stands out from what is expected — may indicate suspicious or malicious activity.",
+  "anomalies":     "Unusual patterns or behaviors that stand out from what is expected — may indicate suspicious or malicious activity.",
+  "indicator":     "A clue or piece of evidence that suggests a file or system may be compromised or malicious.",
+  "indicators":    "Clues or pieces of evidence that suggest a file or system may be compromised or malicious.",
+  "detection":     "The process of identifying malicious code, patterns, or behavior in a file using rules, signatures, or AI.",
+  "malicious":     "Harmful or dangerous — designed to damage, steal data, or take control of a computer system.",
+  "suspicious":    "Something that looks unusual or risky — not confirmed as harmful but worth investigating further.",
+  "packer":        "A tool that compresses and encrypts an executable to hide its true contents from antivirus scanners.",
+  "executable":    "A file that can run as a program on a computer. Examples: .exe, .dll, .bat files on Windows."
+};
+
+function tfEscapeRegex(s) {
+  return s.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
+}
+
+function tfHighlightNode(node) {
+  if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  var parent = node.parentNode;
+  if (!parent) return;
+  var tag = parent.tagName ? parent.tagName.toUpperCase() : '';
+  if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT') return;
+  if (parent.classList && parent.classList.contains('term-tip')) return;
+
+  var text = node.textContent;
+  var terms = Object.keys(TF_GLOSSARY).sort(function(a,b){ return b.length - a.length; });
+  var patternStr = '(' + terms.map(tfEscapeRegex).join('|') + ')';
+  var pattern = new RegExp(patternStr, 'gi');
+
+  if (!pattern.test(text)) return;
+  pattern.lastIndex = 0;
+
+  var frag = document.createDocumentFragment();
+  var lastIndex = 0;
+  var match;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      frag.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+    var termLower = match[0].toLowerCase();
+    var def = TF_GLOSSARY[termLower];
+    if (def) {
+      var span = document.createElement('span');
+      span.className = 'term-tip';
+      span.setAttribute('tabindex', '0');
+      span.setAttribute('data-def', 'Meaning: ' + def);
+      span.textContent = match[0];
+      frag.appendChild(span);
+    } else {
+      frag.appendChild(document.createTextNode(match[0]));
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex === 0) return;
+  if (lastIndex < text.length) {
+    frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+  parent.replaceChild(frag, node);
+}
+
+function tfWalkAndHighlight(root) {
+  var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+  var nodes = [];
+  var n;
+  while ((n = walker.nextNode())) { nodes.push(n); }
+  nodes.forEach(tfHighlightNode);
+}
+
+function tfAddLegend() {
+  var wrapper = document.querySelector('.scan-wrapper');
+  if (!wrapper) return;
+  var firstCard = wrapper.querySelector('.summary-info-strip, .threat-meter-card, .audit-card');
+  if (!firstCard) return;
+  if (document.querySelector('.glossary-legend')) return;
+  var legend = document.createElement('div');
+  legend.className = 'glossary-legend';
+  legend.innerHTML = '&#128218; Tip: <span style="border-bottom:1px dashed #06b6d4;color:#06b6d4;font-weight:600;">underlined terms</span> have plain-English definitions &mdash; hover or tap to learn more.';
+  firstCard.parentNode.insertBefore(legend, firstCard);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var scanWrapper = document.querySelector('.scan-wrapper');
+  if (!scanWrapper) return;
+  var targets = scanWrapper.querySelectorAll('.audit-card, .summary-info-strip, .ai-quote-box, .threat-meter-card, .nested-sub-card, .kv-group, .banner-inner-green, .banner-inner-blue');
+  targets.forEach(function(el) { tfWalkAndHighlight(el); });
+  tfAddLegend();
 });
 </script>
 
