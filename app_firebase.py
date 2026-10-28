@@ -3287,19 +3287,31 @@ def reports():
     # ── Severity counters ──────────────────────────────────────────────────────
     critical = high = medium = low_count = safe = 0
     for f in files:
-        risk = f.get("risk_score", 0) or 0
         if f.get("status") == "Pending":
             continue
-        if risk >= 70:
+        tl = (f.get("threat_level") or "").strip().lower()
+        if tl in ["critical", "malware"]:
             critical += 1
-        elif risk >= 50:
+        elif tl == "high":
             high += 1
-        elif risk >= 30:
+        elif tl == "medium":
             medium += 1
-        elif risk > 0:
+        elif tl == "low":
             low_count += 1
-        else:
+        elif tl in ["benign", "safe", "clean"]:
             safe += 1
+        else:
+            risk = f.get("risk_score", 0) or 0
+            if risk >= 81:
+                critical += 1
+            elif risk >= 56:
+                high += 1
+            elif risk >= 36:
+                medium += 1
+            elif risk >= 16:
+                low_count += 1
+            else:
+                safe += 1
 
     total = len(files) or 1
     threats = critical + high + medium + low_count
@@ -3323,8 +3335,9 @@ def reports():
             except Exception:
                 continue
             if fdate == day:
+                tl = (f.get("threat_level") or "").strip().lower()
                 risk = f.get("risk_score", 0) or 0
-                if risk > 0:
+                if tl in ["critical", "high", "medium", "low", "malware"] or (not tl and risk >= 16):
                     t_count += 1
                 else:
                     s_count += 1
