@@ -510,38 +510,20 @@
         /* GLOSSARY TOOLTIP SYSTEM                                     */
         /* ═══════════════════════════════════════════════════════════ */
         .term-tip {
-            border-bottom: 1px dashed #06b6d4;
+            border-bottom: 2px dashed #06b6d4;
             color: inherit;
-            cursor: help;
+            cursor: pointer;
             position: relative;
             display: inline;
+            background: rgba(6, 182, 212, 0.08);
+            padding: 1px 3px;
+            border-radius: 3px;
+            transition: background 0.2s ease, border-color 0.2s ease;
         }
-        .term-tip::after {
-            content: attr(data-def);
-            position: absolute;
-            bottom: calc(100% + 8px);
-            left: 50%;
-            transform: translateX(-50%);
-            background: #0f172a;
-            color: #e2e8f0;
-            border: 1px solid rgba(6, 182, 212, 0.45);
-            border-radius: 10px;
-            padding: 9px 13px;
-            font-size: 0.76rem;
-            line-height: 1.55;
-            width: 250px;
-            white-space: normal;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.18s ease;
-            z-index: 9999;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.55);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-weight: 400;
-        }
-        .term-tip:hover::after,
-        .term-tip:focus::after {
-            opacity: 1;
+        .term-tip:hover, .term-tip:focus {
+            background: rgba(6, 182, 212, 0.22);
+            border-bottom-color: #22d3ee;
+            outline: none;
         }
         /* Glossary legend pill */
         .glossary-legend {
@@ -1431,114 +1413,147 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 <script>
-/* ─── TrustFile Glossary Tooltip Engine v2 (floating tooltip — overflow-safe) ─── */
+/* ─── TrustFile Interactive Cybersecurity Glossary & Definition Card Engine ─── */
 const TF_GLOSSARY = {
-  "obfuscation":    "The process of deliberately making code hard to understand to hide malicious intent from security tools.",
-  "obfuscated":     "Intentionally scrambled or hidden code — a common tactic used by malware to evade antivirus detection.",
-  "base64":         "A text-encoding method that converts binary data into readable characters. Malware often uses it to hide payloads inside documents.",
-  "base64 strings": "Text strings encoded in Base64 format — binary data converted to text characters. Malware often uses Base64 to hide payloads.",
-  "entropy":        "A measure of randomness in a file (scale 0-8). High entropy may indicate the file is encrypted, packed, or obfuscated.",
-  "heuristic":      "A rule-based detection method that identifies suspicious code patterns without needing a known malware signature.",
-  "heuristics":     "Rule-based detection methods that identify suspicious code patterns without needing a known malware signature.",
-  "payload":        "The harmful part of a malicious file — the code that actually causes damage when the file is opened or run.",
-  "ioc":            "Indicator of Compromise — a piece of evidence (URL, hash, suspicious string) that suggests a file may be malicious.",
-  "false positive":  "When a safe, legitimate file is incorrectly flagged as malicious by a security scanner.",
-  "magic bytes":    "The first few bytes of a file that reveal its true file type, regardless of what the file extension says.",
-  "pe structure":   "Portable Executable — the standard Windows format for programs (.exe, .dll). Finding this inside a document is suspicious.",
-  "virustotal":     "A free online service that scans files against 75+ antivirus engines simultaneously for threat detection.",
-  "sandbox":        "An isolated virtual environment where suspicious files can be safely opened without risking the real system.",
-  "sandboxing":     "The technique of running a suspicious file in an isolated virtual environment to observe its behavior safely.",
-  "trojan":         "Malware disguised as legitimate software. Dangerous because users willingly install and run it themselves.",
-  "ransomware":     "Malware that encrypts your files and demands a ransom payment to restore access to them.",
-  "spyware":        "Software that secretly monitors your activity and sends collected data back to attackers.",
-  "shell":          "The command-line interface of an operating system. Malware that can run shell commands can control your computer.",
-  "eval":           "A programming function that executes code stored as text. Dangerous when misused to run hidden malicious commands.",
-  "exec":           "Short for execute — runs code or programs. Finding this in documents (PDF, Word) is unusual and suspicious.",
-  "signature":      "A unique fingerprint of a known malware file, stored in antivirus databases to enable fast and accurate detection.",
-  "encryption":     "The process of encoding data so only authorized parties can read it. Malware uses encryption to hide its activities.",
-  "macro":          "A small automated script inside Office documents. Malicious macros can run harmful commands when the file is opened.",
-  "macros":         "Small automated scripts inside Office documents. Malicious macros can run harmful commands when the file is opened.",
-  "embedded":       "Content (like files or scripts) hidden inside another file. Embedded items in documents can be used to deliver malware.",
-  "packed":         "A file that has been compressed and encrypted to hide its true contents from antivirus scanners.",
-  "imports":        "External code libraries loaded by a program. Risky imports may give malware access to sensitive system functions.",
-  "hash":           "A unique fingerprint of a file generated from its contents. Used to verify file integrity and match known malware samples.",
-  "benign":         "Safe and harmless. A benign file poses no threat and is cleared by the scanner.",
-  "anomaly":        "An unusual pattern or behavior that stands out from what is expected — may indicate suspicious or malicious activity.",
-  "anomalies":      "Unusual patterns or behaviors that stand out from what is expected — may indicate suspicious or malicious activity.",
-  "indicator":      "A clue or piece of evidence that suggests a file or system may be compromised or malicious.",
-  "indicators":     "Clues or pieces of evidence that suggest a file or system may be compromised or malicious.",
-  "detection":      "The process of identifying malicious code, patterns, or behavior in a file using rules, signatures, or AI.",
-  "malicious":      "Harmful or dangerous — designed to damage, steal data, or take control of a computer system.",
-  "suspicious":     "Something that looks unusual or risky — not confirmed as harmful but worth investigating further.",
-  "packer":         "A tool that compresses and encrypts an executable to hide its true contents from antivirus scanners.",
-  "executable":     "A file that can run as a program on a computer. Examples: .exe, .dll, .bat files on Windows.",
-  "urls":           "Uniform Resource Locators — web addresses. Suspicious URLs inside a file may point to malicious download servers.",
-  "persistence":    "A technique malware uses to stay on your computer even after a restart or antivirus scan.",
-  "code execution": "The ability to run commands or programs. Files that can trigger code execution outside their normal purpose are dangerous."
+  "base64 strings": "Text strings encoded in Base64 format — binary data converted into letters and numbers. Malware often uses Base64 to conceal payloads, scripts, or dangerous commands inside documents.",
+  "base64":         "A text-encoding method that converts binary data (like files or code) into readable letters and numbers. Malware frequently uses Base64 to hide malicious payloads inside seemingly harmless files.",
+  "based64":        "A text-encoding method that converts binary data into readable letters and numbers. Malware frequently uses Base64 to hide malicious payloads inside documents.",
+  "obfuscation":    "The deliberate process of making code messy, confusing, or scrambled so antivirus tools cannot understand what it does.",
+  "obfuscated":     "Intentionally scrambled or hidden code — a common evasion tactic used by malware authors to bypass security filters.",
+  "entropy":        "A measure of randomness in a file (scale 0 to 8.0). High entropy (near 7.5–8.0) suggests the file contains encrypted, compressed, or packed code.",
+  "heuristic":      "A smart detection rule that flags suspicious behavior and patterns without waiting for a known malware signature.",
+  "heuristics":     "Rule-based detection methods that evaluate file structure and code patterns to detect new or unknown malware.",
+  "payload":        "The dangerous component of a cyber attack — the actual code that performs harmful actions like stealing files or encrypting data.",
+  "payloads":       "The harmful components of malware files that execute damage once opened.",
+  "ioc extraction": "Indicators of Compromise Extraction — automatically pulling out suspicious clues (URLs, hashes, IP addresses, encoded strings) found in the file.",
+  "ioc":            "Indicator of Compromise — forensic evidence (like a malicious IP, strange URL, or hidden code) indicating a file may be harmful.",
+  "iocs":           "Indicators of Compromise — pieces of evidence (URLs, file hashes, unusual strings) that suggest suspicious activity.",
+  "false positive": "When a completely safe, legitimate file is mistakenly flagged as dangerous by an automated scanner.",
+  "magic bytes":    "The initial bytes of a file that identify its true file type (e.g., whether it is really a PDF or a disguised program), regardless of the file extension.",
+  "pe structure":   "Portable Executable — the standard executable file format used by Windows (.exe, .dll). Finding a PE structure inside a document is a high-risk indicator.",
+  "virustotal":     "A global multi-antivirus scanning platform that runs files against 75+ commercial security engines simultaneously.",
+  "sandbox":        "An isolated virtual testing environment where files can be safely detonated and observed without endangering real computers.",
+  "sandboxing":     "Safely opening and analyzing a suspicious file inside a sealed, isolated virtual computer.",
+  "trojan":         "Malware disguised as legitimate or harmless software so that users willingly open and run it.",
+  "ransomware":     "Extortion malware that encrypts files on a device and demands financial payment in exchange for the decryption key.",
+  "spyware":        "Stealthy surveillance software that monitors keystrokes, passwords, and user activities without consent.",
+  "shell":          "The command-line terminal of the operating system. Malware with shell access can execute arbitrary system commands.",
+  "eval":           "A programming function that runs text as live computer code. Attackers use it to execute hidden malicious commands dynamically.",
+  "exec":           "Short for 'execute' — runs programs or system commands. Finding exec commands in documents is highly unusual and suspicious.",
+  "signature":      "A unique mathematical hash or byte pattern characteristic of a known malware family.",
+  "encryption":     "Converting readable information into ciphertext so only authorized parties with a key can decipher it.",
+  "macro":          "An embedded automation script inside Microsoft Office documents. Malicious macros can run harmful code when documents open.",
+  "macros":         "Automated scripts in Word/Excel documents. Cybercriminals weaponize macros to deliver initial payloads.",
+  "embedded":       "Sub-files, scripts, or binary containers hidden inside another parent file.",
+  "packed":         "A file that has been compressed and wrapped with an unpacker stub to obscure its inner code from security scanners.",
+  "packer":         "Software used to compress and scramble an executable program to prevent static analysis.",
+  "imports":        "External system code libraries referenced by a program. Suspicious imports indicate the file interacts with sensitive operating system internals.",
+  "hash":           "A unique digital fingerprint calculated from a file's exact contents (like SHA-256 or MD5) used for identification.",
+  "benign":         "Safe and harmless. A benign verdict means no malicious traits or threats were discovered.",
+  "anomaly":        "An unexpected deviation from standard file format specifications that signals tampering or suspicious structure.",
+  "anomalies":      "Unusual structural irregularities that may indicate exploitation or evasion attempts.",
+  "indicator":      "A piece of technical evidence suggesting a file or program is malicious.",
+  "indicators":     "Evidence items indicating potential compromise or security risk.",
+  "detection":      "The identification of malicious patterns or signatures by heuristic engines or AI.",
+  "malicious":      "Harmful software designed to cause unauthorized damage, data theft, or device hijacking.",
+  "suspicious":     "Exhibiting risky traits that warrant caution and detailed analysis.",
+  "executable":     "A file containing instructions a computer can run directly, such as .exe, .dll, or .bat scripts.",
+  "urls":           "Web addresses found inside the file. Malicious files use them to connect to command-and-control servers or download malware.",
+  "persistence":    "Methods malware uses to maintain access to a computer across system reboots or user logoffs.",
+  "code execution": "Commands or functions capable of running system code or external programs."
 };
 
-/* ── Floating tooltip element (appended to body — never clipped by overflow:hidden) ── */
-var tfTip = null;
-function tfGetTip() {
-  if (!tfTip) {
-    tfTip = document.createElement('div');
-    tfTip.id = 'tf-float-tip';
-    tfTip.style.cssText = [
-      'position:fixed',
-      'z-index:99999',
-      'max-width:260px',
-      'background:#0f172a',
-      'color:#e2e8f0',
-      'border:1px solid rgba(6,182,212,0.5)',
-      'border-radius:10px',
-      'padding:10px 14px',
-      'font-size:0.78rem',
-      'line-height:1.6',
-      'box-shadow:0 8px 28px rgba(0,0,0,0.65)',
-      'pointer-events:none',
-      'opacity:0',
-      'transition:opacity 0.15s ease',
-      'white-space:normal',
-      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif'
-    ].join(';');
-    document.body.appendChild(tfTip);
-  }
-  return tfTip;
+/* ── Interactive Definition Modal & Card ── */
+var tfModal = null;
+function tfEnsureModal() {
+  if (tfModal) return tfModal;
+  tfModal = document.createElement('div');
+  tfModal.id = 'tf-definition-modal';
+  tfModal.style.cssText = [
+    'position:fixed',
+    'z-index:999999',
+    'display:none',
+    'background:#0f172a',
+    'color:#e2e8f0',
+    'border:1.5px solid #06b6d4',
+    'border-radius:12px',
+    'box-shadow:0 12px 35px rgba(0,0,0,0.8), 0 0 15px rgba(6,182,212,0.25)',
+    'padding:14px 18px',
+    'max-width:320px',
+    'width:calc(100vw - 32px)',
+    'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+    'transition:opacity 0.18s ease, transform 0.18s ease',
+    'opacity:0',
+    'transform:scale(0.96)'
+  ].join(';');
+
+  tfModal.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:6px;">
+      <div id="tf-modal-title" style="font-size:0.88rem; font-weight:800; color:#22d3ee; display:flex; align-items:center; gap:6px;">
+        <i class="fa-solid fa-book-open"></i> <span>Terminology</span>
+      </div>
+      <button id="tf-modal-close" style="background:rgba(255,255,255,0.08); border:none; color:#9ca3af; border-radius:6px; width:24px; height:24px; cursor:pointer; font-size:0.8rem; display:flex; align-items:center; justify-content:center;">&times;</button>
+    </div>
+    <div id="tf-modal-body" style="font-size:0.82rem; line-height:1.6; color:#cbd5e1;"></div>
+    <div style="margin-top:10px; font-size:0.7rem; color:#64748b; text-align:right;">TrustFile Plain-English Security Glossary</div>
+  `;
+
+  document.body.appendChild(tfModal);
+
+  document.getElementById('tf-modal-close').addEventListener('click', function(e) {
+    e.stopPropagation();
+    tfCloseModal();
+  });
+
+  return tfModal;
 }
 
-function tfShowTip(el) {
-  var def = el.getAttribute('data-def');
-  if (!def) return;
-  var tip = tfGetTip();
-  tip.textContent = def;
-  tip.style.opacity = '0';
-  tip.style.display = 'block';
+function tfOpenModal(title, text, sourceElem) {
+  var modal = tfEnsureModal();
+  var titleSpan = modal.querySelector('#tf-modal-title span');
+  var bodyDiv = modal.querySelector('#tf-modal-body');
 
-  var rect = el.getBoundingClientRect();
-  var tipW = 260;
-  var left = rect.left + rect.width / 2 - tipW / 2;
-  var top  = rect.top - 10;
+  titleSpan.textContent = title;
+  bodyDiv.textContent = text;
 
-  /* keep inside viewport */
-  if (left < 8) left = 8;
-  if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+  modal.style.display = 'block';
 
-  tip.style.width = tipW + 'px';
-  tip.style.left  = left + 'px';
+  /* Smart positioning */
+  var rect = sourceElem ? sourceElem.getBoundingClientRect() : null;
+  var modalW = 320;
 
-  /* measure height after setting text, then position above */
+  if (rect) {
+    var left = rect.left + (rect.width / 2) - (modalW / 2);
+    if (left < 16) left = 16;
+    if (left + modalW > window.innerWidth - 16) left = window.innerWidth - modalW - 16;
+
+    var top = rect.bottom + 8;
+    if (top + 160 > window.innerHeight) {
+      top = rect.top - 170;
+      if (top < 16) top = 16;
+    }
+
+    modal.style.left = left + 'px';
+    modal.style.top = top + 'px';
+  } else {
+    modal.style.left = '50%';
+    modal.style.top = '50%';
+    modal.style.transform = 'translate(-50%, -50%)';
+  }
+
   requestAnimationFrame(function() {
-    var tipH = tip.offsetHeight;
-    var finalTop = rect.top - tipH - 8;
-    if (finalTop < 8) finalTop = rect.bottom + 8; /* flip below if no room above */
-    tip.style.top = finalTop + 'px';
-    tip.style.opacity = '1';
+    modal.style.opacity = '1';
+    modal.style.transform = rect ? 'scale(1)' : 'translate(-50%, -50%) scale(1)';
   });
 }
 
-function tfHideTip() {
-  var tip = tfGetTip();
-  tip.style.opacity = '0';
+function tfCloseModal() {
+  if (!tfModal || tfModal.style.display === 'none') return;
+  tfModal.style.opacity = '0';
+  tfModal.style.transform = 'scale(0.96)';
+  setTimeout(function() {
+    if (tfModal) tfModal.style.display = 'none';
+  }, 180);
 }
 
 function tfEscapeRegex(s) {
@@ -1550,11 +1565,10 @@ function tfHighlightNode(node) {
   var parent = node.parentNode;
   if (!parent) return;
   var tag = parent.tagName ? parent.tagName.toUpperCase() : '';
-  if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT') return;
+  if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'BUTTON') return;
   if (parent.classList && parent.classList.contains('term-tip')) return;
 
   var text = node.textContent;
-  /* Sort longest terms first to match multi-word terms before single words */
   var terms = Object.keys(TF_GLOSSARY).sort(function(a,b){ return b.length - a.length; });
   var patternStr = '(' + terms.map(tfEscapeRegex).join('|') + ')';
   var pattern = new RegExp(patternStr, 'gi');
@@ -1576,14 +1590,23 @@ function tfHighlightNode(node) {
       var span = document.createElement('span');
       span.className = 'term-tip';
       span.setAttribute('tabindex', '0');
-      span.setAttribute('data-def', '\ud83d\udcd6 ' + def);
+      span.setAttribute('role', 'button');
+      span.setAttribute('title', 'Click to view definition of ' + match[0]);
+      span.setAttribute('data-term', match[0]);
+      span.setAttribute('data-def', def);
       span.textContent = match[0];
-      /* floating tooltip events */
-      span.addEventListener('mouseenter', function(){ tfShowTip(this); });
-      span.addEventListener('mouseleave', tfHideTip);
-      span.addEventListener('focus',      function(){ tfShowTip(this); });
-      span.addEventListener('blur',       tfHideTip);
-      span.addEventListener('click',      function(e){ e.stopPropagation(); tfShowTip(this); });
+
+      (function(s, termName, definition) {
+        s.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          tfOpenModal(termName, definition, s);
+        });
+        s.addEventListener('mouseenter', function() {
+          tfOpenModal(termName, definition, s);
+        });
+      })(span, match[0], def);
+
       frag.appendChild(span);
     } else {
       frag.appendChild(document.createTextNode(match[0]));
@@ -1614,21 +1637,27 @@ function tfAddLegend() {
   if (document.querySelector('.glossary-legend')) return;
   var legend = document.createElement('div');
   legend.className = 'glossary-legend';
-  legend.innerHTML = '&#128218; Tip: <span style="border-bottom:1px dashed #06b6d4;color:#06b6d4;font-weight:600;">underlined terms</span> have plain-English definitions &mdash; hover or tap to learn more.';
+  legend.innerHTML = '&#128218; <strong>Security Glossary:</strong> Click on any <span style="border-bottom:2px dashed #06b6d4;color:#22d3ee;font-weight:700;padding:0 2px;">underlined term</span> (like Base64, Entropy, Obfuscation) to read its plain-English meaning.';
   firstCard.parentNode.insertBefore(legend, firstCard);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
   var scanWrapper = document.querySelector('.scan-wrapper');
   if (!scanWrapper) return;
-  /* Target all result cards including IOC extraction */
+
   var targets = scanWrapper.querySelectorAll('.audit-card, .summary-info-strip, .ai-quote-box, .threat-meter-card, .nested-sub-card, .kv-group, .banner-inner-green, .banner-inner-blue');
   targets.forEach(function(el) { tfWalkAndHighlight(el); });
   tfAddLegend();
 
-  /* Hide tooltip when clicking outside */
+  /* Close modal when clicking outside or pressing Escape */
   document.addEventListener('click', function(e) {
-    if (!e.target.classList.contains('term-tip')) tfHideTip();
+    if (tfModal && !tfModal.contains(e.target) && !e.target.classList.contains('term-tip')) {
+      tfCloseModal();
+    }
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') tfCloseModal();
   });
 });
 </script>
